@@ -1,12 +1,13 @@
-name = "travelo-web"
+name = "zatra360-web"
 compatibility_date = "2025-01-01"
+account_id = "29cb84c6f8d3d3652b453a529f2e06f9"
 pages_build_output_dir = ".next"
 
 [env.production]
 routes = [
-  { pattern = "travelo.com", custom_domain = true },
-  { pattern = "*.travelo.com", custom_domain = true }
+  { pattern = "zatra360.com", custom_domain = true },
+  { pattern = "*.zatra360.com", custom_domain = true }
 ]
 
 [env.production.vars]
-NEXT_PUBLIC_API_URL = "https://api.travelo.com/api/v1"
+NEXT_PUBLIC_API_URL = "https://api.zatra360.com/api/v1"
