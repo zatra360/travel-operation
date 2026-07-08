@@ -200,6 +200,8 @@ model User {
   activities        Activity[]          @relation("ActivityCreator")
   documents         Document[]          @relation("DocumentUploader")
   notifications     Notification[]
+  leaveApprovals    Leave[]
+  authoredReviews   PerformanceReview[]
 
   @@index([email])
   @@index([status])
@@ -768,6 +770,10 @@ model Employee {
   updatedAt    DateTime @updatedAt
   deletedAt    DateTime?
 
+  leaves       Leave[]
+  attendances  Attendance[]
+  reviews      PerformanceReview[]
+
   @@unique([tenantId, employeeCode])
   @@index([tenantId])
   @@index([branchId])
@@ -790,6 +796,9 @@ model Leave {
   @@index([tenantId])
   @@index([employeeId])
   @@index([status])
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  approvedBy User?    @relation(fields: [approvedById], references: [id])
 }
 
 model Attendance {
@@ -806,6 +815,8 @@ model Attendance {
 
   @@unique([tenantId, employeeId, date])
   @@index([tenantId])
+
+  employee Employee @relation(fields: [employeeId], references: [id])
 }
 
 model PerformanceReview {
@@ -824,6 +835,9 @@ model PerformanceReview {
 
   @@index([tenantId])
   @@index([employeeId])
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+  reviewer User?    @relation(fields: [reviewerId], references: [id])
 }
 
 // ─── Master Lookup ────────────────────────────────────────────

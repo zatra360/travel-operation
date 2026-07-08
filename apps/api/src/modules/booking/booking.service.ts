@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { QueryBookingDto } from './dto/query-booking.dto';
+import { validateStatusTransition } from '../../common/utils/status-transitions';
 
 @Injectable()
 export class BookingService {
@@ -83,7 +84,12 @@ export class BookingService {
   }
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateBookingDto) {
-    await this.findById(tenantId, id);
+    const current = await this.findById(tenantId, id);
+
+    if (dto.status !== undefined && dto.status !== current.status) {
+      const check = validateStatusTransition('booking', current.status, dto.status);
+      if (!check.valid) throw new BadRequestException(`Cannot transition from ${current.status} to ${dto.status}. Allowed: ${check.allowed.join(', ') || 'none'}`);
+    }
 
     const booking = await this.prisma.booking.update({
       where: { id },

@@ -18,7 +18,7 @@ export class PerformanceService {
   async findAll(tenantId: string, query: QueryPerformanceDto) {
     const page = query.page ?? 1; const limit = query.limit ?? 50; const skip = (page - 1) * limit;
     const where: any = { tenantId }; if (query.employeeId) where.employeeId = query.employeeId; if (query.status) where.status = query.status;
-    const [data, total] = await Promise.all([this.prisma.performanceReview.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }), this.prisma.performanceReview.count({ where })]);
+    const [data, total] = await Promise.all([this.prisma.performanceReview.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } } } }), this.prisma.performanceReview.count({ where })]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 

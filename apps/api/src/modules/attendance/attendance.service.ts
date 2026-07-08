@@ -18,7 +18,7 @@ export class AttendanceService {
   async findAll(tenantId: string, query: QueryAttendanceDto) {
     const page = query.page ?? 1; const limit = query.limit ?? 50; const skip = (page - 1) * limit;
     const where: any = { tenantId }; if (query.employeeId) where.employeeId = query.employeeId; if (query.status) where.status = query.status; if (query.dateFrom || query.dateTo) { where.date = {}; if (query.dateFrom) where.date.gte = new Date(query.dateFrom); if (query.dateTo) where.date.lte = new Date(query.dateTo); }
-    const [data, total] = await Promise.all([this.prisma.attendance.findMany({ where, orderBy: { date: 'desc' }, skip, take: limit }), this.prisma.attendance.count({ where })]);
+    const [data, total] = await Promise.all([this.prisma.attendance.findMany({ where, orderBy: { date: 'desc' }, skip, take: limit, include: { employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } } } }), this.prisma.attendance.count({ where })]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 

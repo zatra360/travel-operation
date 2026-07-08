@@ -301,17 +301,20 @@ export interface Employee {
 export interface Leave {
   id: string; employeeId: string; leaveType: string; startDate: string; endDate: string;
   status: string; reason?: string | null; approvedById?: string | null; createdAt: string; updatedAt: string;
+  employee?: { id: string; firstName: string; lastName: string; employeeCode: string };
 }
 
 export interface Attendance {
   id: string; employeeId: string; date: string; clockIn?: string | null;
   clockOut?: string | null; status: string; notes?: string | null; createdAt: string; updatedAt: string;
+  employee?: { id: string; firstName: string; lastName: string; employeeCode: string };
 }
 
 export interface PerformanceReview {
   id: string; employeeId: string; reviewerId?: string | null; period: string;
   rating?: number | null; strengths?: string | null; improvements?: string | null;
   notes?: string | null; status: string; createdAt: string; updatedAt: string;
+  employee?: { id: string; firstName: string; lastName: string; employeeCode: string };
 }
 
 export const employeeStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
