@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
@@ -7,44 +7,29 @@ import { QueryQuotationDto } from './dto/query-quotation.dto';
 
 @Injectable()
 export class QuotationService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly audit: AuditService,
-  ) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+
+  private async validateLinked(tenantId: string, dto: any) {
+    if (dto.clientId) { const c = await this.prisma.client.findFirst({ where: { id: dto.clientId, tenantId } }); if (!c) throw new BadRequestException('Client not in this tenant'); }
+    if (dto.leadId) { const l = await this.prisma.lead.findFirst({ where: { id: dto.leadId, tenantId } }); if (!l) throw new BadRequestException('Lead not in this tenant'); }
+    if (dto.assignedToId) { const m = await this.prisma.userTenantMembership.findUnique({ where: { userId_tenantId: { userId: dto.assignedToId, tenantId } } }); if (!m) throw new BadRequestException('User not in this tenant'); }
+    if (dto.branchId) { const b = await this.prisma.branch.findFirst({ where: { id: dto.branchId, tenantId } }); if (!b) throw new BadRequestException('Branch not in this tenant'); }
+  }
+
+  private async calculateTotals(quotationId: string) {
+    const items = await this.prisma.quotationLineItem.findMany({ where: { quotationId } });
+    const subtotal = items.reduce((sum, i) => sum + Number(i.lineTotal), 0);
+    const taxTotal = Math.round(subtotal * 0.05 * 100) / 100;
+    const grandTotal = subtotal + taxTotal;
+    await this.prisma.quotation.update({ where: { id: quotationId }, data: { subtotal, taxTotal, grandTotal, discountTotal: 0 } });
+  }
 
   async create(tenantId: string, actorId: string, dto: CreateQuotationDto) {
+    await this.validateLinked(tenantId, dto);
     const quotation = await this.prisma.quotation.create({
-      data: {
-        tenantId,
-        branchId: dto.branchId ?? null,
-        quoteNumber: dto.quoteNumber,
-        status: dto.status ?? 'DRAFT',
-        title: dto.title ?? null,
-        clientId: dto.clientId ?? null,
-        leadId: dto.leadId ?? null,
-        assignedToId: dto.assignedToId ?? null,
-        currencyCode: dto.currencyCode ?? 'USD',
-        subtotal: dto.subtotal ?? 0,
-        taxTotal: dto.taxTotal ?? 0,
-        discountTotal: dto.discountTotal ?? 0,
-        grandTotal: dto.grandTotal ?? 0,
-        validUntil: dto.validUntil ? new Date(dto.validUntil) : null,
-        notes: dto.notes ?? null,
-        terms: dto.terms ?? null,
-      },
+      data: { tenantId, branchId: dto.branchId ?? null, quoteNumber: dto.quoteNumber, status: dto.status ?? 'DRAFT', title: dto.title ?? null, clientId: dto.clientId ?? null, leadId: dto.leadId ?? null, assignedToId: dto.assignedToId ?? null, currencyCode: dto.currencyCode ?? 'USD', subtotal: dto.subtotal ?? 0, taxTotal: dto.taxTotal ?? 0, discountTotal: dto.discountTotal ?? 0, grandTotal: dto.grandTotal ?? 0, validUntil: dto.validUntil ? new Date(dto.validUntil) : null, notes: dto.notes ?? null, terms: dto.terms ?? null },
     });
-
-    await this.audit.logMutation(
-      actorId,
-      tenantId,
-      'QUOTATION',
-      'Quotation',
-      quotation.id,
-      'CREATE',
-      { quoteNumber: quotation.quoteNumber },
-      quotation.branchId ?? undefined,
-    );
-
+    await this.audit.logMutation(actorId, tenantId, 'QUOTATION', 'Quotation', quotation.id, 'CREATE', { quoteNumber: quotation.quoteNumber }, quotation.branchId ?? undefined);
     return quotation;
   }
 
@@ -87,7 +72,14 @@ export class QuotationService {
   }
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateQuotationDto) {
-    await this.findById(tenantId, id);
+    const current = await this.findById(tenantId, id);
+    await this.validateLinked(tenantId, dto);
+
+    if (dto.status && dto.status !== current.status) {
+      await this.prisma.quotationStatusLog.create({
+        data: { tenantId, quotationId: id, fromStatus: current.status, toStatus: dto.status, actorId },
+      });
+    }
 
     const quotation = await this.prisma.quotation.update({
       where: { id },

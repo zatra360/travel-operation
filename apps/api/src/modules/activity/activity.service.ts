@@ -10,4 +10,10 @@ export class ActivityService {
     const [data, total] = await Promise.all([this.prisma.activity.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }), this.prisma.activity.count({ where })]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
+
+  async log(tenantId: string, userId: string, type: string, subject: string, entity?: string, entityId?: string, branchId?: string | null) {
+    return this.prisma.activity.create({
+      data: { tenantId, branchId: branchId ?? null, userId, type, subject, entity: entity ?? null, entityId: entityId ?? null },
+    });
+  }
 }

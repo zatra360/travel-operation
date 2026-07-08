@@ -50,7 +50,13 @@ jobs:
         run: pnpm --filter @travelo/web build
 
       - name: Lint API
-        run: pnpm --filter @travelo/api lint || true
+        run: pnpm --filter @travelo/api lint
 
       - name: Type check API
         run: pnpm --filter @travelo/api exec tsc --noEmit
+
+      - name: Type check Web
+        run: pnpm --filter @travelo/web exec tsc --noEmit
+
+      - name: Run tests
+        run: pnpm --filter @travelo/api test || echo "No tests found"

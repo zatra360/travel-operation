@@ -1,69 +1,49 @@
-import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsEmail,
-  IsIn,
-  MaxLength,
-  IsDateString,
-} from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEmail, IsIn, IsBoolean, IsInt, IsDateString, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
 export const CLIENT_TYPES = ['PERSON', 'COMPANY'] as const;
 export const CLIENT_STATUSES = ['ACTIVE', 'INACTIVE', 'BLOCKED'] as const;
 export const CLIENT_GENDERS = ['MALE', 'FEMALE', 'OTHER'] as const;
 
 export class CreateClientDto {
-  @ApiProperty({ example: 'Jane Smith' })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(150)
-  displayName!: string;
-
-  @ApiPropertyOptional({ enum: CLIENT_TYPES, default: 'PERSON' })
-  @IsOptional()
-  @IsIn(CLIENT_TYPES)
-  type?: string;
-
-  @ApiPropertyOptional({ enum: CLIENT_STATUSES, default: 'ACTIVE' })
-  @IsOptional()
-  @IsIn(CLIENT_STATUSES)
-  status?: string;
-
-  @ApiPropertyOptional({ example: 'jane@example.com' })
-  @IsOptional()
-  @IsEmail()
-  email?: string;
-
-  @ApiPropertyOptional({ example: '+8801712345678' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(30)
-  phone?: string;
-
-  @ApiPropertyOptional({ example: 'Acme Travels Ltd' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(150)
-  companyName?: string;
-
-  @ApiPropertyOptional({ description: 'Nationality ID' })
-  @IsOptional()
-  @IsString()
-  nationalityId?: string;
-
-  @ApiPropertyOptional({ example: '1990-01-15' })
-  @IsOptional()
-  @IsDateString()
-  dateOfBirth?: string;
-
-  @ApiPropertyOptional({ enum: CLIENT_GENDERS })
-  @IsOptional()
-  @IsIn(CLIENT_GENDERS)
-  gender?: string;
-
-  @ApiPropertyOptional({ description: 'Branch the client belongs to' })
-  @IsOptional()
-  @IsString()
-  branchId?: string;
+  @ApiProperty({ example: 'Jane Smith' }) @IsString() @IsNotEmpty() @MaxLength(150) displayName!: string;
+  @ApiPropertyOptional({ enum: CLIENT_TYPES, default: 'PERSON' }) @IsOptional() @IsIn(CLIENT_TYPES) type?: string;
+  @ApiPropertyOptional({ enum: CLIENT_STATUSES, default: 'ACTIVE' }) @IsOptional() @IsIn(CLIENT_STATUSES) status?: string;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isVip?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) surname?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) givenNames?: string;
+  @ApiPropertyOptional() @IsOptional() @IsEmail() email?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) phone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) whatsapp?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(150) companyName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() companyInfo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) profession?: string;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() dateOfBirth?: string;
+  @ApiPropertyOptional({ enum: CLIENT_GENDERS }) @IsOptional() @IsIn(CLIENT_GENDERS) gender?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() nationalityId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() nationalityLabel?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() language?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() timezone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() preferredCommunication?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() preferredPaymentMethod?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() loyaltyStatus?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() preferredAirlines?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() preferredRoutes?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() paymentBehavior?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() communicationStatus?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) emergencyPhone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() socialMediaLink?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() address?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() city?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() country?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() nationalId?: string;
+  @ApiPropertyOptional({ default: 'USD' }) @IsOptional() @IsString() currencyCode?: string;
+  @ApiPropertyOptional() @IsOptional() @IsInt() riskScore?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() b2bCreditStatus?: string;
+  @ApiPropertyOptional() @IsOptional() @IsInt() visaHistoryCount?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() leadSource?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() ownerId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() phoneVerified?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() emailVerified?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() branchId?: string;
 }

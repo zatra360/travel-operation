@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsIn } from 'class-validator';
+import { IsOptional, IsString, IsIn, IsBoolean } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { CLIENT_TYPES, CLIENT_STATUSES } from './create-client.dto';
@@ -19,8 +19,6 @@ export class QueryClientDto extends PaginationDto {
   @IsIn(CLIENT_STATUSES)
   status?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by branch ID' })
-  @IsOptional()
-  @IsString()
-  branchId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() branchId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isVip?: boolean;
 }

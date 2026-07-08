@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
@@ -7,12 +7,15 @@ import { QueryTicketDto } from './dto/query-ticket.dto';
 
 @Injectable()
 export class TicketService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly audit: AuditService,
-  ) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+
+  private async validateBooking(tenantId: string, bookingId: string) {
+    const b = await this.prisma.booking.findFirst({ where: { id: bookingId, tenantId } });
+    if (!b) throw new BadRequestException('Booking does not belong to this tenant');
+  }
 
   async create(tenantId: string, actorId: string, dto: CreateTicketDto) {
+    await this.validateBooking(tenantId, dto.bookingId);
     const ticket = await this.prisma.ticket.create({
       data: {
         tenantId,
@@ -80,6 +83,7 @@ export class TicketService {
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateTicketDto) {
     await this.findById(tenantId, id);
+    if (dto.bookingId) await this.validateBooking(tenantId, dto.bookingId);
 
     const ticket = await this.prisma.ticket.update({
       where: { id },

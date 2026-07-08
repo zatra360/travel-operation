@@ -8,12 +8,18 @@ import { validateStatusTransition } from '../../common/utils/status-transitions'
 
 @Injectable()
 export class BookingService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly audit: AuditService,
-  ) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+
+  private async validateLinked(tenantId: string, dto: any) {
+    if (dto.clientId) { const c = await this.prisma.client.findFirst({ where: { id: dto.clientId, tenantId } }); if (!c) throw new BadRequestException('Client not in this tenant'); }
+    if (dto.quotationId) { const q = await this.prisma.quotation.findFirst({ where: { id: dto.quotationId, tenantId } }); if (!q) throw new BadRequestException('Quotation not in this tenant'); }
+    if (dto.leadId) { const l = await this.prisma.lead.findFirst({ where: { id: dto.leadId, tenantId } }); if (!l) throw new BadRequestException('Lead not in this tenant'); }
+    if (dto.assignedToId) { const m = await this.prisma.userTenantMembership.findUnique({ where: { userId_tenantId: { userId: dto.assignedToId, tenantId } } }); if (!m) throw new BadRequestException('User not in this tenant'); }
+    if (dto.branchId) { const b = await this.prisma.branch.findFirst({ where: { id: dto.branchId, tenantId } }); if (!b) throw new BadRequestException('Branch not in this tenant'); }
+  }
 
   async create(tenantId: string, actorId: string, dto: CreateBookingDto) {
+    await this.validateLinked(tenantId, dto);
     const booking = await this.prisma.booking.create({
       data: {
         tenantId,
@@ -85,6 +91,7 @@ export class BookingService {
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateBookingDto) {
     const current = await this.findById(tenantId, id);
+    await this.validateLinked(tenantId, dto);
 
     if (dto.status !== undefined && dto.status !== current.status) {
       const check = validateStatusTransition('booking', current.status, dto.status);

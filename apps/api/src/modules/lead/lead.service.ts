@@ -1,60 +1,106 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { ActivityService } from '../activity/activity.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { QueryLeadDto } from './dto/query-lead.dto';
+
+const LEAD_CREATE_FIELDS = [
+  'branchId', 'fullName', 'firstName', 'lastName', 'preferredName', 'gender', 'dateOfBirth',
+  'nationalityId', 'passportNationalityId', 'maritalStatus', 'profession', 'companyName', 'designation',
+  'primaryMobile', 'secondaryMobile', 'whatsappNumber', 'email', 'alternativeEmail',
+  'facebookProfile', 'instagramHandle', 'linkedinProfile', 'telegramHandle', 'viberHandle',
+  'countryId', 'city', 'areaRegion', 'fullAddress', 'postalCode', 'timezoneId',
+  'source', 'sourcePlatform', 'campaignName', 'adSet', 'referralSource', 'referralPerson',
+  'utmSource', 'utmMedium', 'utmCampaign', 'utmContent', 'landingPage', 'importBatchId', 'creationMethod',
+  'serviceType', 'travelCategory', 'isDomestic', 'tripType', 'departureCity', 'departureAirportId',
+  'destinationCity', 'destinationAirportId', 'preferredAirlineIds', 'transitPreference', 'cabinTypeId',
+  'flexibleDates', 'preferredTravelDate', 'returnDate', 'alternateDateOptions',
+  'numAdults', 'numChildren', 'numInfants', 'passengerNotes',
+  'visaCountryId', 'visaTypeText', 'travelHistoryNotes', 'previousRefusal', 'urgentVisaProcessing',
+  'hotelPreference', 'hotelStarCategory', 'mealPreference', 'tourType', 'destinationInterests',
+  'preferredContactMethod', 'preferredContactTime', 'languagePreference',
+  'leadScore', 'conversionProbability', 'potentialRevenue', 'urgencyLevel',
+  'firstResponseAt', 'lastContactAt', 'nextFollowUpAt', 'followUpCount', 'lastFollowUpOutcome', 'expectedConversionAt',
+  'approxBudget', 'budgetMin', 'budgetMax', 'currencyCode', 'paymentPreference', 'financingRequirement',
+  'estimatedProfit', 'estimatedCommission', 'vipPotential', 'repeatCustomerPotential',
+  'smartPriority', 'leadTemperature', 'behavioralPattern', 'engagementScore', 'conversionPredictionScore',
+  'autoAssignmentTriggered', 'autoReminderSent', 'duplicateScore',
+  'isCorporateLead', 'companyType', 'employeeCount', 'travelFrequency', 'corporateAgreementPotential',
+  'agentType', 'agencyName', 'subAgentReference', 'commissionCategory',
+  'clientId', 'assignedToId', 'ownerId', 'teamId', 'approvalRequired', 'notes',
+] as const;
 
 @Injectable()
 export class LeadService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly activity: ActivityService,
   ) {}
 
+  private async validateLinkedIds(tenantId: string, dto: any) {
+    if (dto.branchId) {
+      const branch = await this.prisma.branch.findFirst({ where: { id: dto.branchId, tenantId } });
+      if (!branch) throw new BadRequestException('Branch does not belong to this tenant');
+    }
+    if (dto.clientId) {
+      const client = await this.prisma.client.findFirst({ where: { id: dto.clientId, tenantId } });
+      if (!client) throw new BadRequestException('Client does not belong to this tenant');
+    }
+    if (dto.assignedToId) {
+      const member = await this.prisma.userTenantMembership.findUnique({
+        where: { userId_tenantId: { userId: dto.assignedToId, tenantId } },
+      });
+      if (!member) throw new BadRequestException('Assigned user does not belong to this tenant');
+    }
+  }
+
+  private mapDateFields(dto: any) {
+    const d: any = {};
+    for (const k of LEAD_CREATE_FIELDS) {
+      if (dto[k] === undefined) continue;
+      d[k] = ['dateOfBirth', 'preferredTravelDate', 'returnDate', 'firstResponseAt',
+        'lastContactAt', 'nextFollowUpAt', 'expectedConversionAt'].includes(k)
+        ? (dto[k] ? new Date(dto[k]) : null)
+        : dto[k];
+    }
+    return d;
+  }
+
   async create(tenantId: string, actorId: string, dto: CreateLeadDto) {
+    await this.validateLinkedIds(tenantId, dto);
+    const data = this.mapDateFields(dto);
     const lead = await this.prisma.lead.create({
-      data: {
-        tenantId,
-        branchId: dto.branchId ?? null,
-        fullName: dto.fullName,
-        email: dto.email ?? null,
-        primaryMobile: dto.phone ?? null,
-        status: dto.status ?? 'NEW',
-        priority: dto.priority ?? 'MEDIUM',
-        source: dto.source ?? null,
-        serviceType: dto.serviceType ?? null,
-        notes: dto.notes ?? null,
-        assignedToId: dto.assignedToId ?? null,
-      },
+      data: { tenantId, status: dto.status ?? 'NEW', priority: dto.priority ?? 'MEDIUM', ...data },
     });
-
-    await this.audit.logMutation(
-      actorId,
-      tenantId,
-      'LEAD',
-      'Lead',
-      lead.id,
-      'CREATE',
-      {
-        fullName: lead.fullName,
-      },
-      lead.branchId ?? undefined,
-    );
-
+    await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'CREATE', { fullName: lead.fullName }, lead.branchId ?? undefined);
+    await this.activity.log(tenantId, actorId, 'LEAD_CREATED', `New lead: ${lead.fullName}`, 'Lead', lead.id, lead.branchId);
     return lead;
   }
 
   async findAll(tenantId: string, query: QueryLeadDto) {
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 50;
-    const skip = (page - 1) * limit;
-
+    const page = query.page ?? 1; const limit = query.limit ?? 50; const skip = (page - 1) * limit;
     const where: any = { tenantId, deletedAt: null };
     if (query.status) where.status = query.status;
     if (query.priority) where.priority = query.priority;
     if (query.assignedToId) where.assignedToId = query.assignedToId;
     if (query.branchId) where.branchId = query.branchId;
+    if (query.serviceType) where.serviceType = query.serviceType;
+    if (query.source) where.source = query.source;
+    if (query.leadTemperature) where.leadTemperature = query.leadTemperature;
+    if (query.isCorporateLead !== undefined) where.isCorporateLead = query.isCorporateLead;
+    if (query.travelDateFrom || query.travelDateTo) {
+      where.preferredTravelDate = {};
+      if (query.travelDateFrom) where.preferredTravelDate.gte = new Date(query.travelDateFrom);
+      if (query.travelDateTo) where.preferredTravelDate.lte = new Date(query.travelDateTo);
+    }
+    if (query.nextFollowUpFrom || query.nextFollowUpTo) {
+      where.nextFollowUpAt = {};
+      if (query.nextFollowUpFrom) where.nextFollowUpAt.gte = new Date(query.nextFollowUpFrom);
+      if (query.nextFollowUpTo) where.nextFollowUpAt.lte = new Date(query.nextFollowUpTo);
+    }
     if (query.search) {
       where.OR = [
         { fullName: { contains: query.search, mode: 'insensitive' } },
@@ -62,115 +108,48 @@ export class LeadService {
         { primaryMobile: { contains: query.search, mode: 'insensitive' } },
       ];
     }
-
     const [data, total] = await Promise.all([
       this.prisma.lead.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
       this.prisma.lead.count({ where }),
     ]);
-
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findById(tenantId: string, id: string) {
-    const lead = await this.prisma.lead.findFirst({
-      where: { id, tenantId, deletedAt: null },
-    });
+    const lead = await this.prisma.lead.findFirst({ where: { id, tenantId, deletedAt: null } });
     if (!lead) throw new NotFoundException('Lead not found');
     return lead;
   }
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateLeadDto) {
     await this.findById(tenantId, id);
-
-    const lead = await this.prisma.lead.update({
-      where: { id },
-      data: {
-        ...(dto.fullName !== undefined && { fullName: dto.fullName }),
-        ...(dto.email !== undefined && { email: dto.email }),
-        ...(dto.phone !== undefined && { primaryMobile: dto.phone }),
-        ...(dto.status !== undefined && { status: dto.status }),
-        ...(dto.priority !== undefined && { priority: dto.priority }),
-        ...(dto.source !== undefined && { source: dto.source }),
-        ...(dto.serviceType !== undefined && { serviceType: dto.serviceType }),
-        ...(dto.notes !== undefined && { notes: dto.notes }),
-        ...(dto.assignedToId !== undefined && { assignedToId: dto.assignedToId }),
-        ...(dto.branchId !== undefined && { branchId: dto.branchId }),
-      },
-    });
-
-    await this.audit.logMutation(
-      actorId,
-      tenantId,
-      'LEAD',
-      'Lead',
-      lead.id,
-      'UPDATE',
-      {
-        changes: dto,
-      },
-      lead.branchId ?? undefined,
-    );
-
+    await this.validateLinkedIds(tenantId, dto);
+    const data = this.mapDateFields(dto);
+    const lead = await this.prisma.lead.update({ where: { id }, data });
+    await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'UPDATE', { changes: dto }, lead.branchId ?? undefined);
+    await this.activity.log(tenantId, actorId, 'LEAD_UPDATED', `Lead updated: ${lead.fullName}`, 'Lead', lead.id, lead.branchId);
     return lead;
   }
 
   async convertToClient(tenantId: string, actorId: string, id: string) {
     const lead = await this.findById(tenantId, id);
-
     const client = await this.prisma.client.create({
       data: {
-        tenantId,
-        branchId: lead.branchId,
-        displayName: lead.fullName,
-        email: lead.email,
-        phone: lead.primaryMobile,
-        type: 'PERSON',
-        status: 'ACTIVE',
+        tenantId, branchId: lead.branchId, displayName: lead.fullName,
+        email: lead.email, phone: lead.primaryMobile, type: 'PERSON', status: 'ACTIVE',
+        leadSource: lead.source, nationalityLabel: lead.nationalityId,
       },
     });
-
-    await this.prisma.lead.update({
-      where: { id },
-      data: { status: 'WON', clientId: client.id },
-    });
-
-    await this.audit.logMutation(
-      actorId,
-      tenantId,
-      'LEAD',
-      'Lead',
-      lead.id,
-      'UPDATE',
-      {
-        convertedToClientId: client.id,
-      },
-      lead.branchId ?? undefined,
-    );
-
+    await this.prisma.lead.update({ where: { id }, data: { status: 'WON', clientId: client.id } });
+    await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'UPDATE', { convertedToClientId: client.id }, lead.branchId ?? undefined);
+    await this.activity.log(tenantId, actorId, 'LEAD_CONVERTED', `Lead converted to client: ${client.displayName}`, 'Client', client.id, lead.branchId);
     return client;
   }
 
   async remove(tenantId: string, actorId: string, id: string) {
     const lead = await this.findById(tenantId, id);
-
-    await this.prisma.lead.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
-
-    await this.audit.logMutation(
-      actorId,
-      tenantId,
-      'LEAD',
-      'Lead',
-      lead.id,
-      'DELETE',
-      {
-        fullName: lead.fullName,
-      },
-      lead.branchId ?? undefined,
-    );
-
+    await this.prisma.lead.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'DELETE', { fullName: lead.fullName }, lead.branchId ?? undefined);
     return { id, deleted: true };
   }
 }
