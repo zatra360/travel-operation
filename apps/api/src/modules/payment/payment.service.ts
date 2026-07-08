@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
@@ -10,6 +10,10 @@ export class PaymentService {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
 
   async create(tenantId: string, actorId: string, dto: CreatePaymentDto) {
+    if (dto.idempotencyKey) {
+      const existing = await this.prisma.payment.findFirst({ where: { tenantId, idempotencyKey: dto.idempotencyKey } });
+      if (existing) throw new BadRequestException('Payment already processed with this idempotency key');
+    }
     const payment = await this.prisma.payment.create({
       data: {
         tenantId, branchId: dto.branchId ?? null,

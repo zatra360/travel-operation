@@ -4,6 +4,7 @@ import { AuditService } from '../audit/audit.service';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
 import { QueryQuotationDto } from './dto/query-quotation.dto';
+import { validateStatusTransition } from '../../common/utils/status-transitions';
 
 @Injectable()
 export class QuotationService {
@@ -76,6 +77,8 @@ export class QuotationService {
     await this.validateLinked(tenantId, dto);
 
     if (dto.status && dto.status !== current.status) {
+      const check = validateStatusTransition('quotation', current.status, dto.status);
+      if (!check.valid) throw new BadRequestException(`Invalid quotation status transition from ${current.status} to ${dto.status}. Allowed: ${check.allowed.join(', ') || 'none'}`);
       await this.prisma.quotationStatusLog.create({
         data: { tenantId, quotationId: id, fromStatus: current.status, toStatus: dto.status, actorId },
       });

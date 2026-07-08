@@ -1,6 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { Public } from './common/decorators/public.decorator';
 import { PrismaService } from './prisma/prisma.service';
 
 @ApiTags('Health')
@@ -8,23 +7,18 @@ import { PrismaService } from './prisma/prisma.service';
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 
-  @Public()
   @Get()
-  @ApiOperation({ summary: 'Health check endpoint' })
-  async check() {
-    try {
-      await this.prisma.$queryRaw`SELECT 1`;
-      return {
-        status: 'healthy',
-        database: 'connected',
-        timestamp: new Date().toISOString(),
-      };
-    } catch {
-      return {
-        status: 'unhealthy',
-        database: 'disconnected',
-        timestamp: new Date().toISOString(),
-      };
-    }
+  @ApiOperation({ summary: 'Basic health check' })
+  check() { return { status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() }; }
+
+  @Get('db')
+  @ApiOperation({ summary: 'Database health check' })
+  async db() {
+    try { await this.prisma.$queryRaw`SELECT 1`; return { status: 'ok', database: 'connected' }; }
+    catch (e: any) { return { status: 'error', database: 'disconnected', message: e.message }; }
   }
+
+  @Get('storage')
+  @ApiOperation({ summary: 'Storage health check' })
+  storage() { return { status: 'ok', storage: process.env.R2_ENDPOINT ? 'configured' : 'not configured' }; }
 }

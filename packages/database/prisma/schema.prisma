@@ -204,9 +204,62 @@ model User {
   notifications     Notification[]
   leaveApprovals    Leave[]
   authoredReviews   PerformanceReview[]
+  refreshTokens     RefreshToken[]
+  loginHistory      LoginHistory[]
+  securityEvents    SecurityEvent[]
 
   @@index([email])
   @@index([status])
+}
+
+// ─── Auth / Security ──────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  device    String?
+  ip        String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model LoginHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  email     String
+  ip        String?
+  userAgent String?
+  success   Boolean  @default(true)
+  failReason String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  details   String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
 }
 
 model Role {

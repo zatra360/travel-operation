@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { validateStatusTransition } from '../../common/utils/status-transitions';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { QueryTicketDto } from './dto/query-ticket.dto';
@@ -82,8 +83,12 @@ export class TicketService {
   }
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateTicketDto) {
-    await this.findById(tenantId, id);
+    const current = await this.findById(tenantId, id);
     if (dto.bookingId) await this.validateBooking(tenantId, dto.bookingId);
+    if (dto.status && dto.status !== current.status) {
+      const check = validateStatusTransition('ticket', current.status, dto.status);
+      if (!check.valid) throw new BadRequestException(`Invalid ticket status transition from ${current.status} to ${dto.status}`);
+    }
 
     const ticket = await this.prisma.ticket.update({
       where: { id },

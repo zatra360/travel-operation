@@ -58,5 +58,8 @@ jobs:
       - name: Type check Web
         run: pnpm --filter @travelo/web exec tsc --noEmit
 
+      - name: Run migration
+        run: pnpm --filter @travelo/database exec prisma migrate deploy
+
       - name: Run tests
-        run: pnpm --filter @travelo/api test || echo "No tests found"
+        run: pnpm --filter @travelo/api test

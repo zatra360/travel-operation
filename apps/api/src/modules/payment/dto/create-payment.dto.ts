@@ -34,7 +34,13 @@ export class CreatePaymentDto {
 
   @ApiPropertyOptional()
   @IsOptional() @IsString()
+  idempotencyKey?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsString()
   notes?: string;
+
+  @ApiPropertyOptional()
 
   @ApiPropertyOptional()
   @IsOptional() @IsDateString()
