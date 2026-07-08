@@ -1,0 +1,12 @@
+name = "travelo-web"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = ".next"
+
+[env.production]
+routes = [
+  { pattern = "travelo.com", custom_domain = true },
+  { pattern = "*.travelo.com", custom_domain = true }
+]
+
+[env.production.vars]
+NEXT_PUBLIC_API_URL = "https://api.travelo.com/api/v1"

@@ -1,0 +1,847 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  EXPIRED
+  CANCELLED
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+  CLOSED
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  INVITED
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum PermissionAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  MANAGE
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  IMPERSONATE
+  EXPORT
+  IMPORT
+  ARCHIVE
+  RESTORE
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+  TASK
+  REMINDER
+  ALERT
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+}
+
+// ─── Platform ─────────────────────────────────────────────────
+
+model Tenant {
+  id        String       @id @default(cuid())
+  name      String
+  slug      String       @unique
+  logo      String?
+  status    TenantStatus @default(TRIAL)
+  settings  Json?        @default("{}")
+  metadata  Json?        @default("{}")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
+
+  branches        Branch[]
+  users           UserTenantMembership[]
+  roles           Role[]
+  auditLogs       AuditLog[]
+  tenantSettings  TenantSetting[]
+  documents       Document[]
+  activities      Activity[]
+
+  @@index([status])
+  @@index([slug])
+}
+
+model TenantSetting {
+  id        String   @id @default(cuid())
+  tenantId  String
+  key       String
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+}
+
+// ─── Branch Management ────────────────────────────────────────
+
+model Branch {
+  id        String       @id @default(cuid())
+  tenantId  String
+  name      String
+  code      String
+  address   String?
+  phone     String?
+  email     String?
+  status    BranchStatus @default(ACTIVE)
+  metadata  Json?        @default("{}")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
+
+  tenant      Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users       UserBranchMembership[]
+  departments Department[]
+  activities  Activity[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+// ─── Department ───────────────────────────────────────────────
+
+model Department {
+  id        String   @id @default(cuid())
+  branchId  String
+  tenantId  String
+  name      String
+  code      String
+  parentId  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  branch   Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children Department[] @relation("DepartmentHierarchy")
+  members  DepartmentMember[]
+
+  @@unique([tenantId, branchId, code])
+  @@index([tenantId])
+  @@index([branchId])
+}
+
+model DepartmentMember {
+  userId       String
+  departmentId String
+  tenantId     String
+  isLead       Boolean @default(false)
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@id([userId, departmentId])
+  @@index([tenantId])
+}
+
+// ─── User & RBAC ──────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String?
+  avatar       String?
+  status       UserStatus @default(ACTIVE)
+  isPlatformSuperAdmin Boolean @default(false)
+  lastLoginAt  DateTime?
+  metadata     Json?      @default("{}")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+
+  tenantMemberships UserTenantMembership[]
+  branchMemberships UserBranchMembership[]
+  roleAssignments   UserRoleAssignment[]
+  departmentMembers DepartmentMember[]
+  createdAudits     AuditLog[]          @relation("AuditActor")
+  activities        Activity[]          @relation("ActivityCreator")
+  documents         Document[]          @relation("DocumentUploader")
+  notifications     Notification[]
+
+  @@index([email])
+  @@index([status])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  assignments UserRoleAssignment[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  module      String
+  action      PermissionAction
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@index([module])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  constraints  Json?   @default("{}")
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserTenantMembership {
+  userId       String
+  tenantId     String
+  role         MembershipRole @default(MEMBER)
+  isActive     Boolean        @default(true)
+  joinedAt     DateTime       @default(now())
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@id([userId, tenantId])
+  @@index([tenantId])
+}
+
+model UserBranchMembership {
+  userId       String
+  branchId     String
+  tenantId     String
+  isDefault    Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  joinedAt     DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([userId, branchId])
+  @@index([tenantId])
+  @@index([branchId])
+}
+
+model UserRoleAssignment {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  tenantId  String
+  branchId  String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId, branchId])
+  @@index([tenantId])
+}
+
+// ─── Audit & Activity ─────────────────────────────────────────
+
+model AuditLog {
+  id        String     @id @default(cuid())
+  tenantId  String
+  branchId  String?
+  actorId   String
+  action    AuditAction
+  module    String
+  entity    String
+  entityId  String?
+  metadata  Json?      @default("{}")
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime   @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor  User   @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@index([tenantId])
+  @@index([actorId])
+  @@index([module])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  tenantId  String
+  branchId  String?
+  userId    String
+  type      String
+  subject   String
+  content   String?
+  entity    String?
+  entityId  String?
+  metadata  Json?    @default("{}")
+  createdAt DateTime @default(now())
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id])
+  user   User    @relation("ActivityCreator", fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+// ─── Notification ─────────────────────────────────────────────
+
+model Notification {
+  id        String             @id @default(cuid())
+  tenantId  String
+  userId    String
+  type      NotificationType  @default(INFO)
+  channel   NotificationChannel @default(IN_APP)
+  title     String
+  body      String?
+  metadata  Json?              @default("{}")
+  isRead    Boolean            @default(false)
+  readAt    DateTime?
+  createdAt DateTime           @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+// ─── Document ─────────────────────────────────────────────────
+
+model Document {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String?
+  uploadedById String?
+  category    String
+  fileName    String
+  storageKey  String
+  mimeType    String
+  sizeBytes   Int?
+  entity      String?
+  entityId    String?
+  metadata    Json?    @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploadedBy User?  @relation("DocumentUploader", fields: [uploadedById], references: [id])
+
+  @@index([tenantId])
+  @@index([entity, entityId])
+  @@index([category])
+}
+
+// ─── Master Data ──────────────────────────────────────────────
+
+model Country {
+  id        String  @id @default(cuid())
+  name      String
+  iso2      String  @unique
+  iso3      String? @unique
+  dialCode  String?
+  currencyCode String?
+  continent String?
+  flagUrl   String?
+  nationalityLabel String?
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  airlines     Airline[]      @relation("AirlineCountry")
+  airports     Airport[]      @relation("AirportCountry")
+  nationalities Nationality[]
+
+  @@index([iso2])
+  @@index([continent])
+}
+
+model Nationality {
+  id        String  @id @default(cuid())
+  countryId String
+  name      String
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+
+  country Country @relation(fields: [countryId], references: [id])
+
+  @@unique([countryId, name])
+}
+
+model Currency {
+  id           String  @id @default(cuid())
+  code         String  @unique
+  name         String
+  symbol       String
+  decimalPlaces Int    @default(2)
+  isActive     Boolean @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Airline {
+  id        String  @id @default(cuid())
+  iataCode  String  @unique
+  icaoCode  String?
+  name      String
+  countryId String?
+  logoUrl   String?
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  country Country? @relation("AirlineCountry", fields: [countryId], references: [id])
+
+  @@index([iataCode])
+}
+
+model Airport {
+  id        String  @id @default(cuid())
+  iataCode  String  @unique
+  icaoCode  String?
+  name      String
+  city      String
+  countryId String?
+  timezone  String?
+  latitude  Float?
+  longitude Float?
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  country Country? @relation("AirportCountry", fields: [countryId], references: [id])
+
+  @@index([iataCode])
+  @@index([city])
+}
+
+model CabinClass {
+  id        String  @id @default(cuid())
+  code      String
+  name      String
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([code])
+}
+
+// ─── CRM Foundation ───────────────────────────────────────────
+
+model Lead {
+  id        String   @id @default(cuid())
+  tenantId  String
+  branchId  String?
+  status    String   @default("NEW")
+  priority  String   @default("MEDIUM")
+  fullName  String
+  email     String?
+  phone     String?
+  source    String?
+  serviceType String?
+  notes     String?
+  assignedToId String?
+  clientId  String?
+  metadata  Json?    @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([tenantId, status])
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  tenantId  String
+  branchId  String?
+  type      String   @default("PERSON")
+  status    String   @default("ACTIVE")
+  displayName String
+  email     String?
+  phone     String?
+  companyName String?
+  nationalityId String?
+  dateOfBirth DateTime?
+  gender    String?
+  metadata  Json?    @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([tenantId, email])
+}
+
+model FollowUp {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String?
+  leadId      String?
+  clientId    String?
+  assignedToId String?
+  channel     String   @default("PHONE")
+  subject     String
+  description String?
+  scheduledAt DateTime
+  completedAt DateTime?
+  status      String   @default("PENDING")
+  outcome     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+// ─── Quotation / Booking / Ticketing ──────────────────────────
+
+model Quotation {
+  id              String   @id @default(cuid())
+  tenantId        String
+  branchId        String?
+  quoteNumber     String
+  status          String   @default("DRAFT")
+  title           String?
+  clientId        String?
+  leadId          String?
+  assignedToId    String?
+  currencyCode    String   @default("USD")
+  subtotal        Decimal  @default(0)
+  taxTotal        Decimal  @default(0)
+  discountTotal   Decimal  @default(0)
+  grandTotal      Decimal  @default(0)
+  validUntil      DateTime?
+  notes           String?
+  terms           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  @@unique([tenantId, quoteNumber])
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([tenantId, status])
+}
+
+model Booking {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String?
+  bookingRef  String
+  pnrLocator  String?
+  status      String   @default("PENDING")
+  clientId    String?
+  quotationId String?
+  leadId      String?
+  assignedToId String?
+  travelStart DateTime?
+  travelEnd   DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@unique([tenantId, bookingRef])
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([tenantId, status])
+}
+
+model Ticket {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String?
+  bookingId   String
+  ticketNumber String
+  passengerName String?
+  airlineId   String?
+  status      String   @default("ISSUED")
+  issuedAt    DateTime?
+  voidAt      DateTime?
+  metadata    Json?    @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, ticketNumber])
+  @@index([tenantId])
+  @@index([bookingId])
+}
+
+// ─── Finance Foundation ───────────────────────────────────────
+
+model Invoice {
+  id            String   @id @default(cuid())
+  tenantId      String
+  branchId      String?
+  invoiceNumber String
+  clientId      String?
+  bookingId     String?
+  currencyCode  String   @default("USD")
+  subtotal      Decimal  @default(0)
+  taxAmount     Decimal  @default(0)
+  discountAmount Decimal @default(0)
+  totalAmount   Decimal  @default(0)
+  paidAmount    Decimal  @default(0)
+  dueAmount     Decimal  @default(0)
+  status        String   @default("DRAFT")
+  issuedAt      DateTime?
+  dueAt         DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([tenantId, status])
+}
+
+model Receipt {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String?
+  receiptNumber String
+  invoiceId   String?
+  paymentMethod String?
+  amount      Decimal  @default(0)
+  currencyCode String  @default("USD")
+  reference   String?
+  notes       String?
+  receivedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, receiptNumber])
+  @@index([tenantId])
+  @@index([invoiceId])
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  tenantId       String
+  branchId       String?
+  bookingId      String?
+  invoiceId      String?
+  amount         Decimal  @default(0)
+  currencyCode   String   @default("USD")
+  paymentMethod  String?
+  status         String   @default("PENDING")
+  reference      String?
+  notes          String?
+  receivedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([bookingId])
+  @@index([invoiceId])
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  tenantId      String
+  branchId      String?
+  expenseNumber String
+  category      String?
+  vendorName    String?
+  currencyCode  String   @default("USD")
+  amount        Decimal  @default(0)
+  status        String   @default("PENDING")
+  description   String?
+  expenseDate   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  @@unique([tenantId, expenseNumber])
+  @@index([tenantId])
+  @@index([branchId])
+}
+
+model LedgerEntry {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String?
+  entryDate   DateTime @default(now())
+  referenceType String?
+  referenceId String?
+  direction   String
+  currencyCode String  @default("USD")
+  amount      Decimal  @default(0)
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([referenceType, referenceId])
+}
+
+// ─── HRM Foundation ───────────────────────────────────────────
+
+model Employee {
+  id           String   @id @default(cuid())
+  tenantId     String
+  branchId     String?
+  employeeCode String
+  userId       String?  @unique
+  departmentId String?
+  firstName    String
+  lastName     String
+  email        String?
+  phone        String?
+  position     String?
+  status       String   @default("ACTIVE")
+  joinedAt     DateTime?
+  metadata     Json?    @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  @@unique([tenantId, employeeCode])
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([departmentId])
+}
+
+model Leave {
+  id          String   @id @default(cuid())
+  tenantId    String
+  employeeId  String
+  leaveType   String
+  startDate   DateTime
+  endDate     DateTime
+  status      String   @default("PENDING")
+  reason      String?
+  approvedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model Attendance {
+  id         String   @id @default(cuid())
+  tenantId   String
+  employeeId String
+  date       DateTime
+  clockIn    DateTime?
+  clockOut   DateTime?
+  status     String   @default("PRESENT")
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([tenantId, employeeId, date])
+  @@index([tenantId])
+}
+
+model PerformanceReview {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  reviewerId    String?
+  period        String
+  rating        Int?
+  strengths     String?
+  improvements  String?
+  notes         String?
+  status        String   @default("DRAFT")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([employeeId])
+}
+
+// ─── Master Lookup ────────────────────────────────────────────
+
+model MasterLookup {
+  id        String  @id @default(cuid())
+  tenantId  String
+  category  String
+  code      String
+  name      String
+  description String?
+  metadata  Json?   @default("{}")
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, category, code])
+  @@index([tenantId])
+  @@index([category])
+}

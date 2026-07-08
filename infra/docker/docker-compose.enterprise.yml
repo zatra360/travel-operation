@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: travelo-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: travelo
+      RABBITMQ_DEFAULT_PASS: travelo_dev
+      RABBITMQ_DEFAULT_VHOST: travelo
+    volumes:
+      - travelo-rabbitmq-data:/var/lib/rabbitmq
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.13
+    container_name: travelo-meilisearch
+    restart: unless-stopped
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_MASTER_KEY: travelo-dev-master-key
+    volumes:
+      - travelo-meili-data:/meili_data
+
+volumes:
+  travelo-rabbitmq-data:
+  travelo-meili-data:

@@ -1,0 +1,27 @@
+{
+  "name": "travel-operation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Travel Operation - SaaS platform for travel agencies, OTAs, visa agencies, and corporate travel teams",
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"pnpm --filter @travelo/api dev\" \"pnpm --filter @travelo/web dev\"",
+    "build": "pnpm --filter @travelo/database generate && pnpm --filter @travelo/api build && pnpm --filter @travelo/web build",
+    "db:generate": "pnpm --filter @travelo/database generate",
+    "db:migrate": "pnpm --filter @travelo/database migrate:dev",
+    "db:push": "pnpm --filter @travelo/database push",
+    "db:seed": "pnpm --filter @travelo/database seed",
+    "db:studio": "pnpm --filter @travelo/database studio",
+    "lint": "pnpm -r lint",
+    "test": "pnpm --filter @travelo/api test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,yml,yaml}\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.3",
+    "prettier": "^3.9.4",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
