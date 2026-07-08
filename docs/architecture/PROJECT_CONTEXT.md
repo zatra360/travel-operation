@@ -99,8 +99,22 @@ stores/auth-store.ts   zustand auth + activeTenant
 ## Milestones (status)
 
 - M1 Foundation — DONE: auth, tenant, branch, user, RBAC, audit, settings, dashboard shell.
-- M2 CRM — IN PROGRESS: leads, clients, follow-ups DONE; document management pending.
-- M3 Travel sales, M4 Finance, M5 HRM, M6 Automation/AI — not started.
+- M2 CRM — DONE: leads, clients, follow-ups, document management (R2 presigned uploads).
+- M3 Travel Sales — DONE: quotations, bookings, tickets (API + UI).
+- M4 Finance — DONE: invoices, receipts, payments, expenses, ledger (API + UI).
+- M5 HRM — DONE: employees, leaves, attendance, performance reviews (API + UI).
+- M6 Automation — DONE: notifications, master data, activity stream, profile, settings (API + UI).
+- M7 Schema Hardening — PLANNED: Prisma relations, migrations, status guards, server-side number generation, integration tests.
+
+## Modules built (27)
+
+**Platform:** Tenant, User, Permission, Auth
+**Tenant core:** Branch, Role, Settings, Dashboard, Audit, Notification, Activity
+**CRM:** Lead, Client, FollowUp, Document
+**Operations:** Quotation, Booking, Ticket
+**Finance:** Invoice, Receipt, Payment, Expense, Ledger
+**HRM:** Employee, Leave, Attendance, PerformanceReview
+**Reference:** MasterData (countries, nationalities, currencies, airlines, airports)
 
 ## Ports / local env
 
