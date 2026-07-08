@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { QueryBookingDto } from './dto/query-booking.dto';
@@ -8,7 +9,7 @@ import { validateStatusTransition } from '../../common/utils/status-transitions'
 
 @Injectable()
 export class BookingService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly lookup: LookupValidationService) {}
 
   private async validateLinked(tenantId: string, dto: any) {
     if (dto.clientId) { const c = await this.prisma.client.findFirst({ where: { id: dto.clientId, tenantId } }); if (!c) throw new BadRequestException('Client not in this tenant'); }
@@ -20,6 +21,7 @@ export class BookingService {
 
   async create(tenantId: string, actorId: string, dto: CreateBookingDto) {
     await this.validateLinked(tenantId, dto);
+    await this.lookup.validateOptional(tenantId, 'booking-status', dto.status);
     const booking = await this.prisma.booking.create({
       data: {
         tenantId,

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { QueryLeadDto } from './dto/query-lead.dto';
@@ -38,6 +39,7 @@ export class LeadService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly activity: ActivityService,
+    private readonly lookup: LookupValidationService,
   ) {}
 
   private async validateLinkedIds(tenantId: string, dto: any) {
@@ -74,6 +76,14 @@ export class LeadService {
       throw new BadRequestException('Email or phone is required');
     }
     await this.validateLinkedIds(tenantId, dto);
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'lead-status', code: dto.status },
+      { categoryCode: 'lead-priority', code: dto.priority },
+      { categoryCode: 'lead-source', code: dto.source },
+      { categoryCode: 'service-type', code: dto.serviceType },
+      { categoryCode: 'travel-category', code: dto.travelCategory },
+      { categoryCode: 'trip-type', code: dto.tripType },
+    ].filter((v) => v.code));
     const data = this.mapDateFields(dto);
     const lead = await this.prisma.lead.create({
       data: { tenantId, status: dto.status ?? 'NEW', priority: dto.priority ?? 'MEDIUM', ...data },
