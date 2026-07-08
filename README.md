@@ -99,6 +99,9 @@ Swagger/OpenAPI documentation is available at `/api/v1/docs` when the API is run
 | `GET/POST/PUT/DELETE /api/v1/tenant/clients` | Client management |
 | `GET/POST/PUT/DELETE /api/v1/tenant/follow-ups` | Follow-up scheduling |
 | `POST /api/v1/tenant/follow-ups/:id/complete` | Mark follow-up complete |
+| `POST /api/v1/tenant/documents/upload-url` | Presigned R2 upload URL |
+| `GET/POST/DELETE /api/v1/tenant/documents` | Document management |
+| `GET /api/v1/tenant/documents/:id/download` | Presigned download URL |
 | `GET /api/v1/tenant/settings` | Tenant settings |
 | `GET /api/v1/tenant/dashboard/stats` | Dashboard statistics |
 
@@ -174,7 +177,7 @@ npx wrangler pages deploy .next
 - [x] Leads pipeline
 - [x] Client management
 - [x] Follow-ups & activity timeline
-- [ ] Document management
+- [x] Document management
 
 ### Milestone 3 - Travel Operations
 - [ ] Quotation builder

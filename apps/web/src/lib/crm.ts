@@ -118,3 +118,49 @@ export const followUpStatusVariant: Record<
   CANCELLED: 'secondary',
   MISSED: 'destructive',
 };
+
+export const DOCUMENT_CATEGORIES = [
+  'PASSPORT',
+  'NID',
+  'VISA',
+  'TICKET',
+  'INVOICE',
+  'RECEIPT',
+  'QUOTATION',
+  'EMPLOYEE',
+  'SUPPLIER_AGREEMENT',
+  'AUDIT_EVIDENCE',
+  'OTHER',
+] as const;
+
+export const SENSITIVE_DOCUMENT_CATEGORIES = new Set(['PASSPORT', 'NID', 'VISA']);
+
+export interface DocumentItem {
+  id: string;
+  category: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes?: number | null;
+  entity?: string | null;
+  entityId?: string | null;
+  branchId?: string | null;
+  createdAt: string;
+  uploadedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+}
+
+export function formatFileSize(bytes?: number | null): string {
+  if (!bytes || bytes <= 0) return '--';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = bytes;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i++;
+  }
+  return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}

@@ -61,6 +61,7 @@ For each module, backend + frontend + docs land in the same change:
 | Leads    | yes  | yes    | yes  | yes  | yes          | dialog forms + detail + convert |
 | Clients  | yes  | yes    | yes  | yes  | yes          | dialog forms + detail |
 | Follow-ups | yes | yes   | api  | yes  | yes(hard)    | list + create + complete; edit via API |
+| Documents | yes  | yes    | -    | yes  | yes          | R2 presigned upload/download; audited |
 
 "api" = backend endpoint exists; "yes" = UI present. Remaining CRUD backlog:
-Branch create/edit UI forms, and inline follow-up scheduling from lead/client detail.
+Branch create/edit UI forms, and inline follow-up/document attach from lead/client detail.

@@ -37,6 +37,7 @@ const tenantNavItems = [
   { label: 'Bookings', href: '/bookings', icon: Plane },
   { label: 'Tickets', href: '/tickets', icon: Ticket },
   { label: 'Invoices', href: '/invoices', icon: Receipt },
+  { label: 'Documents', href: '/documents', icon: FileText },
   { label: 'Reports', href: '/reports', icon: BarChart3 },
   { label: 'Audit Log', href: '/audit-log', icon: ScrollText },
   { label: 'Settings', href: '/settings', icon: Settings },

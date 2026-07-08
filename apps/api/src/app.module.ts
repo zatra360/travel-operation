@@ -3,6 +3,7 @@ import { APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
+import { StorageModule } from './common/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { BranchModule } from './modules/branch/branch.module';
@@ -15,6 +16,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { LeadModule } from './modules/lead/lead.module';
 import { ClientModule } from './modules/client/client.module';
 import { FollowUpModule } from './modules/follow-up/follow-up.module';
+import { DocumentModule } from './modules/document/document.module';
 import { HealthController } from './health.controller';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -25,6 +27,7 @@ import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters/http-
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     PrismaModule,
+    StorageModule,
     AuthModule,
     TenantModule,
     BranchModule,
@@ -37,6 +40,7 @@ import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters/http-
     LeadModule,
     ClientModule,
     FollowUpModule,
+    DocumentModule,
   ],
   controllers: [HealthController],
   providers: [
