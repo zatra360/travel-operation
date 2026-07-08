@@ -1,4 +1,5 @@
 import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
@@ -17,8 +18,16 @@ export class TenantService {
       });
 
       if (dto.ownerEmail) {
-        const user = await tx.user.findUnique({ where: { email: dto.ownerEmail } });
-        if (!user) throw new BadRequestException(`User with email ${dto.ownerEmail} not found`);
+        let user = await tx.user.findUnique({ where: { email: dto.ownerEmail } });
+        if (!user) {
+          if (!dto.ownerPassword) throw new BadRequestException(`User with email ${dto.ownerEmail} not found. Provide ownerPassword to auto-create.`);
+          user = await tx.user.create({
+            data: {
+              email: dto.ownerEmail, passwordHash: await bcrypt.hash(dto.ownerPassword, 12),
+              firstName: dto.ownerFirstName || 'Owner', lastName: dto.ownerLastName || 'Admin', status: 'ACTIVE',
+            },
+          });
+        }
 
         await tx.userTenantMembership.create({
           data: { userId: user.id, tenantId: tenant.id, role: 'OWNER' },

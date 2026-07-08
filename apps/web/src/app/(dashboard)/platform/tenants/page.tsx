@@ -21,7 +21,7 @@ export default function TenantListPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', slug: '', ownerEmail: '' });
+  const [form, setForm] = useState({ name: '', slug: '', ownerEmail: '', ownerPassword: '', ownerFirstName: '', ownerLastName: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,11 +40,18 @@ export default function TenantListPage() {
     setSaving(true); setError('');
     try {
       const payload: any = { name: form.name.trim(), slug: form.slug.trim() };
-      if (form.ownerEmail.trim()) payload.ownerEmail = form.ownerEmail.trim();
+      if (form.ownerEmail.trim()) {
+        payload.ownerEmail = form.ownerEmail.trim();
+        if (form.ownerPassword.trim()) {
+          payload.ownerPassword = form.ownerPassword;
+          payload.ownerFirstName = form.ownerFirstName.trim() || undefined;
+          payload.ownerLastName = form.ownerLastName.trim() || undefined;
+        }
+      }
       await api.post('/api/v1/platform/tenants', payload);
       toast.success('Tenant created');
       setDialogOpen(false);
-      setForm({ name: '', slug: '', ownerEmail: '' });
+      setForm({ name: '', slug: '', ownerEmail: '', ownerPassword: '', ownerFirstName: '', ownerLastName: '' });
       load();
     } catch (err: any) {
       setError(err.message || 'Failed to create tenant');
@@ -92,8 +99,22 @@ export default function TenantListPage() {
             </div>
             <div className="space-y-2">
               <Label>Owner email</Label>
-              <Input type="email" value={form.ownerEmail} onChange={(e) => setForm({ ...form, ownerEmail: e.target.value })} placeholder="owner@demo.com" />
-              <p className="text-xs text-muted-foreground">User must already exist. They will be assigned as tenant owner with full permissions.</p>
+              <Input type="email" value={form.ownerEmail} onChange={(e) => setForm({ ...form, ownerEmail: e.target.value })} placeholder="owner@tripnow.com" />
+              <p className="text-xs text-muted-foreground">If the user doesn't exist, fill in password + name below to auto-create.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Owner password</Label>
+              <Input type="password" value={form.ownerPassword} onChange={(e) => setForm({ ...form, ownerPassword: e.target.value })} placeholder="Min 6 characters" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>First name</Label>
+                <Input value={form.ownerFirstName} onChange={(e) => setForm({ ...form, ownerFirstName: e.target.value })} placeholder="John" />
+              </div>
+              <div className="space-y-2">
+                <Label>Last name</Label>
+                <Input value={form.ownerLastName} onChange={(e) => setForm({ ...form, ownerLastName: e.target.value })} placeholder="Doe" />
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
