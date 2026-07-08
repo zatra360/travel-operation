@@ -22,3 +22,18 @@ export class DashboardController {
     return this.dashboardService.getTenantStats(ctx.tenantId, ctx.branchId);
   }
 }
+
+@ApiTags('Platform - Dashboard')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Controller('platform/dashboard')
+export class PlatformDashboardController {
+  constructor(private readonly dashboardService: DashboardService) {}
+
+  @Get('stats')
+  @RequirePermissions('DASHBOARD_READ')
+  @ApiOperation({ summary: 'Get platform dashboard statistics' })
+  async getStats() {
+    return this.dashboardService.getPlatformStats();
+  }
+}
