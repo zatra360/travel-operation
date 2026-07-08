@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { MasterDataController } from './master-data.controller';
+import { MasterDataReferenceController, PlatformMasterDataController, TenantMasterDataController } from './master-data.controller';
 import { MasterDataService } from './master-data.service';
-@Module({ controllers: [MasterDataController], providers: [MasterDataService], exports: [MasterDataService] })
+@Module({ controllers: [MasterDataReferenceController, PlatformMasterDataController, TenantMasterDataController], providers: [MasterDataService], exports: [MasterDataService] })
 export class MasterDataModule {}

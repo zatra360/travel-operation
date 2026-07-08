@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { MASTER_DATA_SEED } from './master-data-seed';
 
 const prisma = new PrismaClient();
 
@@ -373,6 +374,23 @@ async function main() {
   console.log('                sales@travelo.com / Demo@123');
   console.log('                ticketing@travelo.com / Demo@123');
   console.log('                finance@travelo.com / Demo@123');
+
+  // ─── Platform Master Data ────────────────────────────────
+  let catCount = 0; let itemCount = 0;
+  for (const cat of MASTER_DATA_SEED.categories) {
+    const category = await prisma.masterDataCategory.upsert({
+      where: { code: cat.code }, update: {}, create: cat,
+    }); catCount++;
+    const items = (MASTER_DATA_SEED.items as any)[cat.code] || [];
+    for (const item of items) {
+      await prisma.masterDataItem.upsert({
+        where: { categoryId_code: { categoryId: category.id, code: item.code } },
+        update: {},
+        create: { ...item, categoryId: category.id },
+      }); itemCount++;
+    }
+  }
+  console.log(`  ✓ ${catCount} master data categories, ${itemCount} items seeded`);
 }
 
 main()

@@ -70,6 +70,9 @@ export class LeadService {
   }
 
   async create(tenantId: string, actorId: string, dto: CreateLeadDto) {
+    if (!dto.email && !dto.phone && !dto.primaryMobile) {
+      throw new BadRequestException('Email or phone is required');
+    }
     await this.validateLinkedIds(tenantId, dto);
     const data = this.mapDateFields(dto);
     const lead = await this.prisma.lead.create({

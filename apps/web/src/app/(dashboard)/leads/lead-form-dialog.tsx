@@ -90,6 +90,10 @@ export function LeadFormDialog({ open, onOpenChange, lead, onSaved }: Props) {
       setError('Full name is required');
       return;
     }
+    if (!form.email.trim() && !form.phone.trim()) {
+      setError('Email or phone is required');
+      return;
+    }
     setSaving(true);
     setError('');
 
@@ -167,7 +171,7 @@ export function LeadFormDialog({ open, onOpenChange, lead, onSaved }: Props) {
                 id="phone"
                 value={form.phone}
                 onChange={(e) => set('phone', e.target.value)}
-                placeholder="+8801712345678"
+                placeholder="+1 234 567 8900"
               />
             </div>
           </div>

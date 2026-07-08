@@ -188,9 +188,13 @@ export function QuotationFormDialog({ open, onOpenChange, quotation, onSaved }: 
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="BDT">BDT</SelectItem>
                   <SelectItem value="EUR">EUR</SelectItem>
                   <SelectItem value="GBP">GBP</SelectItem>
+                  <SelectItem value="JPY">JPY</SelectItem>
+                  <SelectItem value="AUD">AUD</SelectItem>
+                  <SelectItem value="INR">INR</SelectItem>
+                  <SelectItem value="AED">AED</SelectItem>
+                  <SelectItem value="SAR">SAR</SelectItem>
                 </SelectContent>
               </Select>
             </div>

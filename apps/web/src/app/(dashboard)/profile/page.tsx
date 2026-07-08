@@ -89,7 +89,7 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>
-              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+880..." />
+              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 234 567 8900" />
             </div>
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">

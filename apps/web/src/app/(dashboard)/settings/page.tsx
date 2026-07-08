@@ -119,14 +119,14 @@ export default function SettingsPage() {
             <Label>Timezone</Label>
             <Select value={sections.general.timezone} onValueChange={(v) => updateSection('general', 'timezone', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{['UTC', 'America/New_York', 'Europe/London', 'Asia/Dubai', 'Asia/Dhaka', 'Asia/Kolkata'].map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}</SelectContent>
+              <SelectContent>{['UTC', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Dubai', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo'].map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}</SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label>Default currency</Label>
             <Select value={sections.general.defaultCurrency} onValueChange={(v) => updateSection('general', 'defaultCurrency', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{['USD', 'BDT', 'EUR', 'GBP', 'SAR', 'AED'].map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}</SelectContent>
+              <SelectContent>{['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'INR', 'AED', 'SAR', 'SGD'].map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}</SelectContent>
             </Select>
           </div>
           <div className="space-y-2">

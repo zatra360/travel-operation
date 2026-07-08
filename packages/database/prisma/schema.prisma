@@ -92,6 +92,7 @@ model Tenant {
   tenantSettings  TenantSetting[]
   documents       Document[]
   activities      Activity[]
+  masterDataOverrides TenantMasterDataOverride[]
 
   @@index([status])
   @@index([slug])
@@ -131,6 +132,7 @@ model Branch {
   users       UserBranchMembership[]
   departments Department[]
   activities  Activity[]
+  masterDataOverrides TenantMasterDataOverride[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -1230,7 +1232,88 @@ model PerformanceReview {
   reviewer User?    @relation(fields: [reviewerId], references: [id])
 }
 
-// ─── Master Lookup ────────────────────────────────────────────
+// ─── Master Data System ───────────────────────────────────────
+
+model MasterDataCategory {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  module      String?
+  scope       String   @default("GLOBAL")
+  isSystem    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  metadata    Json?    @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  items MasterDataItem[]
+
+  @@index([module])
+  @@index([isActive])
+}
+
+model MasterDataItem {
+  id          String   @id @default(cuid())
+  categoryId  String
+  code        String
+  name        String
+  displayName String?
+  description String?
+  color       String?
+  icon        String?
+  sortOrder   Int      @default(0)
+  isSystem    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  metadata    Json?    @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  category        MasterDataCategory         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  tenantOverrides TenantMasterDataOverride[]
+
+  @@unique([categoryId, code])
+  @@index([categoryId])
+  @@index([isActive])
+}
+
+model TenantMasterDataOverride {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String?
+  masterItemId String?
+  categoryCode String
+  code        String
+  name        String
+  displayName String?
+  description String?
+  color       String?
+  icon        String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  isHidden    Boolean  @default(false)
+  isCustom    Boolean  @default(false)
+  metadata    Json?    @default("{}")
+  createdById  String?
+  updatedById  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch?           @relation(fields: [branchId], references: [id])
+  masterItem MasterDataItem?   @relation(fields: [masterItemId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, branchId, categoryCode, code])
+  @@index([tenantId])
+  @@index([tenantId, categoryCode])
+  @@index([masterItemId])
+}
+
+// ─── Master Lookup (legacy, to be replaced) ───────────────────
 
 model MasterLookup {
   id        String  @id @default(cuid())

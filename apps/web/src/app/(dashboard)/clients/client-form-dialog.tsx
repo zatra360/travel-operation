@@ -201,7 +201,7 @@ export function ClientFormDialog({ open, onOpenChange, client, onSaved }: Props)
                 id="phone"
                 value={form.phone}
                 onChange={(e) => set('phone', e.target.value)}
-                placeholder="+8801712345678"
+                placeholder="+1 234 567 8900"
               />
             </div>
           </div>
