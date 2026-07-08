@@ -58,9 +58,9 @@ For each module, backend + frontend + docs land in the same change:
 |----------|:----:|:------:|:----:|:----:|:------------:|-------|
 | Branches | yes  | api    | api  | api  | api          | UI create/edit forms pending |
 | Users    | yes  | api    | api  | -    | -            | platform-scoped list |
-| Leads    | yes  | api    | api  | api  | api          | +convert; UI forms pending |
-| Clients  | yes  | api    | api  | api  | api          | UI forms pending |
-| Follow-ups | api | api   | api  | api  | api(hard)    | no UI page yet |
+| Leads    | yes  | yes    | yes  | yes  | yes          | dialog forms + detail + convert |
+| Clients  | yes  | yes    | yes  | yes  | yes          | dialog forms + detail |
+| Follow-ups | yes | yes   | api  | yes  | yes(hard)    | list + create + complete; edit via API |
 
-"api" = backend endpoint exists; "yes" = UI page exists. Closing these gaps (create/
-edit/detail UIs, follow-up page) is the standing CRUD backlog.
+"api" = backend endpoint exists; "yes" = UI present. Remaining CRUD backlog:
+Branch create/edit UI forms, and inline follow-up scheduling from lead/client detail.

@@ -19,6 +19,7 @@ import {
   GitBranch,
   ScrollText,
   LogOut,
+  CalendarClock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -31,6 +32,7 @@ const tenantNavItems = [
   { label: 'Roles', href: '/roles', icon: Shield },
   { label: 'Leads', href: '/leads', icon: ClipboardList },
   { label: 'Clients', href: '/clients', icon: Building2 },
+  { label: 'Follow-ups', href: '/follow-ups', icon: CalendarClock },
   { label: 'Quotations', href: '/quotations', icon: FileText },
   { label: 'Bookings', href: '/bookings', icon: Plane },
   { label: 'Tickets', href: '/tickets', icon: Ticket },
@@ -94,7 +96,8 @@ export function Sidebar() {
       <div className="p-4">
         <div className="flex items-center gap-3 mb-2">
           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
-            {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+            {user?.firstName?.charAt(0)}
+            {user?.lastName?.charAt(0)}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">
@@ -103,7 +106,12 @@ export function Sidebar() {
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={logout}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-muted-foreground"
+          onClick={logout}
+        >
           <LogOut className="h-4 w-4 mr-2" />
           Sign Out
         </Button>
