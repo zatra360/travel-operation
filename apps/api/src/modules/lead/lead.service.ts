@@ -19,7 +19,7 @@ export class LeadService {
         branchId: dto.branchId ?? null,
         fullName: dto.fullName,
         email: dto.email ?? null,
-        phone: dto.phone ?? null,
+        primaryMobile: dto.phone ?? null,
         status: dto.status ?? 'NEW',
         priority: dto.priority ?? 'MEDIUM',
         source: dto.source ?? null,
@@ -59,7 +59,7 @@ export class LeadService {
       where.OR = [
         { fullName: { contains: query.search, mode: 'insensitive' } },
         { email: { contains: query.search, mode: 'insensitive' } },
-        { phone: { contains: query.search, mode: 'insensitive' } },
+        { primaryMobile: { contains: query.search, mode: 'insensitive' } },
       ];
     }
 
@@ -87,7 +87,7 @@ export class LeadService {
       data: {
         ...(dto.fullName !== undefined && { fullName: dto.fullName }),
         ...(dto.email !== undefined && { email: dto.email }),
-        ...(dto.phone !== undefined && { phone: dto.phone }),
+        ...(dto.phone !== undefined && { primaryMobile: dto.phone }),
         ...(dto.status !== undefined && { status: dto.status }),
         ...(dto.priority !== undefined && { priority: dto.priority }),
         ...(dto.source !== undefined && { source: dto.source }),
@@ -123,7 +123,7 @@ export class LeadService {
         branchId: lead.branchId,
         displayName: lead.fullName,
         email: lead.email,
-        phone: lead.phone,
+        phone: lead.primaryMobile,
         type: 'PERSON',
         status: 'ACTIVE',
       },

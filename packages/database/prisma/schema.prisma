@@ -500,18 +500,176 @@ model Lead {
   branchId  String?
   status    String   @default("NEW")
   priority  String   @default("MEDIUM")
-  fullName  String
-  email     String?
-  phone     String?
-  source    String?
-  serviceType String?
-  notes     String?
-  assignedToId String?
-  clientId  String?
-  metadata  Json?    @default("{}")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
+
+  // Identity
+  fullName     String
+  firstName    String?
+  lastName     String?
+  preferredName String?
+  gender       String?
+  dateOfBirth  DateTime?
+  nationalityId String?
+  passportNationalityId String?
+  maritalStatus String?
+  profession   String?
+  companyName  String?
+  designation  String?
+
+  // Contact
+  primaryMobile    String?
+  secondaryMobile  String?
+  whatsappNumber   String?
+  email            String?
+  alternativeEmail String?
+  facebookProfile  String?
+  instagramHandle  String?
+  linkedinProfile  String?
+  telegramHandle   String?
+  viberHandle      String?
+
+  // Location
+  countryId   String?
+  city        String?
+  areaRegion  String?
+  fullAddress String?
+  postalCode  String?
+  timezoneId  String?
+
+  // Source tracking
+  source          String?
+  sourcePlatform  String?
+  campaignName    String?
+  adSet           String?
+  referralSource  String?
+  referralPerson  String?
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+  utmContent      String?
+  landingPage     String?
+  importBatchId   String?
+  creationMethod  String?
+
+  // Travel requirement
+  serviceType          String?
+  travelCategory       String?
+  isDomestic           Boolean  @default(false)
+  tripType             String?
+  departureCity        String?
+  departureAirportId   String?
+  destinationCity      String?
+  destinationAirportId String?
+  preferredAirlineIds  String?
+  transitPreference    String?
+  cabinTypeId          String?
+  flexibleDates        Boolean  @default(false)
+  preferredTravelDate  DateTime?
+  returnDate           DateTime?
+  alternateDateOptions String?
+  numAdults            Int      @default(1)
+  numChildren          Int      @default(0)
+  numInfants           Int      @default(0)
+  passengerNotes       String?
+
+  // Visa
+  visaCountryId        String?
+  visaTypeText         String?
+  travelHistoryNotes   String?
+  previousRefusal      Boolean  @default(false)
+  urgentVisaProcessing Boolean  @default(false)
+
+  // Tour / Hotel
+  hotelPreference      String?
+  hotelStarCategory    String?
+  mealPreference       String?
+  tourType             String?
+  destinationInterests String?
+
+  // Communication
+  preferredContactMethod String?
+  preferredContactTime   String?
+  languagePreference     String?
+
+  // Sales pipeline
+  leadScore             Int?
+  conversionProbability Int?
+  potentialRevenue      Decimal  @default(0)
+  urgencyLevel          String?
+  firstResponseAt       DateTime?
+  lastContactAt         DateTime?
+  nextFollowUpAt        DateTime?
+  followUpCount         Int      @default(0)
+  lastFollowUpOutcome   String?
+  expectedConversionAt  DateTime?
+
+  // Quotation aggregates
+  quoteCount           Int      @default(0)
+  lastQuoteId          String?
+  lastQuoteStatus      String?
+  lastQuoteAmount      Decimal  @default(0)
+  selectedQuoteOption  String?
+  quoteRevisionCount   Int      @default(0)
+
+  // Booking intent
+  confirmedInterest  Boolean @default(false)
+  paymentReadiness   String?
+  decisionMaker      String?
+  approvalPending    Boolean @default(false)
+
+  // Workflow / SLA
+  workflowStage     String?
+  checklistProgress Int     @default(0)
+  slaStatus         String?
+  slaDueAt          DateTime?
+  slaBreached       Boolean @default(false)
+  delayReason       String?
+  escalationStatus  String?
+
+  // Financial intelligence
+  approxBudget          Decimal  @default(0)
+  budgetMin             Decimal  @default(0)
+  budgetMax             Decimal  @default(0)
+  currencyCode          String?
+  paymentPreference     String?
+  financingRequirement  String?
+  estimatedProfit       Decimal  @default(0)
+  estimatedCommission   Decimal  @default(0)
+  vipPotential          Boolean  @default(false)
+  repeatCustomerPotential Boolean @default(false)
+
+  // AI / smart analytics
+  smartPriority              Int?
+  leadTemperature            String?
+  behavioralPattern          String?
+  engagementScore            Int?
+  conversionPredictionScore  Int?
+  autoAssignmentTriggered    Boolean @default(false)
+  autoReminderSent           Boolean @default(false)
+  duplicateScore             Int?
+
+  // Corporate / B2B
+  isCorporateLead              Boolean @default(false)
+  companyType                  String?
+  employeeCount                Int?
+  travelFrequency              String?
+  corporateAgreementPotential  Boolean @default(false)
+  agentType                    String?
+  agencyName                   String?
+  subAgentReference            String?
+  commissionCategory           String?
+
+  // Ownership
+  clientId      String?
+  assignedToId  String?
+  ownerId       String?
+  teamId        String?
+  approvalRequired Boolean @default(false)
+
+  notes       String?
+  metadata    Json?       @default("{}")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?
 
   @@index([tenantId])
   @@index([branchId])
@@ -524,23 +682,151 @@ model Client {
   id        String   @id @default(cuid())
   tenantId  String
   branchId  String?
+
+  // Identity
   type      String   @default("PERSON")
   status    String   @default("ACTIVE")
+  isVip     Boolean  @default(false)
   displayName String
+  surname   String?
+  givenNames String?
   email     String?
   phone     String?
+  whatsapp  String?
   companyName String?
-  nationalityId String?
+  companyInfo String?
+  profession String?
+
+  // Personal
   dateOfBirth DateTime?
-  gender    String?
-  metadata  Json?    @default("{}")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  gender      String?
+  nationalityId String?
+  nationalityLabel String?
+  language    String?
+  timezone    String?
+
+  // Preferences
+  preferredCommunication String?
+  preferredPaymentMethod String?
+  preferredAirlines      String?
+  preferredRoutes        String?
+  loyaltyStatus          String?
+  paymentBehavior        String?
+  communicationStatus    String?
+
+  // Contact/Emergency
+  emergencyPhone   String?
+  socialMediaLink  String?
+  address          String?
+  city             String?
+  country          String?
+  nationalId       String?
+
+  // Finance/Intelligence
+  currencyCode       String   @default("USD")
+  riskScore          Int?
+  creditLimit        Decimal  @default(0)
+  b2bCreditStatus    String?
+  outstandingBalance Decimal  @default(0)
+  refundAmountTotal  Decimal  @default(0)
+  overdueInvoices    Int      @default(0)
+  visaHistoryCount   Int      @default(0)
+  cancellationCount  Int      @default(0)
+  refundFrequency    String?
+
+  // Operational
+  ownerId        String?
+  branchName     String?
+  leadSource     String?
+  aiInsights     String?
+  alerts         String?
+  lastActivityAt DateTime?
+  lastBookingAt  DateTime?
+  phoneVerified  Boolean  @default(false)
+  emailVerified  Boolean  @default(false)
+  whatsappAvailable Boolean @default(false)
+
+  notes     String?
+  metadata  Json?     @default("{}")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  passports ClientPassport[]
+  activities ClientActivity[]
+  tasks     ClientTask[]
 
   @@index([tenantId])
   @@index([branchId])
   @@index([tenantId, email])
+}
+
+model ClientPassport {
+  id             String   @id @default(cuid())
+  tenantId       String
+  branchId       String?
+  clientId       String
+  passportNumber String
+  fullName       String
+  expiryDate     DateTime
+  nationality    String?
+  countryCode    String?
+  status         String   @default("ACTIVE")
+  isActive       Boolean  @default(true)
+  isVerified     Boolean  @default(false)
+  hasMrz         Boolean  @default(false)
+  hasOcr         Boolean  @default(false)
+  notes          String?
+  verifiedById   String?
+  verifiedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([clientId])
+}
+
+model ClientActivity {
+  id        String   @id @default(cuid())
+  tenantId  String
+  branchId  String?
+  clientId  String
+  type      String
+  message   String?
+  metadata  Json?    @default("{}")
+  createdById String?
+  createdAt DateTime @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([type])
+}
+
+model ClientTask {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String?
+  clientId    String
+  priority    String   @default("MEDIUM")
+  status      String   @default("PENDING")
+  title       String
+  description String?
+  assignedToId String?
+  dueDate     DateTime?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([assignedToId])
+  @@index([status])
 }
 
 model FollowUp {
@@ -579,21 +865,116 @@ model Quotation {
   leadId          String?
   assignedToId    String?
   currencyCode    String   @default("USD")
+
+  // Computed totals (fed from line items)
   subtotal        Decimal  @default(0)
   taxTotal        Decimal  @default(0)
   discountTotal   Decimal  @default(0)
   grandTotal      Decimal  @default(0)
+
   validUntil      DateTime?
   notes           String?
   terms           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  deletedAt       DateTime?
+
+  // Visibility / source
+  visibilityScope   String?
+  assignedBranchId  String?
+  sourceBranchId    String?
+  billingBranchId   String?
+  sourceContextType String?
+  sourceContextId   String?
+  sourceContextRef  String?
+
+  // Revision tracking
+  currentRevision   Int     @default(1)
+
+  // Status timestamps
+  sentAt          DateTime?
+  viewedAt        DateTime?
+  acceptedAt      DateTime?
+  rejectedAt      DateTime?
+  expiredAt       DateTime?
+  cancelledAt     DateTime?
+  bookingCreatedAt DateTime?
+  pnrCreatedAt    DateTime?
+  paymentPendingAt DateTime?
+  paymentReceivedAt DateTime?
+  ticketIssuedAt  DateTime?
+  completedAt     DateTime?
+  archivedAt      DateTime?
+
+  createdById  String?
+  updatedById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  lineItems  QuotationLineItem[]
+  revisions  QuotationRevision[]
+  statusLogs QuotationStatusLog[]
 
   @@unique([tenantId, quoteNumber])
   @@index([tenantId])
   @@index([branchId])
   @@index([tenantId, status])
+}
+
+model QuotationLineItem {
+  id          String   @id @default(cuid())
+  tenantId    String
+  quotationId String
+  serviceType String?
+  title       String?
+  description String?
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @default(0)
+  lineTotal   Decimal  @default(0)
+  airlineId   String?
+  originAirportId String?
+  destAirportId   String?
+  routeId     String?
+  metadata    Json?    @default("{}")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([quotationId])
+}
+
+model QuotationRevision {
+  id             String   @id @default(cuid())
+  tenantId       String
+  quotationId    String
+  revisionNumber Int
+  summary        String?
+  snapshot       Json
+  pdfAssetKey    String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([quotationId])
+}
+
+model QuotationStatusLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  quotationId String
+  fromStatus  String?
+  toStatus    String
+  note        String?
+  metadata    Json?    @default("{}")
+  actorId     String?
+  createdAt   DateTime @default(now())
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([quotationId])
 }
 
 model Booking {
@@ -602,14 +983,17 @@ model Booking {
   branchId    String?
   bookingRef  String
   pnrLocator  String?
-  status      String   @default("PENDING")
+  status      String   @default("HELD")
   clientId    String?
   quotationId String?
   leadId      String?
   assignedToId String?
   travelStart DateTime?
   travelEnd   DateTime?
+  holdExpiresAt DateTime?
   notes       String?
+  createdById  String?
+  updatedById  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   deletedAt   DateTime?
@@ -627,11 +1011,15 @@ model Ticket {
   bookingId   String
   ticketNumber String
   passengerName String?
+  passengerId  String?
   airlineId   String?
-  status      String   @default("ISSUED")
+  status      String   @default("PENDING")
   issuedAt    DateTime?
-  voidAt      DateTime?
-  metadata    Json?    @default("{}")
+  voidedAt    DateTime?
+  refundedAt  DateTime?
+  reissuedAt  DateTime?
+  notes       String?
+  createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -701,8 +1089,10 @@ model Payment {
   paymentMethod  String?
   status         String   @default("PENDING")
   reference      String?
+  idempotencyKey  String?
   notes          String?
   receivedAt     DateTime?
+  createdById    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

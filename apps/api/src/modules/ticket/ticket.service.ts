@@ -21,10 +21,9 @@ export class TicketService {
         ticketNumber: dto.ticketNumber,
         passengerName: dto.passengerName ?? null,
         airlineId: dto.airlineId ?? null,
-        status: dto.status ?? 'ISSUED',
+        status: dto.status ?? 'PENDING',
         issuedAt: dto.issuedAt ? new Date(dto.issuedAt) : null,
-        voidAt: dto.voidAt ? new Date(dto.voidAt) : null,
-        metadata: dto.metadata ?? {},
+        voidedAt: dto.voidAt ? new Date(dto.voidAt) : null,
       },
     });
 
@@ -91,7 +90,7 @@ export class TicketService {
         ...(dto.airlineId !== undefined && { airlineId: dto.airlineId }),
         ...(dto.status !== undefined && { status: dto.status }),
         ...(dto.issuedAt !== undefined && { issuedAt: dto.issuedAt ? new Date(dto.issuedAt) : null }),
-        ...(dto.voidAt !== undefined && { voidAt: dto.voidAt ? new Date(dto.voidAt) : null }),
+        ...(dto.voidAt !== undefined && { voidedAt: dto.voidAt ? new Date(dto.voidAt) : null }),
         ...(dto.metadata !== undefined && { metadata: dto.metadata }),
         ...(dto.branchId !== undefined && { branchId: dto.branchId }),
       },
