@@ -28,7 +28,7 @@ export function AppShell({ children }: AppShellProps) {
 
       <div className="lg:pl-64">
         <Topbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="p-4 lg:p-6">
+        <main className="h-[calc(100vh-3.5rem)] overflow-y-auto p-4 lg:p-6">
           {children}
         </main>
       </div>

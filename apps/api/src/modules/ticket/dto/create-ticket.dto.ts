@@ -1,0 +1,52 @@
+import { IsString, IsNotEmpty, IsOptional, IsIn, IsDateString, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export const TICKET_STATUSES = ['ISSUED', 'VOIDED', 'REFUNDED', 'EXCHANGED'] as const;
+
+export class CreateTicketDto {
+  @ApiProperty({ example: 'TKT-2026-0001' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  ticketNumber!: string;
+
+  @ApiProperty({ description: 'Booking ID this ticket belongs to' })
+  @IsString()
+  @IsNotEmpty()
+  bookingId!: string;
+
+  @ApiPropertyOptional({ example: 'John Doe' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  passengerName?: string;
+
+  @ApiPropertyOptional({ description: 'Airline ID from master data' })
+  @IsOptional()
+  @IsString()
+  airlineId?: string;
+
+  @ApiPropertyOptional({ enum: TICKET_STATUSES, default: 'ISSUED' })
+  @IsOptional()
+  @IsIn(TICKET_STATUSES)
+  status?: string;
+
+  @ApiPropertyOptional({ description: 'Date when ticket was issued' })
+  @IsOptional()
+  @IsDateString()
+  issuedAt?: string;
+
+  @ApiPropertyOptional({ description: 'Date when ticket was voided' })
+  @IsOptional()
+  @IsDateString()
+  voidAt?: string;
+
+  @ApiPropertyOptional({ description: 'Additional ticket metadata (JSON)' })
+  @IsOptional()
+  metadata?: Record<string, any>;
+
+  @ApiPropertyOptional({ description: 'Branch ID' })
+  @IsOptional()
+  @IsString()
+  branchId?: string;
+}

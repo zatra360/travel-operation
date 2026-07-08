@@ -1,15 +1,47 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CreateTenantDto } from './dto/create-tenant.dto';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
 
 @Injectable()
 export class TenantService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: { name: string; slug: string }) {
-    const existing = await this.prisma.tenant.findUnique({ where: { slug: data.slug } });
+  async create(dto: CreateTenantDto) {
+    const existing = await this.prisma.tenant.findUnique({ where: { slug: dto.slug } });
     if (existing) throw new ConflictException('Tenant slug already exists');
 
-    return this.prisma.tenant.create({ data: { ...data, status: 'ACTIVE' } });
+    return this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({
+        data: { name: dto.name, slug: dto.slug, status: 'ACTIVE' },
+      });
+
+      if (dto.ownerEmail) {
+        const user = await tx.user.findUnique({ where: { email: dto.ownerEmail } });
+        if (!user) throw new BadRequestException(`User with email ${dto.ownerEmail} not found`);
+
+        await tx.userTenantMembership.create({
+          data: { userId: user.id, tenantId: tenant.id, role: 'OWNER' },
+        });
+
+        const role = await tx.role.create({
+          data: { tenantId: tenant.id, name: 'Owner', description: 'Tenant owner with full access', isSystem: true },
+        });
+
+        const permissions = await tx.permission.findMany();
+        if (permissions.length > 0) {
+          await tx.rolePermission.createMany({
+            data: permissions.map((p) => ({ roleId: role.id, permissionId: p.id })),
+          });
+        }
+
+        await tx.userRoleAssignment.create({
+          data: { userId: user.id, roleId: role.id, tenantId: tenant.id },
+        });
+      }
+
+      return tenant;
+    });
   }
 
   async findAll() {
@@ -23,13 +55,13 @@ export class TenantService {
   async findById(id: string) {
     const tenant = await this.prisma.tenant.findFirst({
       where: { id, deletedAt: null },
-      include: { branches: { where: { deletedAt: null } } },
+      include: { branches: { where: { deletedAt: null } }, users: { include: { user: { select: { id: true, email: true, firstName: true, lastName: true } } } } },
     });
     if (!tenant) throw new NotFoundException('Tenant not found');
     return tenant;
   }
 
-  async update(id: string, data: { name?: string; logo?: string; status?: string }) {
+  async update(id: string, data: UpdateTenantDto) {
     const tenant = await this.findById(id);
     return this.prisma.tenant.update({ where: { id }, data: data as any });
   }

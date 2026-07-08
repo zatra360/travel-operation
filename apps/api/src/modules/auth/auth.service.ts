@@ -1,8 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -92,5 +93,27 @@ export class AuthService {
     });
 
     return user;
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const data: any = {};
+    if (dto.firstName !== undefined) data.firstName = dto.firstName;
+    if (dto.lastName !== undefined) data.lastName = dto.lastName;
+    if (dto.phone !== undefined) data.phone = dto.phone;
+
+    if (dto.newPassword) {
+      if (!dto.currentPassword) throw new BadRequestException('Current password is required to set a new password');
+      const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+      if (!user) throw new BadRequestException('User not found');
+      const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+      if (!valid) throw new BadRequestException('Current password is incorrect');
+      data.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data,
+      select: { id: true, email: true, firstName: true, lastName: true, phone: true, avatar: true, lastLoginAt: true, createdAt: true, updatedAt: true },
+    });
   }
 }

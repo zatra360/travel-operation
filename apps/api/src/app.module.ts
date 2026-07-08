@@ -17,6 +17,21 @@ import { LeadModule } from './modules/lead/lead.module';
 import { ClientModule } from './modules/client/client.module';
 import { FollowUpModule } from './modules/follow-up/follow-up.module';
 import { DocumentModule } from './modules/document/document.module';
+import { QuotationModule } from './modules/quotation/quotation.module';
+import { BookingModule } from './modules/booking/booking.module';
+import { TicketModule } from './modules/ticket/ticket.module';
+import { InvoiceModule } from './modules/invoice/invoice.module';
+import { ReceiptModule } from './modules/receipt/receipt.module';
+import { PaymentModule } from './modules/payment/payment.module';
+import { ExpenseModule } from './modules/expense/expense.module';
+import { LedgerModule } from './modules/ledger/ledger.module';
+import { EmployeeModule } from './modules/employee/employee.module';
+import { LeaveModule } from './modules/leave/leave.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
+import { PerformanceModule } from './modules/performance/performance.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { MasterDataModule } from './modules/master-data/master-data.module';
+import { ActivityModule } from './modules/activity/activity.module';
 import { HealthController } from './health.controller';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -41,6 +56,21 @@ import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters/http-
     ClientModule,
     FollowUpModule,
     DocumentModule,
+    QuotationModule,
+    BookingModule,
+    TicketModule,
+    InvoiceModule,
+    ReceiptModule,
+    PaymentModule,
+    ExpenseModule,
+    LedgerModule,
+    EmployeeModule,
+    LeaveModule,
+    AttendanceModule,
+    PerformanceModule,
+    NotificationModule,
+    MasterDataModule,
+    ActivityModule,
   ],
   controllers: [HealthController],
   providers: [

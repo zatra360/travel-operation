@@ -1,0 +1,22 @@
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { api } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth-store';
+import { REVIEW_STATUSES } from '@/lib/crm';
+
+interface Props { open: boolean; onOpenChange: (o: boolean) => void; review?: any | null; onSaved: () => void; }
+
+export function PerformanceFormDialog({ open, onOpenChange, review, onSaved }: Props) {
+  const { activeTenant } = useAuthStore();
+  const [form, setForm] = useState({ employeeId: '', period: '', rating: '', strengths: '', improvements: '', notes: '', status: 'DRAFT' });
+  const [saving, setSaving] = useState(false); const isEdit = !!review;
+  useEffect(() => { if (open) { setForm(review ? { employeeId: review.employeeId ?? '', period: review.period ?? '', rating: review.rating?.toString() ?? '', strengths: review.strengths ?? '', improvements: review.improvements ?? '', notes: review.notes ?? '', status: review.status ?? 'DRAFT' } : { employeeId: '', period: '', rating: '', strengths: '', improvements: '', notes: '', status: 'DRAFT' }); } }, [open, review]);
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); if (!activeTenant || !form.employeeId.trim() || !form.period.trim()) return; setSaving(true); const p = { ...form, rating: form.rating ? Number(form.rating) : undefined }; try { if (isEdit && review) { await api.put(`/api/v1/tenant/performance/${review.id}`, p, { tenantId: activeTenant.id }); toast.success('Updated'); } else { await api.post('/api/v1/tenant/performance', p, { tenantId: activeTenant.id }); toast.success('Created'); } onOpenChange(false); onSaved(); } catch (err: any) { toast.error(err.message); } finally { setSaving(false); } };
+  return (<Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-xl"><DialogHeader><DialogTitle>{isEdit ? 'Edit Review' : 'New Review'}</DialogTitle></DialogHeader><form onSubmit={handleSubmit} className="space-y-4"><div className="space-y-2"><Label>Employee ID <span className="text-destructive">*</span></Label><Input value={form.employeeId} onChange={(e) => set('employeeId', e.target.value)} required /></div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Period <span className="text-destructive">*</span></Label><Input value={form.period} onChange={(e) => set('period', e.target.value)} placeholder="2026-Q2" /></div><div className="space-y-2"><Label>Rating (1-5)</Label><Input type="number" min="1" max="5" value={form.rating} onChange={(e) => set('rating', e.target.value)} /></div></div><div className="space-y-2"><Label>Strengths</Label><Input value={form.strengths} onChange={(e) => set('strengths', e.target.value)} /></div><div className="space-y-2"><Label>Improvements</Label><Input value={form.improvements} onChange={(e) => set('improvements', e.target.value)} /></div><div className="space-y-2"><Label>Notes</Label><Input value={form.notes} onChange={(e) => set('notes', e.target.value)} /></div><div className="space-y-2"><Label>Status</Label><Select value={form.status} onValueChange={(v) => set('status', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{REVIEW_STATUSES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div><DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : isEdit ? 'Save' : 'Create'}</Button></DialogFooter></form></DialogContent></Dialog>);
+}

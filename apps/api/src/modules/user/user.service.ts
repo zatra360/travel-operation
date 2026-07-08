@@ -57,6 +57,37 @@ export class UserService {
     });
   }
 
+  async findByTenant(tenantId: string) {
+    const memberships = await this.prisma.userTenantMembership.findMany({
+      where: { tenantId, isActive: true },
+      include: {
+        user: {
+          select: {
+            id: true, email: true, firstName: true, lastName: true,
+            phone: true, avatar: true, status: true, lastLoginAt: true, createdAt: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return memberships.map((m) => ({ ...m.user, membershipRole: m.role, joinedAt: m.joinedAt }));
+  }
+
+  async addToTenant(tenantId: string, userId: string, role: string = 'MEMBER') {
+    return this.prisma.userTenantMembership.upsert({
+      where: { userId_tenantId: { userId, tenantId } },
+      update: { role: role as any, isActive: true },
+      create: { userId, tenantId, role: role as any },
+    });
+  }
+
+  async removeFromTenant(tenantId: string, userId: string) {
+    return this.prisma.userTenantMembership.updateMany({
+      where: { tenantId, userId },
+      data: { isActive: false },
+    });
+  }
+
   async findById(id: string) {
     const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },

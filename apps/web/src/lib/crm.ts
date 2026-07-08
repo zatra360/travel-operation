@@ -153,6 +153,183 @@ export interface DocumentItem {
   } | null;
 }
 
+export const QUOTATION_STATUSES = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED'] as const;
+export const BOOKING_STATUSES = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'] as const;
+export const TICKET_STATUSES = ['ISSUED', 'VOIDED', 'REFUNDED', 'EXCHANGED'] as const;
+
+export interface Quotation {
+  id: string;
+  quoteNumber: string;
+  status: string;
+  title?: string | null;
+  clientId?: string | null;
+  leadId?: string | null;
+  assignedToId?: string | null;
+  currencyCode: string;
+  subtotal: number;
+  taxTotal: number;
+  discountTotal: number;
+  grandTotal: number;
+  validUntil?: string | null;
+  notes?: string | null;
+  terms?: string | null;
+  branchId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Booking {
+  id: string;
+  bookingRef: string;
+  pnrLocator?: string | null;
+  status: string;
+  clientId?: string | null;
+  quotationId?: string | null;
+  leadId?: string | null;
+  assignedToId?: string | null;
+  travelStart?: string | null;
+  travelEnd?: string | null;
+  notes?: string | null;
+  branchId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Ticket {
+  id: string;
+  ticketNumber: string;
+  bookingId: string;
+  passengerName?: string | null;
+  airlineId?: string | null;
+  status: string;
+  issuedAt?: string | null;
+  voidAt?: string | null;
+  metadata?: any;
+  branchId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const quotationStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+  DRAFT: 'secondary',
+  SENT: 'default',
+  ACCEPTED: 'success',
+  REJECTED: 'destructive',
+  EXPIRED: 'warning',
+};
+
+export const bookingStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive'> = {
+  PENDING: 'secondary',
+  CONFIRMED: 'default',
+  CANCELLED: 'destructive',
+  COMPLETED: 'success',
+};
+
+export const ticketStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+  ISSUED: 'success',
+  VOIDED: 'destructive',
+  REFUNDED: 'warning',
+  EXCHANGED: 'default',
+};
+
+export const INVOICE_STATUSES = ['DRAFT', 'SENT', 'PAID', 'PARTIALLY_PAID', 'OVERDUE', 'CANCELLED'] as const;
+export const PAYMENT_STATUSES = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'] as const;
+export const EXPENSE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'PAID'] as const;
+
+export interface Invoice {
+  id: string; invoiceNumber: string; status: string;
+  clientId?: string | null; bookingId?: string | null;
+  currencyCode: string; subtotal: number; taxAmount: number;
+  discountAmount: number; totalAmount: number; paidAmount: number; dueAmount: number;
+  issuedAt?: string | null; dueAt?: string | null; notes?: string | null;
+  branchId?: string | null; createdAt: string; updatedAt: string;
+}
+
+export interface Receipt {
+  id: string; receiptNumber: string;
+  invoiceId?: string | null; paymentMethod?: string | null;
+  amount: number; currencyCode: string; reference?: string | null;
+  notes?: string | null; receivedAt?: string | null;
+  branchId?: string | null; createdAt: string; updatedAt: string;
+}
+
+export interface Payment {
+  id: string; bookingId?: string | null; invoiceId?: string | null;
+  amount: number; currencyCode: string; paymentMethod?: string | null;
+  status: string; reference?: string | null; notes?: string | null;
+  receivedAt?: string | null; branchId?: string | null; createdAt: string; updatedAt: string;
+}
+
+export interface Expense {
+  id: string; expenseNumber: string; category?: string | null;
+  vendorName?: string | null; amount: number; currencyCode: string;
+  status: string; description?: string | null; expenseDate?: string | null;
+  branchId?: string | null; createdAt: string; updatedAt: string;
+}
+
+export interface LedgerEntry {
+  id: string; entryDate: string; referenceType?: string | null;
+  referenceId?: string | null; direction: string; currencyCode: string;
+  amount: number; description?: string | null; branchId?: string | null; createdAt: string;
+}
+
+export const invoiceStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+  DRAFT: 'secondary', SENT: 'default', PAID: 'success', PARTIALLY_PAID: 'warning', OVERDUE: 'destructive', CANCELLED: 'secondary',
+};
+
+export const paymentStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+  PENDING: 'secondary', COMPLETED: 'success', FAILED: 'destructive', REFUNDED: 'warning',
+};
+
+export const expenseStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+  PENDING: 'secondary', APPROVED: 'default', REJECTED: 'destructive', PAID: 'success',
+};
+
+export const EMPLOYEE_STATUSES = ['ACTIVE', 'INACTIVE', 'TERMINATED', 'ON_LEAVE'] as const;
+export const LEAVE_TYPES = ['SICK', 'ANNUAL', 'UNPAID', 'MATERNITY', 'PATERNITY', 'EMERGENCY', 'OTHER'] as const;
+export const LEAVE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'] as const;
+export const ATTENDANCE_STATUSES = ['PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'HOLIDAY'] as const;
+export const REVIEW_STATUSES = ['DRAFT', 'IN_PROGRESS', 'COMPLETED', 'ACKNOWLEDGED'] as const;
+
+export interface Employee {
+  id: string; employeeCode: string; userId?: string | null;
+  departmentId?: string | null; firstName: string; lastName: string;
+  email?: string | null; phone?: string | null; position?: string | null;
+  status: string; joinedAt?: string | null; branchId?: string | null; createdAt: string; updatedAt: string;
+}
+
+export interface Leave {
+  id: string; employeeId: string; leaveType: string; startDate: string; endDate: string;
+  status: string; reason?: string | null; approvedById?: string | null; createdAt: string; updatedAt: string;
+}
+
+export interface Attendance {
+  id: string; employeeId: string; date: string; clockIn?: string | null;
+  clockOut?: string | null; status: string; notes?: string | null; createdAt: string; updatedAt: string;
+}
+
+export interface PerformanceReview {
+  id: string; employeeId: string; reviewerId?: string | null; period: string;
+  rating?: number | null; strengths?: string | null; improvements?: string | null;
+  notes?: string | null; status: string; createdAt: string; updatedAt: string;
+}
+
+export const employeeStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+  ACTIVE: 'success', INACTIVE: 'secondary', TERMINATED: 'destructive', ON_LEAVE: 'warning',
+};
+
+export const leaveStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+  PENDING: 'warning', APPROVED: 'success', REJECTED: 'destructive', CANCELLED: 'secondary',
+};
+
+export const attendanceStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+  PRESENT: 'success', ABSENT: 'destructive', LATE: 'warning', HALF_DAY: 'secondary', HOLIDAY: 'default',
+};
+
+export const reviewStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+  DRAFT: 'secondary', IN_PROGRESS: 'warning', COMPLETED: 'success', ACKNOWLEDGED: 'default',
+};
+
 export function formatFileSize(bytes?: number | null): string {
   if (!bytes || bytes <= 0) return '--';
   const units = ['B', 'KB', 'MB', 'GB'];
