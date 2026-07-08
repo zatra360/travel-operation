@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
@@ -23,9 +23,9 @@ export class TenantController {
 
   @Get()
   @RequirePermissions('TENANT_READ')
-  @ApiOperation({ summary: 'List all tenants' })
-  async findAll() {
-    return this.tenantService.findAll();
+  @ApiOperation({ summary: 'List tenants with pagination, filter, and stats' })
+  async findAll(@Query('page') page?: number, @Query('limit') limit?: number, @Query('status') status?: string, @Query('search') search?: string) {
+    return this.tenantService.findAll(page ?? 1, limit ?? 20, status, search);
   }
 
   @Get(':id')

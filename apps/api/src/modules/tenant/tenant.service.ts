@@ -53,12 +53,22 @@ export class TenantService {
     });
   }
 
-  async findAll() {
-    return this.prisma.tenant.findMany({
-      where: { deletedAt: null },
-      orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { branches: true, users: true } } },
-    });
+  async findAll(page = 1, limit = 20, status?: string, search?: string) {
+    const skip = (page - 1) * limit;
+    const where: any = { deletedAt: null };
+    if (status) where.status = status;
+    if (search) where.OR = [{ name: { contains: search, mode: 'insensitive' } }, { slug: { contains: search, mode: 'insensitive' } }];
+    const [data, total] = await Promise.all([
+      this.prisma.tenant.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { _count: { select: { branches: true, users: true } } } }),
+      this.prisma.tenant.count({ where }),
+    ]);
+    const stats = {
+      total: await this.prisma.tenant.count({ where: { deletedAt: null } }),
+      active: await this.prisma.tenant.count({ where: { deletedAt: null, status: 'ACTIVE' } }),
+      trial: await this.prisma.tenant.count({ where: { deletedAt: null, status: 'TRIAL' } }),
+      suspended: await this.prisma.tenant.count({ where: { deletedAt: null, status: 'SUSPENDED' } }),
+    };
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit), stats };
   }
 
   async findById(id: string) {
