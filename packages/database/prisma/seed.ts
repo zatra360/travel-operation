@@ -293,6 +293,78 @@ async function main() {
 
   console.log(`  ✓ ${cabinClasses.length} cabin classes created`);
 
+  // ─── Demo Lead ─────────────────────────────────────────
+  const existingLead = await prisma.lead.findFirst({
+    where: { tenantId: tenant.id, email: 'jahid@example.com' },
+  });
+  if (!existingLead) {
+    await prisma.lead.create({
+      data: {
+        tenantId: tenant.id,
+        branchId: branch.id,
+        fullName: 'Jahid Hasan',
+        firstName: 'Jahid',
+        lastName: 'Hasan',
+        email: 'jahid@example.com',
+        primaryMobile: '+8801712-345678',
+        whatsappNumber: '+8801712-345678',
+        status: 'QUALIFIED',
+        priority: 'HIGH',
+        source: 'WEBSITE',
+        sourcePlatform: 'Facebook Ads',
+        campaignName: 'Umrah-2026-Q3',
+        serviceType: 'UMRAH',
+        travelCategory: 'INTERNATIONAL',
+        isDomestic: false,
+        tripType: 'ROUND_TRIP',
+        departureCity: 'Dhaka',
+        destinationCity: 'Jeddah',
+        numAdults: 2,
+        numChildren: 0,
+        numInfants: 0,
+        preferredTravelDate: new Date('2026-09-15'),
+        leadScore: 85,
+        conversionProbability: 70,
+        potentialRevenue: 250000,
+        urgencyLevel: 'HIGH',
+        currencyCode: 'BDT',
+        leadTemperature: 'HOT',
+        assignedToId: superAdmin.id,
+      },
+    });
+    console.log('  ✓ Demo lead: Jahid Hasan (Umrah inquiry)');
+  }
+
+  // ─── Demo Client ────────────────────────────────────────
+  const existingClient = await prisma.client.findFirst({
+    where: { tenantId: tenant.id, email: 'rahim@example.com' },
+  });
+  if (!existingClient) {
+    await prisma.client.create({
+      data: {
+        tenantId: tenant.id,
+        branchId: branch.id,
+        type: 'PERSON',
+        status: 'ACTIVE',
+        isVip: true,
+        displayName: 'Abdur Rahim',
+        email: 'rahim@example.com',
+        phone: '+8801812-345678',
+        whatsapp: '+8801812-345678',
+        nationalityLabel: 'Bangladeshi',
+        preferredCommunication: 'WHATSAPP',
+        preferredPaymentMethod: 'BANK_TRANSFER',
+        loyaltyStatus: 'PREMIUM',
+        riskScore: 10,
+        currencyCode: 'BDT',
+        leadSource: 'REFERRAL',
+        phoneVerified: true,
+        emailVerified: true,
+      },
+    });
+    console.log('  ✓ Demo client: Abdur Rahim (VIP)');
+  }
+
   console.log('');
   console.log('✅ Seed completed successfully!');
   console.log('');
