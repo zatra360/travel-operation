@@ -36,36 +36,34 @@ export const FOLLOWUP_CHANNELS = ['PHONE', 'EMAIL', 'WHATSAPP', 'MEETING', 'SMS'
 export const FOLLOWUP_STATUSES = ['PENDING', 'COMPLETED', 'CANCELLED', 'MISSED'] as const;
 
 export interface Lead {
-  id: string;
-  fullName: string;
-  email?: string | null;
-  phone?: string | null;
-  status: string;
-  priority: string;
-  source?: string | null;
-  serviceType?: string | null;
-  notes?: string | null;
-  assignedToId?: string | null;
-  clientId?: string | null;
-  branchId?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  id: string; fullName: string; firstName?: string | null; lastName?: string | null;
+  email?: string | null; primaryMobile?: string | null; phone?: string | null;
+  whatsappNumber?: string | null; status: string; priority: string;
+  source?: string | null; serviceType?: string | null; notes?: string | null;
+  assignedToId?: string | null; clientId?: string | null; branchId?: string | null;
+  travelCategory?: string | null; isDomestic?: boolean; departureCity?: string | null;
+  destinationCity?: string | null; numAdults?: number; numChildren?: number; numInfants?: number;
+  preferredTravelDate?: string | null; tripType?: string | null;
+  sourcePlatform?: string | null; campaignName?: string | null; referralSource?: string | null;
+  leadScore?: number | null; conversionProbability?: number | null;
+  potentialRevenue?: number; urgencyLevel?: string | null;
+  createdAt: string; updatedAt: string;
 }
 
 export interface Client {
-  id: string;
-  displayName: string;
-  type: string;
-  status: string;
-  email?: string | null;
-  phone?: string | null;
-  companyName?: string | null;
-  nationalityId?: string | null;
-  dateOfBirth?: string | null;
-  gender?: string | null;
-  branchId?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  id: string; displayName: string; type: string; status: string; isVip?: boolean;
+  email?: string | null; phone?: string | null; whatsapp?: string | null;
+  companyName?: string | null; profession?: string | null;
+  dateOfBirth?: string | null; gender?: string | null;
+  nationalityId?: string | null; nationalityLabel?: string | null;
+  address?: string | null; city?: string | null; country?: string | null;
+  preferredCommunication?: string | null; preferredPaymentMethod?: string | null;
+  loyaltyStatus?: string | null; riskScore?: number | null;
+  currencyCode?: string | null; outstandingBalance?: number;
+  phoneVerified?: boolean; emailVerified?: boolean;
+  leadSource?: string | null; lastActivityAt?: string | null; lastBookingAt?: string | null;
+  branchId?: string | null; notes?: string | null; metadata?: any;
+  createdAt: string; updatedAt: string;
 }
 
 export interface FollowUp {
@@ -154,8 +152,8 @@ export interface DocumentItem {
 }
 
 export const QUOTATION_STATUSES = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED'] as const;
-export const BOOKING_STATUSES = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'] as const;
-export const TICKET_STATUSES = ['ISSUED', 'VOIDED', 'REFUNDED', 'EXCHANGED'] as const;
+export const BOOKING_STATUSES = ['HELD', 'CONFIRMED', 'TICKETED', 'CANCELLED', 'REFUNDED', 'VOIDED'] as const;
+export const TICKET_STATUSES = ['PENDING', 'ISSUED', 'VOIDED', 'REFUNDED', 'REISSUED'] as const;
 
 export interface Quotation {
   id: string;
@@ -196,40 +194,25 @@ export interface Booking {
 }
 
 export interface Ticket {
-  id: string;
-  ticketNumber: string;
-  bookingId: string;
-  passengerName?: string | null;
-  airlineId?: string | null;
-  status: string;
-  issuedAt?: string | null;
-  voidAt?: string | null;
-  metadata?: any;
-  branchId?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  id: string; ticketNumber: string; bookingId: string;
+  passengerName?: string | null; passengerId?: string | null;
+  airlineId?: string | null; status: string;
+  issuedAt?: string | null; voidedAt?: string | null;
+  refundedAt?: string | null; reissuedAt?: string | null;
+  notes?: string | null; branchId?: string | null;
+  createdAt: string; updatedAt: string;
 }
 
 export const quotationStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
-  DRAFT: 'secondary',
-  SENT: 'default',
-  ACCEPTED: 'success',
-  REJECTED: 'destructive',
-  EXPIRED: 'warning',
+  DRAFT: 'secondary', SENT: 'default', ACCEPTED: 'success', REJECTED: 'destructive', EXPIRED: 'warning',
 };
 
-export const bookingStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive'> = {
-  PENDING: 'secondary',
-  CONFIRMED: 'default',
-  CANCELLED: 'destructive',
-  COMPLETED: 'success',
+export const bookingStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+  HELD: 'secondary', CONFIRMED: 'success', TICKETED: 'default', CANCELLED: 'destructive', REFUNDED: 'warning', VOIDED: 'secondary',
 };
 
 export const ticketStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
-  ISSUED: 'success',
-  VOIDED: 'destructive',
-  REFUNDED: 'warning',
-  EXCHANGED: 'default',
+  PENDING: 'secondary', ISSUED: 'success', VOIDED: 'destructive', REFUNDED: 'warning', REISSUED: 'default',
 };
 
 export const INVOICE_STATUSES = ['DRAFT', 'SENT', 'PAID', 'PARTIALLY_PAID', 'OVERDUE', 'CANCELLED'] as const;
@@ -256,8 +239,9 @@ export interface Receipt {
 export interface Payment {
   id: string; bookingId?: string | null; invoiceId?: string | null;
   amount: number; currencyCode: string; paymentMethod?: string | null;
-  status: string; reference?: string | null; notes?: string | null;
-  receivedAt?: string | null; branchId?: string | null; createdAt: string; updatedAt: string;
+  status: string; reference?: string | null; idempotencyKey?: string | null;
+  notes?: string | null; receivedAt?: string | null; branchId?: string | null;
+  createdAt: string; updatedAt: string;
 }
 
 export interface Expense {
