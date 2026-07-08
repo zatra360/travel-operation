@@ -100,9 +100,9 @@ export default function TenantListPage() {
             </form>
           ) : (
             <form onSubmit={handleCreate} className="space-y-4">
-              <div className="space-y-2"><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="TripNow Limited" /></div>
-              <div className="space-y-2"><Label>Slug *</Label><Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} placeholder="tripnow-limited" /></div>
-              <div className="space-y-2"><Label>Owner email</Label><Input type="email" value={form.ownerEmail} onChange={(e) => setForm({ ...form, ownerEmail: e.target.value })} placeholder="owner@tripnow.com" /><p className="text-xs text-muted-foreground">Auto-creates user if password + name provided</p></div>
+              <div className="space-y-2"><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Sunshine Travels Ltd." /></div>
+              <div className="space-y-2"><Label>Slug *</Label><Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} placeholder="sunshine-travels" /></div>
+              <div className="space-y-2"><Label>Owner email</Label><Input type="email" value={form.ownerEmail} onChange={(e) => setForm({ ...form, ownerEmail: e.target.value })} placeholder="admin@sunshinetravels.com" /><p className="text-xs text-muted-foreground">Auto-creates user if password + name provided</p></div>
               <div className="space-y-2"><Label>Owner password</Label><Input type="password" value={form.ownerPassword} onChange={(e) => setForm({ ...form, ownerPassword: e.target.value })} placeholder="Min 6 characters" /></div>
               <div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>First name</Label><Input value={form.ownerFirstName} onChange={(e) => setForm({ ...form, ownerFirstName: e.target.value })} placeholder="John" /></div><div className="space-y-2"><Label>Last name</Label><Input value={form.ownerLastName} onChange={(e) => setForm({ ...form, ownerLastName: e.target.value })} placeholder="Doe" /></div></div>
               <DialogFooter><Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create Tenant'}</Button></DialogFooter>
