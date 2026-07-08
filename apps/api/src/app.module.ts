@@ -12,6 +12,9 @@ import { PermissionModule } from './modules/permission/permission.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { LeadModule } from './modules/lead/lead.module';
+import { ClientModule } from './modules/client/client.module';
+import { FollowUpModule } from './modules/follow-up/follow-up.module';
 import { HealthController } from './health.controller';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -31,6 +34,9 @@ import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters/http-
     AuditModule,
     SettingsModule,
     DashboardModule,
+    LeadModule,
+    ClientModule,
+    FollowUpModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -94,6 +94,11 @@ Swagger/OpenAPI documentation is available at `/api/v1/docs` when the API is run
 | `GET/POST/PUT/DELETE /api/v1/tenant/branches` | Tenant branch management |
 | `GET/POST/PUT/DELETE /api/v1/tenant/roles` | Tenant role management |
 | `GET /api/v1/tenant/audit-logs` | Tenant audit log |
+| `GET/POST/PUT/DELETE /api/v1/tenant/leads` | Lead pipeline management |
+| `POST /api/v1/tenant/leads/:id/convert` | Convert lead to client |
+| `GET/POST/PUT/DELETE /api/v1/tenant/clients` | Client management |
+| `GET/POST/PUT/DELETE /api/v1/tenant/follow-ups` | Follow-up scheduling |
+| `POST /api/v1/tenant/follow-ups/:id/complete` | Mark follow-up complete |
 | `GET /api/v1/tenant/settings` | Tenant settings |
 | `GET /api/v1/tenant/dashboard/stats` | Dashboard statistics |
 
@@ -165,10 +170,10 @@ npx wrangler pages deploy .next
 - [x] Settings foundation
 - [x] Dashboard shell
 
-### Milestone 2 - CRM (Next)
-- [ ] Leads pipeline
-- [ ] Client management
-- [ ] Follow-ups & activity timeline
+### Milestone 2 - CRM (Current)
+- [x] Leads pipeline
+- [x] Client management
+- [x] Follow-ups & activity timeline
 - [ ] Document management
 
 ### Milestone 3 - Travel Operations
