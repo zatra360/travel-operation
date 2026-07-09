@@ -65,6 +65,10 @@ export class RelationshipValidationService {
       checks.push(this.validateUserTenant(tenantId, params.assignedToId));
     }
 
+    if ((params as any).departmentId) {
+      checks.push(this.validateDepartment(tenantId, (params as any).departmentId));
+    }
+
     await Promise.all(checks);
   }
 
@@ -216,6 +220,16 @@ export class RelationshipValidationService {
     });
     if (!membership?.isActive) {
       throw new ForbiddenException(`User ${userId} is not an active member of this tenant`);
+    }
+  }
+
+  private async validateDepartment(tenantId: string, departmentId: string): Promise<void> {
+    const dept = await this.prisma.department.findFirst({
+      where: { id: departmentId, tenantId },
+      select: { id: true },
+    });
+    if (!dept) {
+      throw new ForbiddenException(`Department ${departmentId} does not belong to this tenant`);
     }
   }
 }
