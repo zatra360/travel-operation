@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { LookupValidationService } from '../master-data/lookup-validation.service';
+import { validateStatusTransition } from '../../common/utils/status-transitions';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { QueryLeadDto } from './dto/query-lead.dto';
@@ -135,8 +136,16 @@ export class LeadService {
   }
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateLeadDto) {
-    await this.findById(tenantId, id);
+    const current = await this.findById(tenantId, id);
     await this.validateLinkedIds(tenantId, dto);
+
+    if (dto.status && dto.status !== current.status) {
+      const check = validateStatusTransition('lead', current.status, dto.status);
+      if (!check.valid) {
+        throw new BadRequestException(`Invalid lead transition from ${current.status} to ${dto.status}. Allowed: ${check.allowed.join(', ') || 'none'}`);
+      }
+    }
+
     const data = this.mapDateFields(dto);
     const lead = await this.prisma.lead.update({ where: { id }, data });
     await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'UPDATE', { changes: dto }, lead.branchId ?? undefined);

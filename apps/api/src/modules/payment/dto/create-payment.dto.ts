@@ -1,7 +1,7 @@
 import { IsString, IsOptional, IsIn, IsNumber, IsDateString, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
-export const PAYMENT_STATUSES = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'] as const;
+export const PAYMENT_STATUSES = ['PENDING', 'RECEIVED', 'FAILED', 'PARTIALLY_REFUNDED', 'REFUNDED'] as const;
 
 export class CreatePaymentDto {
   @ApiPropertyOptional()

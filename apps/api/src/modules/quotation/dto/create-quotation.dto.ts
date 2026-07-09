@@ -4,11 +4,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export const QUOTATION_STATUSES = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED'] as const;
 
 export class CreateQuotationDto {
-  @ApiProperty({ example: 'QTN-2026-0001' })
+  @ApiPropertyOptional({ example: 'QTN-2026-0001' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(50)
-  quoteNumber!: string;
+  quoteNumber?: string;
 
   @ApiPropertyOptional({ example: 'Umrah Package January' })
   @IsOptional()

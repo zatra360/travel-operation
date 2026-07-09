@@ -1,7 +1,7 @@
 import { IsString, IsNotEmpty, IsOptional, IsIn, IsDateString, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export const BOOKING_STATUSES = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'] as const;
+export const BOOKING_STATUSES = ['HELD', 'CONFIRMED', 'TICKETED', 'CANCELLED', 'REFUNDED', 'VOIDED'] as const;
 
 export class CreateBookingDto {
   @ApiProperty({ example: 'BK-2026-0001' })

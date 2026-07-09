@@ -4,11 +4,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export const TICKET_STATUSES = ['ISSUED', 'VOIDED', 'REFUNDED', 'EXCHANGED'] as const;
 
 export class CreateTicketDto {
-  @ApiProperty({ example: 'TKT-2026-0001' })
+  @ApiPropertyOptional({ example: 'TKT-2026-0001' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(50)
-  ticketNumber!: string;
+  ticketNumber?: string;
 
   @ApiProperty({ description: 'Booking ID this ticket belongs to' })
   @IsString()
