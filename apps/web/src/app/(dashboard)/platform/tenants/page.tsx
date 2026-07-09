@@ -59,7 +59,7 @@ export default function TenantListPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Tenants</h2>
+      <h2 className="text-2xl font-bold">Companies</h2>
 
       {res?.stats && (
         <div className="grid gap-3 md:grid-cols-4">
@@ -71,15 +71,15 @@ export default function TenantListPage() {
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search tenants..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="pl-8" /></div>
+        <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search companies..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="pl-8" /></div>
         <Select value={status} onValueChange={(v) => { setStatus(v === 'ALL' ? '' : v); setPage(1); }}><SelectTrigger className="w-32"><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="ALL">All</SelectItem><SelectItem value="ACTIVE">Active</SelectItem><SelectItem value="TRIAL">Trial</SelectItem><SelectItem value="SUSPENDED">Suspended</SelectItem></SelectContent></Select>
-        <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />New Tenant</Button>
+        <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />New Company</Button>
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Tenants ({res?.total ?? 0})</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Companies ({res?.total ?? 0})</CardTitle></CardHeader>
         <CardContent>
-          {loading ? <p className="text-muted-foreground">Loading...</p> : tenants.length === 0 ? <div className="py-10 text-center"><p className="text-muted-foreground">No tenants found.</p></div> : (
+          {loading ? <p className="text-muted-foreground">Loading...</p> : tenants.length === 0 ? <div className="py-10 text-center"><p className="text-muted-foreground">No companies found.</p></div> : (
             <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead><tr className="border-b text-left"><th className="pb-3 font-medium">Name</th><th className="pb-3 font-medium">Slug</th><th className="pb-3 font-medium">Status</th><th className="pb-3 font-medium">Branches</th><th className="pb-3 font-medium">Users</th><th className="pb-3 font-medium">Created</th><th className="pb-3 font-medium text-right">Actions</th></tr></thead>
               <tbody>{tenants.map((t) => (<tr key={t.id} className="border-b last:border-0"><td className="py-3 font-medium">{t.name}</td><td className="py-3 text-muted-foreground">{t.slug}</td><td className="py-3"><Badge variant={sv(t.status)}>{t.status}</Badge></td><td className="py-3">{t._count.branches}</td><td className="py-3">{t._count.users}</td><td className="py-3 text-muted-foreground">{formatDate(t.createdAt)}</td><td className="py-3"><div className="flex items-center justify-end gap-1"><Button variant="ghost" size="icon" title="View" onClick={() => viewDetail(t)}><Eye className="h-4 w-4" /></Button><Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(t)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" title="Delete" onClick={() => setDeleting(t)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div></td></tr>))}</tbody></table></div>)}
@@ -91,7 +91,7 @@ export default function TenantListPage() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{editing ? 'Edit Tenant' : 'New Tenant'}</DialogTitle><DialogDescription>{editing ? 'Update tenant details and status.' : 'Create a new tenant organization.'}</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? 'Edit Tenant' : 'New Company'}</DialogTitle><DialogDescription>{editing ? 'Update tenant details and status.' : 'Create a new company.'}</DialogDescription></DialogHeader>
           {editing ? (
             <form onSubmit={handleUpdate} className="space-y-4">
               <div className="space-y-2"><Label>Name</Label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
@@ -105,7 +105,7 @@ export default function TenantListPage() {
               <div className="space-y-2"><Label>Owner email</Label><Input type="email" value={form.ownerEmail} onChange={(e) => setForm({ ...form, ownerEmail: e.target.value })} placeholder="admin@sunshinetravels.com" /><p className="text-xs text-muted-foreground">Auto-creates user if password + name provided</p></div>
               <div className="space-y-2"><Label>Owner password</Label><Input type="password" value={form.ownerPassword} onChange={(e) => setForm({ ...form, ownerPassword: e.target.value })} placeholder="Min 6 characters" /></div>
               <div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>First name</Label><Input value={form.ownerFirstName} onChange={(e) => setForm({ ...form, ownerFirstName: e.target.value })} placeholder="John" /></div><div className="space-y-2"><Label>Last name</Label><Input value={form.ownerLastName} onChange={(e) => setForm({ ...form, ownerLastName: e.target.value })} placeholder="Doe" /></div></div>
-              <DialogFooter><Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create Tenant'}</Button></DialogFooter>
+              <DialogFooter><Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create Company'}</Button></DialogFooter>
             </form>
           )}
         </DialogContent>
@@ -124,7 +124,7 @@ export default function TenantListPage() {
         </DialogContent>
       </Dialog>
 
-      <ConfirmDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} title="Delete tenant?" description={`Soft-delete "${deleting?.name}"? All data will be hidden.`} confirmLabel="Delete" onConfirm={handleDelete} />
+      <ConfirmDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} title="Delete company?" description={`Soft-delete "${deleting?.name}"? All data will be hidden.`} confirmLabel="Delete" onConfirm={handleDelete} />
     </div>
   );
 }

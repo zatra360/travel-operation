@@ -27,7 +27,7 @@ export default function DashboardPage() {
   }, [activeTenant, activeBranch]);
 
   if (noTenant) {
-    return <div className="flex items-center justify-center h-64"><div className="text-center"><p className="text-lg font-medium">No tenant assigned</p><p className="text-sm text-muted-foreground mt-1">Switch to a tenant or contact your admin.</p></div></div>;
+    return <div className="flex items-center justify-center h-64"><div className="text-center"><p className="text-lg font-medium">No company assigned</p><p className="text-sm text-muted-foreground mt-1">Select a company or contact your admin.</p></div></div>;
   }
 
   if (loading) {

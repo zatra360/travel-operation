@@ -92,10 +92,10 @@ export default function UsersPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Tenant Users ({filtered.length})</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Users ({filtered.length})</CardTitle></CardHeader>
         <CardContent>
           {loading ? <p className="text-muted-foreground">Loading...</p> : filtered.length === 0 ? (
-            <div className="py-10 text-center"><p className="text-muted-foreground">No users found in this tenant.</p><Button size="sm" variant="outline" className="mt-3" onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Add your first user</Button></div>
+            <div className="py-10 text-center"><p className="text-muted-foreground">No users found.</p><Button size="sm" variant="outline" className="mt-3" onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Add your first user</Button></div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -122,7 +122,7 @@ export default function UsersPage() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Add User to Tenant</DialogTitle><DialogDescription>Create a new user and add them to this tenant.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Add User</DialogTitle><DialogDescription>Create a new user and add them to this company.</DialogDescription></DialogHeader>
           <form onSubmit={handleAddUser} className="space-y-4">
             <div className="space-y-2"><Label>Email <span className="text-destructive">*</span></Label><Input type="email" value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} required /></div>
             <div className="grid grid-cols-2 gap-4">
@@ -138,7 +138,7 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      <ConfirmDialog open={!!removing} onOpenChange={(o) => !o && setRemoving(null)} title="Remove user?" description={`Remove ${removing?.firstName} ${removing?.lastName} from this tenant? Their account will not be deleted.`} confirmLabel="Remove" onConfirm={handleRemove} />
+      <ConfirmDialog open={!!removing} onOpenChange={(o) => !o && setRemoving(null)} title="Remove user?" description={`Remove ${removing?.firstName} ${removing?.lastName} from this company? Their account will not be deleted.`} confirmLabel="Remove" onConfirm={handleRemove} />
     </div>
   );
 }

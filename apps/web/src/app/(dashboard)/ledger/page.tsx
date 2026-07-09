@@ -38,7 +38,7 @@ export default function LedgerPage() {
       <Card><CardHeader><CardTitle>General Ledger</CardTitle></CardHeader><CardContent>
         {loading ? <p className="text-muted-foreground">Loading...</p>
         : error ? <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
-        : items.length === 0 ? <p className="text-muted-foreground">No ledger entries found.</p>
+        : items.length === 0 ? <p className="text-muted-foreground">No ledger entries found. Financial transactions automatically create ledger entries.</p>
         : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3 font-medium">Date</th><th className="pb-3 font-medium">Direction</th><th className="pb-3 font-medium">Amount</th><th className="pb-3 font-medium">Ref Type</th><th className="pb-3 font-medium">Description</th></tr></thead>
         <tbody>{items.map((e) => (<tr key={e.id} className="border-b last:border-0"><td className="py-3 text-muted-foreground">{formatDate(e.entryDate)}</td><td className="py-3 font-medium capitalize">{e.direction}</td><td className="py-3 font-medium">{e.currencyCode} {e.amount.toLocaleString()}</td><td className="py-3 text-muted-foreground">{e.referenceType || '--'}</td><td className="py-3 text-muted-foreground">{e.description || '--'}</td></tr>))}</tbody></table></div>}
       </CardContent></Card>

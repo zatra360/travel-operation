@@ -20,9 +20,14 @@ import {
   LogOut,
   CalendarClock,
   UserCog,
-  RotateCcw,
+  Undo2,
+  RefreshCw,
+  XCircle,
+  CreditCard,
   DollarSign,
   Calculator,
+  Bell,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -58,18 +63,18 @@ const navGroups = [
   {
     label: 'After Sales',
     items: [
-      { label: 'Refunds', href: '/refunds', icon: RotateCcw },
-      { label: 'Reissues', href: '/reissues', icon: RotateCcw },
-      { label: 'Cancellations', href: '/cancellations', icon: RotateCcw },
+      { label: 'Refunds', href: '/refunds', icon: Undo2 },
+      { label: 'Reissues', href: '/reissues', icon: RefreshCw },
+      { label: 'Cancellations', href: '/cancellations', icon: XCircle },
     ],
   },
   {
     label: 'Finance',
     items: [
-      { label: 'Invoices', href: '/invoices', icon: Receipt },
+      { label: 'Invoices', href: '/invoices', icon: FileText },
       { label: 'Receipts', href: '/receipts', icon: Receipt },
-      { label: 'Payments', href: '/payments', icon: Receipt },
-      { label: 'Expenses', href: '/expenses', icon: Receipt },
+      { label: 'Payments', href: '/payments', icon: CreditCard },
+      { label: 'Expenses', href: '/expenses', icon: DollarSign },
       { label: 'Ledger', href: '/ledger', icon: ScrollText },
     ],
   },
@@ -90,15 +95,15 @@ const navGroups = [
       { label: 'Settings', href: '/settings', icon: Settings },
       { label: 'Reports', href: '/reports', icon: BarChart3 },
       { label: 'Audit Log', href: '/audit-log', icon: ScrollText },
-      { label: 'Notifications', href: '/notifications', icon: ScrollText },
-      { label: 'Activity', href: '/activity', icon: ScrollText },
+      { label: 'Notifications', href: '/notifications', icon: Bell },
+      { label: 'Activity', href: '/activity', icon: Activity },
     ],
   },
 ];
 
 const platformNavItems = [
   { label: 'Dashboard', href: '/platform', icon: LayoutDashboard },
-  { label: 'Tenants', href: '/platform/tenants', icon: Building2 },
+  { label: 'Companies', href: '/platform/tenants', icon: Building2 },
   { label: 'Users', href: '/platform/users', icon: Users },
   { label: 'Permissions', href: '/platform/permissions', icon: Shield },
 ];
@@ -127,7 +132,7 @@ export function Sidebar() {
 
       {activeTenant && !isPlatform && (
         <div className="px-4 py-2 border-b shrink-0">
-          <p className="text-xs text-muted-foreground">Tenant</p>
+          <p className="text-xs text-muted-foreground">Company</p>
           <p className="text-sm font-medium truncate">{activeTenant.name}</p>
         </div>
       )}

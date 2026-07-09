@@ -47,7 +47,7 @@ export default function RefundsPage() {
       <Card><CardContent className="pt-6">
         {loading ? <p className="text-muted-foreground">Loading...</p> :
          error ? <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div> :
-         items.length === 0 ? <p className="text-muted-foreground">No refunds found.</p> : (
+         items.length === 0 ? <p className="text-muted-foreground">No refunds found. Refund requests appear here when customers or agents submit them.</p> : (
           <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3">Refund #</th><th className="pb-3">Amount</th><th className="pb-3">Reason</th><th className="pb-3">Status</th><th className="pb-3">Created</th></tr></thead><tbody>
             {items.map((r) => (<tr key={r.id} className="border-b last:border-0"><td className="py-3 font-medium">{r.refundNumber || r.id}</td><td className="py-3">${Number(r.requestedAmount || 0).toFixed(2)}</td><td className="py-3 text-muted-foreground">{r.reason || '--'}</td><td className="py-3"><Badge variant={variant(r.status) as any}>{r.status}</Badge></td><td className="py-3 text-muted-foreground">{formatDateTime(r.createdAt)}</td></tr>))}
           </tbody></table></div>

@@ -50,34 +50,40 @@ export default function BranchesPage() {
           <CardTitle>All Branches</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="pb-3 font-medium">Name</th>
-                  <th className="pb-3 font-medium">Code</th>
-                  <th className="pb-3 font-medium">Status</th>
-                  <th className="pb-3 font-medium">Contact</th>
-                  <th className="pb-3 font-medium">Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                {branches.map((branch) => (
-                  <tr key={branch.id} className="border-b last:border-0">
-                    <td className="py-3 font-medium">{branch.name}</td>
-                    <td className="py-3 text-muted-foreground">{branch.code}</td>
-                    <td className="py-3">
-                      <Badge variant={branch.status === 'ACTIVE' ? 'success' : 'secondary'}>
-                        {branch.status}
-                      </Badge>
-                    </td>
-                    <td className="py-3 text-muted-foreground">{branch.email || branch.phone || '--'}</td>
-                    <td className="py-3 text-muted-foreground">{formatDate(branch.createdAt)}</td>
+          {branches.length === 0 ? (
+            <div className="py-10 text-center">
+              <p className="text-muted-foreground">No branches yet. Create your first office location.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left">
+                    <th className="pb-3 font-medium">Name</th>
+                    <th className="pb-3 font-medium">Code</th>
+                    <th className="pb-3 font-medium">Status</th>
+                    <th className="pb-3 font-medium">Contact</th>
+                    <th className="pb-3 font-medium">Created</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {branches.map((branch) => (
+                    <tr key={branch.id} className="border-b last:border-0">
+                      <td className="py-3 font-medium">{branch.name}</td>
+                      <td className="py-3 text-muted-foreground">{branch.code}</td>
+                      <td className="py-3">
+                        <Badge variant={branch.status === 'ACTIVE' ? 'success' : 'secondary'}>
+                          {branch.status}
+                        </Badge>
+                      </td>
+                      <td className="py-3 text-muted-foreground">{branch.email || branch.phone || '--'}</td>
+                      <td className="py-3 text-muted-foreground">{formatDate(branch.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

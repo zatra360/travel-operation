@@ -46,7 +46,7 @@ export default function CommissionsPage() {
       <Card><CardContent className="pt-6">
         {loading ? <p className="text-muted-foreground">Loading...</p> :
          error ? <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div> :
-         items.length === 0 ? <p className="text-muted-foreground">No commissions found.</p> : (
+         items.length === 0 ? <p className="text-muted-foreground">No commissions found. Commissions are generated from bookings and tickets.</p> : (
           <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3">Employee</th><th className="pb-3">Type</th><th className="pb-3">Amount</th><th className="pb-3">Status</th><th className="pb-3">Created</th></tr></thead><tbody>
             {items.map((c) => (<tr key={c.id} className="border-b last:border-0"><td className="py-3 font-medium">{c.employeeId}</td><td className="py-3">{c.sourceType}</td><td className="py-3">${Number(c.amount || 0).toFixed(2)}</td><td className="py-3"><Badge variant={variant(c.status) as any}>{c.status}</Badge></td><td className="py-3 text-muted-foreground">{formatDateTime(c.createdAt)}</td></tr>))}
           </tbody></table></div>

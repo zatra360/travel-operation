@@ -46,7 +46,7 @@ export default function CancellationsPage() {
       <Card><CardContent className="pt-6">
         {loading ? <p className="text-muted-foreground">Loading...</p> :
          error ? <p className="text-sm text-destructive">{error}</p> :
-         items.length === 0 ? <p className="text-muted-foreground">No cancellations found.</p> : (
+         items.length === 0 ? <p className="text-muted-foreground">No cancellations found. Cancellation requests appear here when bookings need to be cancelled.</p> : (
           <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3">Cancel #</th><th className="pb-3">Charge</th><th className="pb-3">Refundable</th><th className="pb-3">Reason</th><th className="pb-3">Status</th><th className="pb-3">Created</th></tr></thead><tbody>
             {items.map((c) => (<tr key={c.id} className="border-b last:border-0"><td className="py-3 font-medium">{c.cancellationNumber || c.id}</td><td className="py-3">${Number(c.cancellationCharge || 0).toFixed(2)}</td><td className="py-3">${Number(c.refundableAmount || 0).toFixed(2)}</td><td className="py-3 text-muted-foreground">{c.reason || '--'}</td><td className="py-3"><Badge variant={variant(c.status)}>{c.status}</Badge></td><td className="py-3 text-muted-foreground">{formatDateTime(c.createdAt)}</td></tr>))}
           </tbody></table></div>

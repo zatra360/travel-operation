@@ -46,7 +46,7 @@ export default function ReissuesPage() {
       <Card><CardContent className="pt-6">
         {loading ? <p className="text-muted-foreground">Loading...</p> :
          error ? <p className="text-sm text-destructive">{error}</p> :
-         items.length === 0 ? <p className="text-muted-foreground">No reissues found.</p> : (
+         items.length === 0 ? <p className="text-muted-foreground">No reissues found. Reissue requests appear here when ticket changes are needed.</p> : (
           <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3">Reissue #</th><th className="pb-3">Fare Diff</th><th className="pb-3">Service Charge</th><th className="pb-3">Total</th><th className="pb-3">Status</th><th className="pb-3">Created</th></tr></thead><tbody>
             {items.map((r) => (<tr key={r.id} className="border-b last:border-0"><td className="py-3 font-medium">{r.reissueNumber || r.id}</td><td className="py-3">${Number(r.fareDifference || 0).toFixed(2)}</td><td className="py-3">${Number(r.serviceCharge || 0).toFixed(2)}</td><td className="py-3">${Number(r.totalCharge || 0).toFixed(2)}</td><td className="py-3"><Badge variant={variant(r.status)}>{r.status}</Badge></td><td className="py-3 text-muted-foreground">{formatDateTime(r.createdAt)}</td></tr>))}
           </tbody></table></div>

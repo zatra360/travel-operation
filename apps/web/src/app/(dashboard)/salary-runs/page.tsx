@@ -47,7 +47,7 @@ export default function SalaryRunsPage() {
       <Card><CardContent className="pt-6">
         {loading ? <p className="text-muted-foreground">Loading...</p> :
          error ? <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div> :
-         items.length === 0 ? <p className="text-muted-foreground">No salary runs found.</p> : (
+         items.length === 0 ? <p className="text-muted-foreground">No salary runs found. Create your first salary run to process employee payroll.</p> : (
           <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3">Run #</th><th className="pb-3">Period</th><th className="pb-3">Gross</th><th className="pb-3">Net</th><th className="pb-3">Status</th><th className="pb-3">Created</th></tr></thead><tbody>
             {items.map((s) => (<tr key={s.id} className="border-b last:border-0"><td className="py-3 font-medium">{s.salaryRunNumber}</td><td className="py-3">{s.period}</td><td className="py-3">${Number(s.totalGross || 0).toFixed(2)}</td><td className="py-3">${Number(s.totalNet || 0).toFixed(2)}</td><td className="py-3"><Badge variant={variant(s.status) as any}>{s.status}</Badge></td><td className="py-3 text-muted-foreground">{formatDateTime(s.createdAt)}</td></tr>))}
           </tbody></table></div>

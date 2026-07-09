@@ -29,7 +29,7 @@ export default function PlatformDashboardPage() {
   if (loading) return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Loading dashboard...</p></div>;
 
   const cards = [
-    { label: 'Active Tenants', value: stats?.activeTenants ?? 0, icon: Building2, color: 'text-blue-600' },
+    { label: 'Active Companies', value: stats?.activeTenants ?? 0, icon: Building2, color: 'text-blue-600' },
     { label: 'Total Users', value: stats?.totalUsers ?? 0, icon: Users, color: 'text-emerald-600' },
     { label: 'Platform Admins', value: stats?.platformAdmins ?? 0, icon: Shield, color: 'text-purple-600' },
   ];
@@ -57,7 +57,7 @@ export default function PlatformDashboardPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="h-4 w-4" />Recent Tenants</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="h-4 w-4" />Recent Companies</CardTitle></CardHeader>
         <CardContent>
           {stats?.recentTenants?.length ? (
             <div className="overflow-x-auto">
@@ -75,7 +75,7 @@ export default function PlatformDashboardPage() {
                 ))}</tbody>
               </table>
             </div>
-          ) : <p className="text-sm text-muted-foreground">No tenants yet.</p>}
+          ) : <p className="text-sm text-muted-foreground">No companies yet.</p>}
         </CardContent>
       </Card>
     </div>
