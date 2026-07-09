@@ -40,7 +40,7 @@ export class UserService {
 
   async findAll() {
     return this.prisma.user.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, isPlatformSuperAdmin: true },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
