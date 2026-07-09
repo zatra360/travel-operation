@@ -127,6 +127,50 @@ describe('Production Hardening (e2e)', () => {
     });
   });
 
+  describe('Cross-Tenant Security', () => {
+    it('should block creating a quotation with a client from another tenant', async () => {
+      if (!tenantId) return;
+      const loginRes = await request(app.getHttpServer()).post('/api/v1/auth/login').send({ email: 'admin@tripnow.com', password: 'Demo@123' });
+      const token = loginRes.body?.data?.accessToken || loginRes.body?.accessToken;
+      if (!token) return;
+      const res = await request(app.getHttpServer()).post('/api/v1/tenant/quotations')
+        .set('Authorization', `Bearer ${token}`).set('X-Tenant-Id', tenantId)
+        .send({ quoteNumber: 'TEST-001', clientId: 'nonexistent-client-from-other-tenant', status: 'DRAFT' });
+      expect([400, 403, 404]).toContain(res.status);
+    });
+
+    it('should block creating a booking with a quotation from another tenant', async () => {
+      if (!tenantId) return;
+      const loginRes = await request(app.getHttpServer()).post('/api/v1/auth/login').send({ email: 'admin@tripnow.com', password: 'Demo@123' });
+      const token = loginRes.body?.data?.accessToken || loginRes.body?.accessToken;
+      if (!token) return;
+      const res = await request(app.getHttpServer()).post('/api/v1/tenant/bookings')
+        .set('Authorization', `Bearer ${token}`).set('X-Tenant-Id', tenantId)
+        .send({ bookingRef: 'TEST-001', quotationId: 'nonexistent-quotation', status: 'HELD' });
+      expect([400, 403, 404]).toContain(res.status);
+    });
+
+    it('should block accessing leads with invalid X-Tenant-Id', async () => {
+      const loginRes = await request(app.getHttpServer()).post('/api/v1/auth/login').send({ email: 'admin@tripnow.com', password: 'Demo@123' });
+      const token = loginRes.body?.data?.accessToken || loginRes.body?.accessToken;
+      if (!token) return;
+      const res = await request(app.getHttpServer()).get('/api/v1/tenant/leads')
+        .set('Authorization', `Bearer ${token}`).set('X-Tenant-Id', '00000000-nonexistent');
+      expect(res.status).toBe(403);
+    });
+
+    it('should block creating an invoice with booking from another tenant', async () => {
+      if (!tenantId) return;
+      const loginRes = await request(app.getHttpServer()).post('/api/v1/auth/login').send({ email: 'admin@tripnow.com', password: 'Demo@123' });
+      const token = loginRes.body?.data?.accessToken || loginRes.body?.accessToken;
+      if (!token) return;
+      const res = await request(app.getHttpServer()).post('/api/v1/tenant/invoices')
+        .set('Authorization', `Bearer ${token}`).set('X-Tenant-Id', tenantId)
+        .send({ invoiceNumber: 'TEST-001', bookingId: 'nonexistent-booking', status: 'DRAFT' });
+      expect([400, 403, 404]).toContain(res.status);
+    });
+  });
+
   describe('Finance Safety', () => {
     it('should block payment for cross-tenant booking', async () => {
       if (!tenantId) return;

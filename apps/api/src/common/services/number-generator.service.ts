@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -6,58 +6,47 @@ export class NumberGeneratorService {
   constructor(private readonly prisma: PrismaService) {}
 
   async generateQuoteNumber(tenantId: string): Promise<string> {
-    const prefix = 'QTE';
-    return this.generateNumber(tenantId, prefix, 'quotation', 'quoteNumber');
+    return this.generateNumber(tenantId, 'QTE', 'quotation', 'quoteNumber');
   }
 
   async generateBookingRef(tenantId: string): Promise<string> {
-    const prefix = 'BKG';
-    return this.generateNumber(tenantId, prefix, 'booking', 'bookingRef');
+    return this.generateNumber(tenantId, 'BKG', 'booking', 'bookingRef');
   }
 
   async generateTicketNumber(tenantId: string): Promise<string> {
-    const prefix = 'TKT';
-    return this.generateNumber(tenantId, prefix, 'ticket', 'ticketNumber');
+    return this.generateNumber(tenantId, 'TKT', 'ticket', 'ticketNumber');
   }
 
   async generateInvoiceNumber(tenantId: string): Promise<string> {
-    const prefix = 'INV';
-    return this.generateNumber(tenantId, prefix, 'invoice', 'invoiceNumber');
+    return this.generateNumber(tenantId, 'INV', 'invoice', 'invoiceNumber');
   }
 
   async generateReceiptNumber(tenantId: string): Promise<string> {
-    const prefix = 'RCP';
-    return this.generateNumber(tenantId, prefix, 'receipt', 'receiptNumber');
+    return this.generateNumber(tenantId, 'RCP', 'receipt', 'receiptNumber');
   }
 
   async generateExpenseNumber(tenantId: string): Promise<string> {
-    const prefix = 'EXP';
-    return this.generateNumber(tenantId, prefix, 'expense', 'expenseNumber');
+    return this.generateNumber(tenantId, 'EXP', 'expense', 'expenseNumber');
   }
 
   async generateEmployeeCode(tenantId: string): Promise<string> {
-    const prefix = 'EMP';
-    return this.generateNumber(tenantId, prefix, 'employee', 'employeeCode');
+    return this.generateNumber(tenantId, 'EMP', 'employee', 'employeeCode');
   }
 
   async generateRefundNumber(tenantId: string): Promise<string> {
-    const prefix = 'REF';
-    return this.generateNumber(tenantId, prefix, 'refundRequest', 'refundNumber');
+    return this.generateNumber(tenantId, 'REF', 'refundRequest', 'refundNumber');
   }
 
   async generateReissueNumber(tenantId: string): Promise<string> {
-    const prefix = 'REI';
-    return this.generateNumber(tenantId, prefix, 'reissueRequest', 'reissueNumber');
+    return this.generateNumber(tenantId, 'REI', 'reissueRequest', 'reissueNumber');
   }
 
   async generateCancellationNumber(tenantId: string): Promise<string> {
-    const prefix = 'CAN';
-    return this.generateNumber(tenantId, prefix, 'cancellationRequest', 'cancellationNumber');
+    return this.generateNumber(tenantId, 'CAN', 'cancellationRequest', 'cancellationNumber');
   }
 
   async generateSalaryRunNumber(tenantId: string): Promise<string> {
-    const prefix = 'SAL';
-    return this.generateNumber(tenantId, prefix, 'salaryRun', 'salaryRunNumber');
+    return this.generateNumber(tenantId, 'SAL', 'salaryRun', 'salaryRunNumber');
   }
 
   private async generateNumber(
@@ -67,18 +56,24 @@ export class NumberGeneratorService {
     field: string,
   ): Promise<string> {
     const timestamp = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-    const random = Math.floor(Math.random() * 9000 + 1000);
-    const candidate = `${prefix}-${timestamp}-${random}`;
+    const maxRetries = 3;
 
-    const exists = await (this.prisma as any)[table].findFirst({
-      where: { tenantId, [field]: candidate },
-    });
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const suffix = Math.floor(Math.random() * 9000 + 1000);
+      const candidate = `${prefix}-${timestamp}-${suffix}`;
 
-    if (exists) {
-      const retry = Math.floor(Math.random() * 9000 + 1000);
-      return `${prefix}-${timestamp}-${retry}`;
+      const exists = await (this.prisma as any)[table].findFirst({
+        where: { tenantId, [field]: candidate },
+        select: { id: true },
+      });
+
+      if (!exists) {
+        return candidate;
+      }
     }
 
-    return candidate;
+    throw new InternalServerErrorException(
+      `Failed to generate unique ${prefix} number after ${maxRetries} attempts`,
+    );
   }
 }

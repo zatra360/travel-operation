@@ -7,6 +7,7 @@ import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { TenantCtx } from '../../common/decorators/tenant-context.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import { TenantContext } from '../../common/interceptors/tenant-context.interceptor';
 
 @ApiTags('Tenant - Dashboard')
@@ -34,7 +35,7 @@ export class PlatformDashboardController {
   @Get('stats')
   @RequirePermissions('DASHBOARD_READ')
   @ApiOperation({ summary: 'Get platform dashboard statistics' })
-  async getStats(@CurrentUser() user: any) {
+  async getStats(@CurrentUser() user: AuthUser) {
     if (!user.isPlatformSuperAdmin) {
       throw new ForbiddenException('Only platform super admins can access platform dashboard');
     }
