@@ -13,6 +13,7 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
 import { Invoice, Paginated, INVOICE_STATUSES, invoiceStatusVariant } from '@/lib/crm';
+import { TableSkeleton } from '@/components/ui/skeleton';
 import { InvoiceFormDialog } from './invoice-form-dialog';
 
 export default function InvoicesPage() {
@@ -69,7 +70,7 @@ export default function InvoicesPage() {
       <Card>
         <CardHeader><CardTitle>All Invoices</CardTitle></CardHeader>
         <CardContent>
-          {loading ? <p className="text-muted-foreground">Loading invoices...</p>
+          {loading ? <TableSkeleton />
           : error ? <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           : items.length === 0 ? <div className="py-10 text-center"><p className="text-muted-foreground">No invoices found.</p><Button size="sm" variant="outline" className="mt-3" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Create your first invoice</Button></div>
           : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3 font-medium">Invoice #</th><th className="pb-3 font-medium">Status</th><th className="pb-3 font-medium">Total</th><th className="pb-3 font-medium">Paid</th><th className="pb-3 font-medium">Due</th><th className="pb-3 font-medium">Due date</th><th className="pb-3 font-medium">Created</th><th className="pb-3 font-medium text-right">Actions</th></tr></thead>

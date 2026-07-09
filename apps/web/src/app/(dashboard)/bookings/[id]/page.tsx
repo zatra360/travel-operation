@@ -22,6 +22,7 @@ import {
   bookingStatusVariant,
   ticketStatusVariant,
 } from '@/lib/crm';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BookingDetailPage() {
   const params = useParams();
@@ -87,7 +88,20 @@ export default function BookingDetailPage() {
     }
   };
 
-  if (loading) return <p className="text-muted-foreground">Loading booking...</p>;
+  if (loading) return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-8 w-8 rounded-full" />
+        <Skeleton className="h-6 w-48" />
+      </div>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-4">
+          <Skeleton className="h-32 w-full" />
+        </div>
+        <Skeleton className="h-48 w-full" />
+      </div>
+    </div>
+  );
   if (error) return <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>;
   if (!booking) return <p className="text-muted-foreground">Booking not found.</p>;
 

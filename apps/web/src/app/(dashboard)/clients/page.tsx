@@ -13,6 +13,7 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
 import { Client, Paginated, clientStatusVariant } from '@/lib/crm';
+import { TableSkeleton } from '@/components/ui/skeleton';
 import { ClientFormDialog } from './client-form-dialog';
 
 export default function ClientsPage() {
@@ -118,7 +119,7 @@ export default function ClientsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Loading clients...</p>
+            <TableSkeleton />
           ) : error ? (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           ) : clients.length === 0 ? (

@@ -13,6 +13,7 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
 import { Quotation, Paginated, QUOTATION_STATUSES, quotationStatusVariant } from '@/lib/crm';
+import { TableSkeleton } from '@/components/ui/skeleton';
 import { QuotationFormDialog } from './quotation-form-dialog';
 
 export default function QuotationsPage() {
@@ -84,7 +85,7 @@ export default function QuotationsPage() {
         <CardHeader><CardTitle>All Quotations</CardTitle></CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Loading quotations...</p>
+            <TableSkeleton />
           ) : error ? (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           ) : items.length === 0 ? (

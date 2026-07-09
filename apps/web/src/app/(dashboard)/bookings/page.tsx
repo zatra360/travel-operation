@@ -13,6 +13,7 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
 import { Booking, Paginated, BOOKING_STATUSES, bookingStatusVariant } from '@/lib/crm';
+import { TableSkeleton } from '@/components/ui/skeleton';
 import { BookingFormDialog } from './booking-form-dialog';
 
 export default function BookingsPage() {
@@ -84,7 +85,7 @@ export default function BookingsPage() {
         <CardHeader><CardTitle>All Bookings</CardTitle></CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Loading bookings...</p>
+            <TableSkeleton />
           ) : error ? (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           ) : items.length === 0 ? (

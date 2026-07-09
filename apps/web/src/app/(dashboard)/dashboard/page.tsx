@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime } from '@/lib/utils';
 import { DashboardOverview } from '@/lib/crm';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardOverview | null>(null);
@@ -32,8 +33,10 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Loading dashboard...</p>
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="rounded-lg border p-4 space-y-2"><Skeleton className="h-3 w-16" /><Skeleton className="h-7 w-12" /></div>
+        ))}
       </div>
     );
   }

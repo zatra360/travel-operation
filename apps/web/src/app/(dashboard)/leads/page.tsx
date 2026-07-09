@@ -13,6 +13,7 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
 import { Lead, Paginated, LEAD_STATUSES, leadStatusVariant, leadPriorityVariant } from '@/lib/crm';
+import { TableSkeleton } from '@/components/ui/skeleton';
 import { LeadFormDialog } from './lead-form-dialog';
 
 export default function LeadsPage() {
@@ -125,7 +126,7 @@ export default function LeadsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Loading leads...</p>
+            <TableSkeleton />
           ) : error ? (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           ) : leads.length === 0 ? (
