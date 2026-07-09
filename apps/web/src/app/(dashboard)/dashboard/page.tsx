@@ -86,13 +86,15 @@ export default function DashboardPage() {
         {cards.map((card) => {
           const Icon = card.icon;
           return (
-            <Card key={card.label}>
+            <Card key={card.label} className="overflow-hidden border-l-2 hover:shadow-md transition-shadow" style={{ borderLeftColor: card.color === 'text-blue-600' ? '#2563eb' : card.color === 'text-emerald-600' ? '#059669' : card.color === 'text-purple-600' ? '#7c3aed' : card.color === 'text-orange-600' ? '#ea580c' : card.color === 'text-rose-600' ? '#e11d48' : card.color === 'text-cyan-600' ? '#0891b2' : card.color === 'text-amber-600' ? '#d97706' : card.color === 'text-indigo-600' ? '#4f46e5' : '#6b7280' }}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">{card.label}</CardTitle>
-                <Icon className={`h-4 w-4 ${card.color}`} />
+                <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${card.bg}`}>
+                  <Icon className={`h-4 w-4 ${card.color}`} />
+                </span>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{card.value}</div>
+                <div className="text-2xl font-bold tracking-tight">{card.value}</div>
                 {card.sub && <p className="text-xs text-muted-foreground mt-1">{card.sub}</p>}
               </CardContent>
             </Card>
