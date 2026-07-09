@@ -234,17 +234,17 @@ export class RefundService {
   }
 
   async getTimeline(tenantId: string, id: string) {
-    const refund = await this.findById(tenantId, id);
+    await this.findById(tenantId, id);
     return this.activity.findByEntity(tenantId, 'RefundRequest', id);
   }
 
   async remove(tenantId: string, actorId: string, id: string) {
-    const refund = await this.findById(tenantId, id);
-    if (refund.status === 'PROCESSED') {
+    const _refund = await this.findById(tenantId, id);
+    if (_refund.status === 'PROCESSED') {
       throw new BadRequestException('Cannot delete a processed refund');
     }
     await this.prisma.refundRequest.delete({ where: { id } });
-    await this.audit.logMutation(actorId, tenantId, 'REFUND', 'RefundRequest', id, 'DELETE', { refundNumber: refund.refundNumber });
+    await this.audit.logMutation(actorId, tenantId, 'REFUND', 'RefundRequest', id, 'DELETE', { refundNumber: _refund.refundNumber });
     return { id, deleted: true };
   }
 }

@@ -81,7 +81,7 @@ export class TenantService {
   }
 
   async update(id: string, data: UpdateTenantDto) {
-    const tenant = await this.findById(id);
+    await this.findById(id);
     return this.prisma.tenant.update({ where: { id }, data: data as any });
   }
 

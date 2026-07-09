@@ -40,7 +40,7 @@ import { CancellationModule } from './modules/cancellation/cancellation.module';
 import { HealthController } from './health.controller';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
-import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 @Module({
   imports: [

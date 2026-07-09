@@ -156,7 +156,7 @@ export class TicketService {
     }
   }
 
-  private async syncBookingStatusOnCancellation(tenantId: string, bookingId: string, actorId: string) {
+  private async syncBookingStatusOnCancellation(tenantId: string, bookingId: string, _actorId: string) {
     const booking = await this.prisma.booking.findFirst({ where: { id: bookingId, tenantId } });
     if (!booking || booking.status === 'CANCELLED' || booking.status === 'REFUNDED' || booking.status === 'VOIDED') return;
 
@@ -169,17 +169,17 @@ export class TicketService {
   }
 
   async issueTicket(tenantId: string, actorId: string, id: string) {
-    const ticket = await this.findById(tenantId, id);
+    await this.findById(tenantId, id);
     return this.update(tenantId, actorId, id, { status: 'ISSUED', issuedAt: new Date().toISOString() } as any);
   }
 
   async voidTicket(tenantId: string, actorId: string, id: string) {
-    const ticket = await this.findById(tenantId, id);
+    await this.findById(tenantId, id);
     return this.update(tenantId, actorId, id, { status: 'VOIDED', voidAt: new Date().toISOString() } as any);
   }
 
   async refundTicket(tenantId: string, actorId: string, id: string) {
-    const ticket = await this.findById(tenantId, id);
+    await this.findById(tenantId, id);
     return this.update(tenantId, actorId, id, { status: 'REFUNDED' } as any);
   }
 

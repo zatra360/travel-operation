@@ -226,7 +226,7 @@ export class ReissueService {
   }
 
   async getTimeline(tenantId: string, id: string) {
-    const reissue = await this.findById(tenantId, id);
+    await this.findById(tenantId, id);
     return this.activity.findByEntity(tenantId, 'ReissueRequest', id);
   }
 

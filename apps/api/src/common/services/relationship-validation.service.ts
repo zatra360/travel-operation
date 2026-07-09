@@ -73,7 +73,7 @@ export class RelationshipValidationService {
   }
 
   async validateCrossEntityTenant(tenantId: string, linkedEntities: { type: string; id: string }[]): Promise<void> {
-    const results = await Promise.all(
+    await Promise.all(
       linkedEntities.map(async ({ type, id }) => {
         let foundTenantId: string | null = null;
         switch (type) {

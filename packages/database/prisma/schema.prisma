@@ -282,6 +282,14 @@ model User {
   cancelProcessed   CancellationRequest[] @relation("CancelProcessor")
   commissionApproved Commission[]       @relation("CommissionApprover")
   incentiveApproved  Incentive[]        @relation("IncentiveApprover")
+  createdRefunds     RefundRequest[]    @relation("RefundCreator")
+  createdReissues    ReissueRequest[]   @relation("ReissueCreator")
+  createdCancellations CancellationRequest[] @relation("CancelCreator")
+  createdCommissions Commission[]       @relation("CommissionCreator")
+  createdIncentives  Incentive[]        @relation("IncentiveCreator")
+  createdSalaryProfiles SalaryProfile[] @relation("SalaryProfileCreator")
+  createdSalaryRuns  SalaryRun[]        @relation("SalaryRunCreator")
+  approvedSalaryRuns SalaryRun[]        @relation("SalaryRunApprover")
 
   @@index([email])
   @@index([status])
@@ -1427,7 +1435,7 @@ model Leave {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employee   Employee  @relation(fields: [employeeId], references: [id])
   approvedBy User?     @relation(fields: [approvedById], references: [id])
 
@@ -1624,6 +1632,7 @@ model RefundRequest {
   requestedBy User?    @relation("RefundRequester", fields: [requestedById], references: [id])
   approvedBy  User?    @relation("RefundApprover", fields: [approvedById], references: [id])
   processedBy User?    @relation("RefundProcessor", fields: [processedById], references: [id])
+  createdBy   User?    @relation("RefundCreator", fields: [createdById], references: [id])
 
   @@unique([tenantId, refundNumber])
   @@index([tenantId])
@@ -1666,6 +1675,7 @@ model ReissueRequest {
   requestedBy User?    @relation("ReissueRequester", fields: [requestedById], references: [id])
   approvedBy  User?    @relation("ReissueApprover", fields: [approvedById], references: [id])
   processedBy User?    @relation("ReissueProcessor", fields: [processedById], references: [id])
+  createdBy   User?    @relation("ReissueCreator", fields: [createdById], references: [id])
 
   @@unique([tenantId, reissueNumber])
   @@index([tenantId])
@@ -1704,6 +1714,7 @@ model CancellationRequest {
   requestedBy User?    @relation("CancelRequester", fields: [requestedById], references: [id])
   approvedBy  User?    @relation("CancelApprover", fields: [approvedById], references: [id])
   processedBy User?    @relation("CancelProcessor", fields: [processedById], references: [id])
+  createdBy   User?    @relation("CancelCreator", fields: [createdById], references: [id])
 
   @@unique([tenantId, cancellationNumber])
   @@index([tenantId])
@@ -1729,6 +1740,7 @@ model SalaryProfile {
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employee Employee @relation(fields: [employeeId], references: [id])
+  createdBy User?   @relation("SalaryProfileCreator", fields: [createdById], references: [id])
 
   @@index([tenantId])
   @@index([employeeId])
@@ -1756,6 +1768,8 @@ model SalaryRun {
 
   tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch  Branch?       @relation(fields: [branchId], references: [id])
+  createdBy User?       @relation("SalaryRunCreator", fields: [createdById], references: [id])
+  approvedBy User?      @relation("SalaryRunApprover", fields: [approvedById], references: [id])
   slips   SalarySlip[]
 
   @@unique([tenantId, salaryRunNumber])
@@ -1813,6 +1827,7 @@ model Commission {
   branch     Branch?   @relation(fields: [branchId], references: [id])
   employee   Employee  @relation(fields: [employeeId], references: [id])
   approvedBy User?     @relation("CommissionApprover", fields: [approvedById], references: [id])
+  createdBy   User?    @relation("CommissionCreator", fields: [createdById], references: [id])
 
   @@index([tenantId])
   @@index([employeeId])
@@ -1842,6 +1857,7 @@ model Incentive {
   branch     Branch?   @relation(fields: [branchId], references: [id])
   employee   Employee  @relation(fields: [employeeId], references: [id])
   approvedBy User?     @relation("IncentiveApprover", fields: [approvedById], references: [id])
+  createdBy   User?    @relation("IncentiveCreator", fields: [createdById], references: [id])
 
   @@index([tenantId])
   @@index([employeeId])

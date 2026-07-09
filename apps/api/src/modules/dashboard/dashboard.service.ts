@@ -7,8 +7,6 @@ export class DashboardService {
 
   async getTenantStats(tenantId: string, branchId?: string) {
     const branchFilter = branchId ? { branchId } : {};
-    const now = new Date();
-    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const [
       leadTotal, leadNew, leadWon,
