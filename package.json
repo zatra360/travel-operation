@@ -16,6 +16,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,json,yml,yaml}\""
   },
   "devDependencies": {
+    "bcryptjs": "^2.4.3",
     "concurrently": "^9.2.3",
     "prettier": "^3.9.4",
     "typescript": "^5.9.3"

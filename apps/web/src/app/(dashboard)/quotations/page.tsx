@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -110,7 +111,7 @@ export default function QuotationsPage() {
                 <tbody>
                   {items.map((q) => (
                     <tr key={q.id} className="border-b last:border-0">
-                      <td className="py-3 font-medium">{q.quoteNumber}</td>
+                      <td className="py-3 font-medium"><Link href={`/quotations/${q.id}`} className="hover:underline text-primary">{q.quoteNumber}</Link></td>
                       <td className="py-3 text-muted-foreground">{q.title || '--'}</td>
                       <td className="py-3">
                         <Badge variant={quotationStatusVariant[q.status] || 'secondary'}>{q.status}</Badge>

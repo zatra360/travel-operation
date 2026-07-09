@@ -20,6 +20,9 @@ import {
   LogOut,
   CalendarClock,
   UserCog,
+  RotateCcw,
+  DollarSign,
+  Calculator,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -53,6 +56,14 @@ const navGroups = [
     ],
   },
   {
+    label: 'After Sales',
+    items: [
+      { label: 'Refunds', href: '/refunds', icon: RotateCcw },
+      { label: 'Reissues', href: '/reissues', icon: RotateCcw },
+      { label: 'Cancellations', href: '/cancellations', icon: RotateCcw },
+    ],
+  },
+  {
     label: 'Finance',
     items: [
       { label: 'Invoices', href: '/invoices', icon: Receipt },
@@ -68,6 +79,8 @@ const navGroups = [
       { label: 'Employees', href: '/employees', icon: Users },
       { label: 'Leaves', href: '/leaves', icon: CalendarClock },
       { label: 'Attendance', href: '/attendance', icon: ClipboardList },
+      { label: 'Commissions', href: '/commissions', icon: DollarSign },
+      { label: 'Salary Runs', href: '/salary-runs', icon: Calculator },
       { label: 'Performance', href: '/performance', icon: BarChart3 },
     ],
   },
@@ -120,9 +133,6 @@ export function Sidebar() {
       )}
 
       <nav className="flex-1 overflow-y-auto p-2 space-y-3">
-        {activeTenant && isPlatform && (
-          <NavItem href="/dashboard" icon={Plane} label="Back to App" />
-        )}
         {user?.isPlatformSuperAdmin && activeTenant && !isPlatform && (
           <NavItem href="/platform" icon={Shield} label="Platform Admin" />
         )}

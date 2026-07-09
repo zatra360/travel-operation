@@ -74,7 +74,7 @@ export default function InvoicesPage() {
           : items.length === 0 ? <div className="py-10 text-center"><p className="text-muted-foreground">No invoices found.</p><Button size="sm" variant="outline" className="mt-3" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Create your first invoice</Button></div>
           : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3 font-medium">Invoice #</th><th className="pb-3 font-medium">Status</th><th className="pb-3 font-medium">Total</th><th className="pb-3 font-medium">Paid</th><th className="pb-3 font-medium">Due</th><th className="pb-3 font-medium">Due date</th><th className="pb-3 font-medium">Created</th><th className="pb-3 font-medium text-right">Actions</th></tr></thead>
           <tbody>{items.map((i) => (<tr key={i.id} className="border-b last:border-0">
-            <td className="py-3 font-medium">{i.invoiceNumber}</td>
+            <td className="py-3 font-medium"><Link href={`/invoices/${i.id}`} className="hover:underline text-primary">{i.invoiceNumber}</Link></td>
             <td className="py-3"><Badge variant={invoiceStatusVariant[i.status] || 'secondary'}>{i.status}</Badge></td>
             <td className="py-3 font-medium">{i.currencyCode} {i.totalAmount.toLocaleString()}</td>
             <td className="py-3">{i.currencyCode} {i.paidAmount.toLocaleString()}</td>

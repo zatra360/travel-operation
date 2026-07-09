@@ -53,6 +53,20 @@ enum AuditAction {
   IMPORT
   ARCHIVE
   RESTORE
+  STATUS_CHANGE
+  APPROVE
+  REJECT
+  REFUND
+  VOID
+  REISSUE
+  CANCEL
+  ISSUE
+  PAY
+  REQUEST
+  PROCESS
+  CONVERT
+  ASSIGN
+  DOWNLOAD
 }
 
 enum NotificationType {
@@ -93,6 +107,29 @@ model Tenant {
   documents       Document[]
   activities      Activity[]
   masterDataOverrides TenantMasterDataOverride[]
+  leads           Lead[]
+  clients         Client[]
+  followUps       FollowUp[]
+  quotations      Quotation[]
+  bookings        Booking[]
+  tickets         Ticket[]
+  invoices        Invoice[]
+  receipts        Receipt[]
+  payments        Payment[]
+  expenses        Expense[]
+  ledgerEntries   LedgerEntry[]
+  employees       Employee[]
+  leaves          Leave[]
+  attendances     Attendance[]
+  performanceReviews PerformanceReview[]
+  refunds         RefundRequest[]
+  reissues        ReissueRequest[]
+  cancellations   CancellationRequest[]
+  salaryProfiles  SalaryProfile[]
+  salaryRuns      SalaryRun[]
+  salarySlips     SalarySlip[]
+  commissions     Commission[]
+  incentives      Incentive[]
 
   @@index([status])
   @@index([slug])
@@ -133,6 +170,24 @@ model Branch {
   departments Department[]
   activities  Activity[]
   masterDataOverrides TenantMasterDataOverride[]
+  leads       Lead[]
+  clients     Client[]
+  followUps   FollowUp[]
+  quotations  Quotation[]
+  bookings    Booking[]
+  tickets     Ticket[]
+  invoices    Invoice[]
+  receipts    Receipt[]
+  payments    Payment[]
+  expenses    Expense[]
+  employees   Employee[]
+  refunds     RefundRequest[]
+  reissues    ReissueRequest[]
+  cancellations CancellationRequest[]
+  salaryRuns  SalaryRun[]
+  commissions Commission[]
+  incentives  Incentive[]
+  ledgerEntries LedgerEntry[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -156,6 +211,7 @@ model Department {
   parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
   children Department[] @relation("DepartmentHierarchy")
   members  DepartmentMember[]
+  employees Employee[]
 
   @@unique([tenantId, branchId, code])
   @@index([tenantId])
@@ -207,6 +263,25 @@ model User {
   refreshTokens     RefreshToken[]
   loginHistory      LoginHistory[]
   securityEvents    SecurityEvent[]
+  assignedLeads     Lead[]              @relation("LeadAssignee")
+  ownedLeads        Lead[]              @relation("LeadOwner")
+  ownedClients      Client[]            @relation("ClientOwner")
+  assignedFollowUps FollowUp[]          @relation("FollowUpAssignee")
+  assignedQuotations Quotation[]        @relation("QuotationAssignee")
+  assignedBookings  Booking[]           @relation("BookingAssignee")
+  receivedPayments  Payment[]           @relation("PaymentReceiver")
+  employeeRecord    Employee?           @relation("EmployeeUser")
+  refundRequested   RefundRequest[]     @relation("RefundRequester")
+  refundApproved    RefundRequest[]     @relation("RefundApprover")
+  refundProcessed   RefundRequest[]     @relation("RefundProcessor")
+  reissueRequested  ReissueRequest[]    @relation("ReissueRequester")
+  reissueApproved   ReissueRequest[]    @relation("ReissueApprover")
+  reissueProcessed  ReissueRequest[]    @relation("ReissueProcessor")
+  cancelRequested   CancellationRequest[] @relation("CancelRequester")
+  cancelApproved    CancellationRequest[] @relation("CancelApprover")
+  cancelProcessed   CancellationRequest[] @relation("CancelProcessor")
+  commissionApproved Commission[]       @relation("CommissionApprover")
+  incentiveApproved  Incentive[]        @relation("IncentiveApprover")
 
   @@index([email])
   @@index([status])
@@ -511,6 +586,7 @@ model Airline {
   updatedAt DateTime @updatedAt
 
   country Country? @relation("AirlineCountry", fields: [countryId], references: [id])
+  tickets Ticket[]
 
   @@index([iataCode])
 }
@@ -719,12 +795,23 @@ model Lead {
   ownerId       String?
   teamId        String?
   approvalRequired Boolean @default(false)
+  createdById   String?
+  updatedById   String?
 
   notes       String?
   metadata    Json?       @default("{}")
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   deletedAt   DateTime?
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+  client      Client?  @relation("LeadClient", fields: [clientId], references: [id])
+  assignedTo  User?    @relation("LeadAssignee", fields: [assignedToId], references: [id])
+  owner       User?    @relation("LeadOwner", fields: [ownerId], references: [id])
+  followUps   FollowUp[]
+  quotations  Quotation[]
+  bookings    Booking[]
 
   @@index([tenantId])
   @@index([branchId])
@@ -801,15 +888,29 @@ model Client {
   emailVerified  Boolean  @default(false)
   whatsappAvailable Boolean @default(false)
 
-  notes     String?
-  metadata  Json?     @default("{}")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  notes       String?
+  metadata    Json?     @default("{}")
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 
-  passports ClientPassport[]
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch?         @relation(fields: [branchId], references: [id])
+  owner      User?           @relation("ClientOwner", fields: [ownerId], references: [id])
+  leads      Lead[]          @relation("LeadClient")
+  passports  ClientPassport[]
   activities ClientActivity[]
-  tasks     ClientTask[]
+  tasks      ClientTask[]
+  followUps  FollowUp[]      @relation("ClientFollowUps")
+  quotations Quotation[]     @relation("QuotationClient")
+  bookings   Booking[]       @relation("BookingClient")
+  invoices   Invoice[]       @relation("InvoiceClient")
+  payments   Payment[]       @relation("PaymentClient")
+  refunds    RefundRequest[] @relation("RefundClient")
+  reissues   ReissueRequest[] @relation("ReissueClient")
+  cancellations CancellationRequest[] @relation("CancelClient")
 
   @@index([tenantId])
   @@index([branchId])
@@ -898,8 +999,15 @@ model FollowUp {
   completedAt DateTime?
   status      String   @default("PENDING")
   outcome     String?
+  createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch? @relation(fields: [branchId], references: [id])
+  lead       Lead?   @relation(fields: [leadId], references: [id])
+  client     Client? @relation("ClientFollowUps", fields: [clientId], references: [id])
+  assignedTo User?   @relation("FollowUpAssignee", fields: [assignedToId], references: [id])
 
   @@index([tenantId])
   @@index([assignedToId])
@@ -964,9 +1072,15 @@ model Quotation {
   updatedAt    DateTime @updatedAt
   deletedAt    DateTime?
 
-  lineItems  QuotationLineItem[]
-  revisions  QuotationRevision[]
-  statusLogs QuotationStatusLog[]
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch?             @relation(fields: [branchId], references: [id])
+  client      Client?             @relation("QuotationClient", fields: [clientId], references: [id])
+  lead        Lead?               @relation(fields: [leadId], references: [id])
+  assignedTo  User?               @relation("QuotationAssignee", fields: [assignedToId], references: [id])
+  lineItems   QuotationLineItem[]
+  revisions   QuotationRevision[]
+  statusLogs  QuotationStatusLog[]
+  bookings    Booking[]
 
   @@unique([tenantId, quoteNumber])
   @@index([tenantId])
@@ -1053,6 +1167,22 @@ model Booking {
   updatedAt   DateTime @updatedAt
   deletedAt   DateTime?
 
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch?             @relation(fields: [branchId], references: [id])
+  client      Client?             @relation("BookingClient", fields: [clientId], references: [id])
+  quotation   Quotation?          @relation(fields: [quotationId], references: [id])
+  lead        Lead?               @relation(fields: [leadId], references: [id])
+  assignedTo  User?               @relation("BookingAssignee", fields: [assignedToId], references: [id])
+  passengers  BookingPassenger[]
+  segments    BookingSegment[]
+  statusLogs  BookingStatusLog[]
+  tickets     Ticket[]
+  invoices    Invoice[]
+  payments    Payment[]
+  refunds     RefundRequest[]
+  reissues    ReissueRequest[]
+  cancellations CancellationRequest[]
+
   @@unique([tenantId, bookingRef])
   @@index([tenantId])
   @@index([branchId])
@@ -1078,6 +1208,16 @@ model Ticket {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch?          @relation(fields: [branchId], references: [id])
+  booking    Booking          @relation(fields: [bookingId], references: [id])
+  airline    Airline?         @relation(fields: [airlineId], references: [id])
+  statusLogs TicketStatusLog[]
+  refunds    RefundRequest[]
+  reissuesAsOld ReissueRequest[] @relation("ReissueOldTicket")
+  reissuesAsNew ReissueRequest[] @relation("ReissueNewTicket")
+  cancellations CancellationRequest[]
+
   @@unique([tenantId, ticketNumber])
   @@index([tenantId])
   @@index([bookingId])
@@ -1092,6 +1232,7 @@ model Invoice {
   invoiceNumber String
   clientId      String?
   bookingId     String?
+  quotationId   String?
   currencyCode  String   @default("USD")
   subtotal      Decimal  @default(0)
   taxAmount     Decimal  @default(0)
@@ -1103,9 +1244,20 @@ model Invoice {
   issuedAt      DateTime?
   dueAt         DateTime?
   notes         String?
+  createdById   String?
+  updatedById   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   deletedAt     DateTime?
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch   Branch?        @relation(fields: [branchId], references: [id])
+  client   Client?        @relation("InvoiceClient", fields: [clientId], references: [id])
+  booking  Booking?       @relation(fields: [bookingId], references: [id])
+  lines    InvoiceLine[]
+  payments Payment[]
+  receipts Receipt[]
+  refunds  RefundRequest[]
 
   @@unique([tenantId, invoiceNumber])
   @@index([tenantId])
@@ -1119,14 +1271,20 @@ model Receipt {
   branchId    String?
   receiptNumber String
   invoiceId   String?
+  paymentId   String?
   paymentMethod String?
   amount      Decimal  @default(0)
   currencyCode String  @default("USD")
   reference   String?
   notes       String?
+  createdById String?
   receivedAt  DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch  Branch?  @relation(fields: [branchId], references: [id])
+  invoice Invoice? @relation(fields: [invoiceId], references: [id])
 
   @@unique([tenantId, receiptNumber])
   @@index([tenantId])
@@ -1139,6 +1297,7 @@ model Payment {
   branchId       String?
   bookingId      String?
   invoiceId      String?
+  clientId       String?
   amount         Decimal  @default(0)
   currencyCode   String   @default("USD")
   paymentMethod  String?
@@ -1147,13 +1306,22 @@ model Payment {
   idempotencyKey  String?
   notes          String?
   receivedAt     DateTime?
+  receivedById   String?
   createdById    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch?  @relation(fields: [branchId], references: [id])
+  booking    Booking? @relation(fields: [bookingId], references: [id])
+  invoice    Invoice? @relation(fields: [invoiceId], references: [id])
+  client     Client?  @relation("PaymentClient", fields: [clientId], references: [id])
+  receivedBy User?    @relation("PaymentReceiver", fields: [receivedById], references: [id])
+
   @@index([tenantId])
   @@index([bookingId])
   @@index([invoiceId])
+  @@index([idempotencyKey])
 }
 
 model Expense {
@@ -1168,9 +1336,14 @@ model Expense {
   status        String   @default("PENDING")
   description   String?
   expenseDate   DateTime?
+  createdById   String?
+  updatedById   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   deletedAt     DateTime?
+
+  tenant Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch?  @relation(fields: [branchId], references: [id])
 
   @@unique([tenantId, expenseNumber])
   @@index([tenantId])
@@ -1188,10 +1361,15 @@ model LedgerEntry {
   currencyCode String  @default("USD")
   amount      Decimal  @default(0)
   description String?
+  createdById String?
   createdAt   DateTime @default(now())
+
+  tenant Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch?  @relation(fields: [branchId], references: [id])
 
   @@index([tenantId])
   @@index([referenceType, referenceId])
+  @@index([createdAt])
 }
 
 // ─── HRM Foundation ───────────────────────────────────────────
@@ -1211,13 +1389,23 @@ model Employee {
   status       String   @default("ACTIVE")
   joinedAt     DateTime?
   metadata     Json?    @default("{}")
+  createdById  String?
+  updatedById  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   deletedAt    DateTime?
 
-  leaves       Leave[]
-  attendances  Attendance[]
-  reviews      PerformanceReview[]
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch          Branch?             @relation(fields: [branchId], references: [id])
+  user            User?               @relation("EmployeeUser", fields: [userId], references: [id])
+  department      Department?         @relation(fields: [departmentId], references: [id])
+  leaves          Leave[]
+  attendances     Attendance[]
+  reviews         PerformanceReview[]
+  commissions     Commission[]
+  incentives      Incentive[]
+  salaryProfiles  SalaryProfile[]
+  salarySlips     SalarySlip[]
 
   @@unique([tenantId, employeeCode])
   @@index([tenantId])
@@ -1235,15 +1423,17 @@ model Leave {
   status      String   @default("PENDING")
   reason      String?
   approvedById String?
+  createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  approvedBy User?     @relation(fields: [approvedById], references: [id])
 
   @@index([tenantId])
   @@index([employeeId])
   @@index([status])
-
-  employee   Employee @relation(fields: [employeeId], references: [id])
-  approvedBy User?    @relation(fields: [approvedById], references: [id])
 }
 
 model Attendance {
@@ -1255,13 +1445,15 @@ model Attendance {
   clockOut   DateTime?
   status     String   @default("PRESENT")
   notes      String?
+  createdById String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id])
+
   @@unique([tenantId, employeeId, date])
   @@index([tenantId])
-
-  employee Employee @relation(fields: [employeeId], references: [id])
 }
 
 model PerformanceReview {
@@ -1275,14 +1467,385 @@ model PerformanceReview {
   improvements  String?
   notes         String?
   status        String   @default("DRAFT")
+  createdById   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  @@index([tenantId])
-  @@index([employeeId])
-
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employee Employee @relation(fields: [employeeId], references: [id])
   reviewer User?    @relation(fields: [reviewerId], references: [id])
+
+  @@index([tenantId])
+  @@index([employeeId])
+}
+
+// ─── Booking Sub-Models ──────────────────────────────────────
+
+model BookingPassenger {
+  id          String   @id @default(cuid())
+  tenantId    String
+  bookingId   String
+  passengerType String @default("ADULT")
+  title       String?
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime?
+  nationalityId String?
+  passportId   String?
+  seatPreference String?
+  mealPreference String?
+  notes       String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([bookingId])
+}
+
+model BookingSegment {
+  id          String   @id @default(cuid())
+  tenantId    String
+  bookingId   String
+  segmentType String   @default("FLIGHT")
+  airlineId   String?
+  flightNumber String?
+  originAirportId String?
+  destAirportId   String?
+  departureAt DateTime?
+  arrivalAt   DateTime?
+  cabinClassId String?
+  bookingClass String?
+  fareBasis   String?
+  baggage     String?
+  status      String   @default("CONFIRMED")
+  notes       String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([bookingId])
+}
+
+model BookingStatusLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  bookingId   String
+  fromStatus  String?
+  toStatus    String
+  note        String?
+  metadata    Json?    @default("{}")
+  actorId     String?
+  createdAt   DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([bookingId])
+}
+
+// ─── Invoice Line Items ───────────────────────────────────────
+
+model InvoiceLine {
+  id          String   @id @default(cuid())
+  tenantId    String
+  invoiceId   String
+  serviceType String?
+  description String?
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @default(0)
+  lineTotal   Decimal  @default(0)
+  metadata    Json?    @default("{}")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([invoiceId])
+}
+
+// ─── Ticket Status Log ────────────────────────────────────────
+
+model TicketStatusLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  ticketId    String
+  fromStatus  String?
+  toStatus    String
+  note        String?
+  metadata    Json?    @default("{}")
+  actorId     String?
+  createdAt   DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([ticketId])
+}
+
+// ─── After-Sales ──────────────────────────────────────────────
+
+model RefundRequest {
+  id              String   @id @default(cuid())
+  tenantId        String
+  branchId        String?
+  bookingId       String?
+  ticketId        String?
+  invoiceId       String?
+  clientId        String?
+  refundNumber    String
+  requestedAmount Decimal  @default(0)
+  approvedAmount  Decimal?
+  status          String   @default("REQUESTED")
+  reason          String?
+  notes           String?
+  requestedById   String?
+  approvedById    String?
+  processedById   String?
+  requestedAt     DateTime @default(now())
+  approvedAt      DateTime?
+  processedAt     DateTime?
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+  booking     Booking? @relation(fields: [bookingId], references: [id])
+  ticket      Ticket?  @relation(fields: [ticketId], references: [id])
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id])
+  client      Client?  @relation("RefundClient", fields: [clientId], references: [id])
+  requestedBy User?    @relation("RefundRequester", fields: [requestedById], references: [id])
+  approvedBy  User?    @relation("RefundApprover", fields: [approvedById], references: [id])
+  processedBy User?    @relation("RefundProcessor", fields: [processedById], references: [id])
+
+  @@unique([tenantId, refundNumber])
+  @@index([tenantId])
+  @@index([bookingId])
+  @@index([ticketId])
+  @@index([status])
+}
+
+model ReissueRequest {
+  id              String   @id @default(cuid())
+  tenantId        String
+  branchId        String?
+  bookingId       String?
+  oldTicketId     String?
+  newTicketId     String?
+  clientId        String?
+  reissueNumber   String
+  fareDifference  Decimal  @default(0)
+  serviceCharge   Decimal  @default(0)
+  totalCharge     Decimal  @default(0)
+  status          String   @default("REQUESTED")
+  reason          String?
+  notes           String?
+  requestedById   String?
+  approvedById    String?
+  processedById   String?
+  requestedAt     DateTime @default(now())
+  approvedAt      DateTime?
+  processedAt     DateTime?
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+  booking     Booking? @relation(fields: [bookingId], references: [id])
+  oldTicket   Ticket?  @relation("ReissueOldTicket", fields: [oldTicketId], references: [id])
+  newTicket   Ticket?  @relation("ReissueNewTicket", fields: [newTicketId], references: [id])
+  client      Client?  @relation("ReissueClient", fields: [clientId], references: [id])
+  requestedBy User?    @relation("ReissueRequester", fields: [requestedById], references: [id])
+  approvedBy  User?    @relation("ReissueApprover", fields: [approvedById], references: [id])
+  processedBy User?    @relation("ReissueProcessor", fields: [processedById], references: [id])
+
+  @@unique([tenantId, reissueNumber])
+  @@index([tenantId])
+  @@index([bookingId])
+  @@index([status])
+}
+
+model CancellationRequest {
+  id                String   @id @default(cuid())
+  tenantId          String
+  branchId          String?
+  bookingId         String?
+  ticketId          String?
+  clientId          String?
+  cancellationNumber String
+  cancellationCharge Decimal  @default(0)
+  refundableAmount  Decimal  @default(0)
+  status            String   @default("REQUESTED")
+  reason            String?
+  notes             String?
+  requestedById     String?
+  approvedById      String?
+  processedById     String?
+  requestedAt       DateTime @default(now())
+  approvedAt        DateTime?
+  processedAt       DateTime?
+  createdById       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+  booking     Booking? @relation(fields: [bookingId], references: [id])
+  ticket      Ticket?  @relation(fields: [ticketId], references: [id])
+  client      Client?  @relation("CancelClient", fields: [clientId], references: [id])
+  requestedBy User?    @relation("CancelRequester", fields: [requestedById], references: [id])
+  approvedBy  User?    @relation("CancelApprover", fields: [approvedById], references: [id])
+  processedBy User?    @relation("CancelProcessor", fields: [processedById], references: [id])
+
+  @@unique([tenantId, cancellationNumber])
+  @@index([tenantId])
+  @@index([bookingId])
+  @@index([status])
+}
+
+// ─── HRM Salary / Commission / Incentive ──────────────────────
+
+model SalaryProfile {
+  id           String   @id @default(cuid())
+  tenantId     String
+  employeeId   String
+  baseSalary   Decimal  @default(0)
+  currencyCode String   @default("USD")
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  metadata     Json?    @default("{}")
+  isActive     Boolean  @default(true)
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId])
+  @@index([employeeId])
+}
+
+model SalaryRun {
+  id           String   @id @default(cuid())
+  tenantId     String
+  branchId     String?
+  salaryRunNumber String
+  period       String
+  periodStart  DateTime
+  periodEnd    DateTime
+  status       String   @default("DRAFT")
+  currencyCode String   @default("USD")
+  totalGross   Decimal  @default(0)
+  totalDeductions Decimal @default(0)
+  totalNet     Decimal  @default(0)
+  notes        String?
+  createdById  String?
+  approvedById String?
+  approvedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch  Branch?       @relation(fields: [branchId], references: [id])
+  slips   SalarySlip[]
+
+  @@unique([tenantId, salaryRunNumber])
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([status])
+}
+
+model SalarySlip {
+  id            String   @id @default(cuid())
+  tenantId      String
+  salaryRunId   String
+  employeeId    String
+  basePay       Decimal  @default(0)
+  allowances    Decimal  @default(0)
+  commissionEarned Decimal @default(0)
+  incentiveEarned  Decimal @default(0)
+  overtimePay   Decimal  @default(0)
+  grossPay      Decimal  @default(0)
+  deductions    Decimal  @default(0)
+  netPay        Decimal  @default(0)
+  currencyCode  String   @default("USD")
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  salaryRun  SalaryRun  @relation(fields: [salaryRunId], references: [id], onDelete: Cascade)
+  employee   Employee   @relation(fields: [employeeId], references: [id])
+
+  @@unique([salaryRunId, employeeId])
+  @@index([tenantId])
+  @@index([employeeId])
+}
+
+model Commission {
+  id              String   @id @default(cuid())
+  tenantId        String
+  branchId        String?
+  employeeId      String
+  sourceType      String
+  sourceId        String?
+  amount          Decimal  @default(0)
+  currencyCode    String   @default("USD")
+  status          String   @default("PENDING")
+  calculationBasis String?
+  notes           String?
+  approvedById    String?
+  approvedAt      DateTime?
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch?   @relation(fields: [branchId], references: [id])
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  approvedBy User?     @relation("CommissionApprover", fields: [approvedById], references: [id])
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([sourceType, sourceId])
+  @@index([status])
+}
+
+model Incentive {
+  id            String   @id @default(cuid())
+  tenantId      String
+  branchId      String?
+  employeeId    String
+  incentiveType String
+  amount        Decimal  @default(0)
+  currencyCode  String   @default("USD")
+  period        String?
+  status        String   @default("PENDING")
+  reason        String?
+  targetId      String?
+  approvedById  String?
+  approvedAt    DateTime?
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch?   @relation(fields: [branchId], references: [id])
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  approvedBy User?     @relation("IncentiveApprover", fields: [approvedById], references: [id])
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([status])
 }
 
 // ─── Master Data System ───────────────────────────────────────

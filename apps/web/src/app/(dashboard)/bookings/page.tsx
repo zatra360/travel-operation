@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -109,7 +110,7 @@ export default function BookingsPage() {
                 <tbody>
                   {items.map((b) => (
                     <tr key={b.id} className="border-b last:border-0">
-                      <td className="py-3 font-medium">{b.bookingRef}</td>
+                      <td className="py-3 font-medium"><Link href={`/bookings/${b.id}`} className="hover:underline text-primary">{b.bookingRef}</Link></td>
                       <td className="py-3 text-muted-foreground">{b.pnrLocator || '--'}</td>
                       <td className="py-3">
                         <Badge variant={bookingStatusVariant[b.status] || 'secondary'}>{b.status}</Badge>

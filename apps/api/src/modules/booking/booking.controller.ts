@@ -27,7 +27,7 @@ export class BookingController {
 
   @Get()
   @RequirePermissions('BOOKING_READ')
-  @ApiOperation({ summary: 'List bookings for current tenant' })
+  @ApiOperation({ summary: 'List bookings' })
   async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryBookingDto) {
     return this.bookingService.findAll(ctx.tenantId, query);
   }
@@ -42,12 +42,36 @@ export class BookingController {
   @Put(':id')
   @RequirePermissions('BOOKING_UPDATE')
   @ApiOperation({ summary: 'Update booking' })
-  async update(
-    @TenantCtx() ctx: TenantContext,
-    @Param('id') id: string,
-    @Body() dto: UpdateBookingDto,
-  ) {
+  async update(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: UpdateBookingDto) {
     return this.bookingService.update(ctx.tenantId, ctx.userId, id, dto);
+  }
+
+  @Post(':id/add-passenger')
+  @RequirePermissions('BOOKING_UPDATE')
+  @ApiOperation({ summary: 'Add passenger to booking' })
+  async addPassenger(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: any) {
+    return this.bookingService.addPassenger(ctx.tenantId, ctx.userId, id, dto);
+  }
+
+  @Post(':id/add-segment')
+  @RequirePermissions('BOOKING_UPDATE')
+  @ApiOperation({ summary: 'Add segment to booking' })
+  async addSegment(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: any) {
+    return this.bookingService.addSegment(ctx.tenantId, ctx.userId, id, dto);
+  }
+
+  @Post(':id/create-invoice')
+  @RequirePermissions('INVOICE_CREATE')
+  @ApiOperation({ summary: 'Create invoice from booking' })
+  async createInvoice(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto?: any) {
+    return this.bookingService.createInvoice(ctx.tenantId, ctx.userId, id, dto);
+  }
+
+  @Get(':id/timeline')
+  @RequirePermissions('BOOKING_READ')
+  @ApiOperation({ summary: 'Get booking activity timeline' })
+  async getTimeline(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.bookingService.getTimeline(ctx.tenantId, id);
   }
 
   @Delete(':id')

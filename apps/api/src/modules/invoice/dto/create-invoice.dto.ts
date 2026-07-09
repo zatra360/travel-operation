@@ -20,6 +20,10 @@ export class CreateInvoiceDto {
   @IsOptional() @IsString()
   bookingId?: string;
 
+  @ApiPropertyOptional({ description: 'Quotation ID' })
+  @IsOptional() @IsString()
+  quotationId?: string;
+
   @ApiPropertyOptional({ default: 'USD' })
   @IsOptional() @IsString() @MaxLength(10)
   currencyCode?: string;

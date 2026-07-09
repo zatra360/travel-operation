@@ -2,35 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Users, Plane, FileText, Receipt, TrendingUp, Activity } from 'lucide-react';
+import { Users, Plane, FileText, Receipt, TrendingUp, Activity, Ticket, RefreshCw, UserCheck, AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime } from '@/lib/utils';
-
-interface DashboardStats {
-  leads: { total: number };
-  clients: { total: number };
-  quotations: { total: number };
-  bookings: { total: number };
-  invoices: { total: number };
-  recentActivity: Array<{
-    id: string;
-    action: string;
-    entity: string;
-    createdAt: string;
-    actor: { firstName: string; lastName: string; email: string };
-  }>;
-}
+import { DashboardOverview } from '@/lib/crm';
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [stats, setStats] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
+  const [noTenant, setNoTenant] = useState(false);
   const { activeTenant, activeBranch } = useAuthStore();
 
   useEffect(() => {
-    if (!activeTenant) return;
-    api.get<DashboardStats>('/api/v1/tenant/dashboard/stats', {
+    if (!activeTenant) { setNoTenant(true); setLoading(false); return; }
+    setNoTenant(false);
+    api.get<DashboardOverview>('/api/v1/tenant/dashboard/stats', {
       tenantId: activeTenant.id,
       branchId: activeBranch?.id,
     })
@@ -38,6 +25,10 @@ export default function DashboardPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [activeTenant, activeBranch]);
+
+  if (noTenant) {
+    return <div className="flex items-center justify-center h-64"><div className="text-center"><p className="text-lg font-medium">No tenant assigned</p><p className="text-sm text-muted-foreground mt-1">Switch to a tenant or contact your admin.</p></div></div>;
+  }
 
   if (loading) {
     return (
@@ -48,23 +39,47 @@ export default function DashboardPage() {
   }
 
   const cards = [
-    { label: 'Leads', value: stats?.leads.total ?? 0, icon: Users, color: 'text-blue-600' },
-    { label: 'Clients', value: stats?.clients.total ?? 0, icon: TrendingUp, color: 'text-emerald-600' },
-    { label: 'Quotations', value: stats?.quotations.total ?? 0, icon: FileText, color: 'text-purple-600' },
-    { label: 'Bookings', value: stats?.bookings.total ?? 0, icon: Plane, color: 'text-orange-600' },
-    { label: 'Invoices', value: stats?.invoices.total ?? 0, icon: Receipt, color: 'text-rose-600' },
+    { label: 'Leads', value: stats?.leads.total ?? 0, sub: stats?.leads.new ? `${stats.leads.new} new` : '', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Clients', value: stats?.clients.total ?? 0, sub: stats?.clients.active ? `${stats.clients.active} active` : '', icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Quotations', value: stats?.quotations?.total ?? 0, sub: stats?.quotations?.pending ? `${stats.quotations.pending} pending` : '', icon: FileText, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Bookings', value: stats?.bookings.total ?? 0, sub: stats?.bookings.ticketed ? `${stats.bookings.ticketed} ticketed` : '', icon: Plane, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Invoices', value: stats?.invoices.total ?? 0, sub: stats?.invoices.unpaid ? `${stats.invoices.unpaid} unpaid` : '', icon: Receipt, color: 'text-rose-600', bg: 'bg-rose-50' },
+    { label: 'Tickets', value: stats?.tickets?.total ?? 0, sub: stats?.tickets?.pending ? `${stats.tickets.pending} pending` : '', icon: Ticket, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+    { label: 'Refunds', value: stats?.refunds?.total ?? 0, sub: stats?.refunds?.pending ? `${stats.refunds.pending} pending` : '', icon: RefreshCw, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Employees', value: stats?.employees?.total ?? 0, sub: stats?.employees?.active ? `${stats.employees.active} active` : '', icon: UserCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
   ];
+
+  const alerts: { label: string; value: number; icon: any; color: string }[] = [];
+  if (stats?.bookings.held) alerts.push({ label: 'Bookings on hold', value: stats.bookings.held, icon: AlertTriangle, color: 'text-amber-600' });
+  if (stats?.invoices.overdue) alerts.push({ label: 'Overdue invoices', value: stats.invoices.overdue, icon: AlertTriangle, color: 'text-red-600' });
+  if (stats?.refunds?.pending) alerts.push({ label: 'Pending refunds', value: stats.refunds.pending, icon: AlertTriangle, color: 'text-amber-600' });
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
         <p className="text-muted-foreground">
-          {activeTenant?.name} - {activeBranch?.name || 'All Branches'}
+          {activeTenant?.name} — {activeBranch?.name || 'All Branches'}
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      {alerts.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {alerts.map((a) => (
+            <Card key={a.label} className="border-amber-200 bg-amber-50">
+              <CardContent className="flex items-center gap-3 py-3">
+                <a.icon className={`h-5 w-5 ${a.color}`} />
+                <div>
+                  <p className="text-sm font-medium">{a.label}</p>
+                  <p className="text-lg font-bold">{a.value}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
         {cards.map((card) => {
           const Icon = card.icon;
           return (
@@ -75,6 +90,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{card.value}</div>
+                {card.sub && <p className="text-xs text-muted-foreground mt-1">{card.sub}</p>}
               </CardContent>
             </Card>
           );
@@ -84,30 +100,18 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            Recent Activity
+            <Activity className="h-4 w-4" /> Recent Activity
           </CardTitle>
         </CardHeader>
         <CardContent>
           {stats?.recentActivity?.length ? (
-            <div className="space-y-4">
-              {stats.recentActivity.map((log) => (
-                <div key={log.id} className="flex items-center justify-between border-b pb-2 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {log.actor.firstName} {log.actor.lastName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {log.action} - {log.entity}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      {log.action}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDateTime(log.createdAt)}
-                    </span>
+            <div className="space-y-3">
+              {stats.recentActivity.slice(0, 20).map((event) => (
+                <div key={event.id} className="flex items-start gap-3 border-b pb-2 last:border-0">
+                  <div className="mt-0.5 h-2 w-2 rounded-full bg-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">{event.subject}</p>
+                    <p className="text-xs text-muted-foreground">{event.userName} · {formatDateTime(event.createdAt)}</p>
                   </div>
                 </div>
               ))}

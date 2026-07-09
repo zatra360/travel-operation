@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -109,7 +110,7 @@ export default function TicketsPage() {
                 <tbody>
                   {items.map((t) => (
                     <tr key={t.id} className="border-b last:border-0">
-                      <td className="py-3 font-medium">{t.ticketNumber}</td>
+                      <td className="py-3 font-medium"><Link href={`/tickets/${t.id}`} className="hover:underline text-primary">{t.ticketNumber}</Link></td>
                       <td className="py-3 text-muted-foreground">{t.passengerName || '--'}</td>
                       <td className="py-3">
                         <Badge variant={ticketStatusVariant[t.status] || 'secondary'}>{t.status}</Badge>

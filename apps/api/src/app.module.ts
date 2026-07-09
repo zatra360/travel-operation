@@ -32,6 +32,11 @@ import { PerformanceModule } from './modules/performance/performance.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { MasterDataModule } from './modules/master-data/master-data.module';
 import { ActivityModule } from './modules/activity/activity.module';
+import { RefundModule } from './modules/refund/refund.module';
+import { CommissionModule } from './modules/commission/commission.module';
+import { SalaryRunModule } from './modules/salary-run/salary-run.module';
+import { ReissueModule } from './modules/reissue/reissue.module';
+import { CancellationModule } from './modules/cancellation/cancellation.module';
 import { HealthController } from './health.controller';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -71,6 +76,11 @@ import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters/http-
     NotificationModule,
     MasterDataModule,
     ActivityModule,
+    RefundModule,
+    CommissionModule,
+    SalaryRunModule,
+    ReissueModule,
+    CancellationModule,
   ],
   controllers: [HealthController],
   providers: [

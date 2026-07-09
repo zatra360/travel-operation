@@ -27,7 +27,7 @@ export class TicketController {
 
   @Get()
   @RequirePermissions('TICKET_READ')
-  @ApiOperation({ summary: 'List tickets for current tenant' })
+  @ApiOperation({ summary: 'List tickets' })
   async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryTicketDto) {
     return this.ticketService.findAll(ctx.tenantId, query);
   }
@@ -42,12 +42,36 @@ export class TicketController {
   @Put(':id')
   @RequirePermissions('TICKET_UPDATE')
   @ApiOperation({ summary: 'Update ticket' })
-  async update(
-    @TenantCtx() ctx: TenantContext,
-    @Param('id') id: string,
-    @Body() dto: UpdateTicketDto,
-  ) {
+  async update(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: UpdateTicketDto) {
     return this.ticketService.update(ctx.tenantId, ctx.userId, id, dto);
+  }
+
+  @Post(':id/issue')
+  @RequirePermissions('TICKET_UPDATE')
+  @ApiOperation({ summary: 'Issue a ticket' })
+  async issueTicket(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.ticketService.issueTicket(ctx.tenantId, ctx.userId, id);
+  }
+
+  @Post(':id/void')
+  @RequirePermissions('TICKET_DELETE')
+  @ApiOperation({ summary: 'Void a ticket' })
+  async voidTicket(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.ticketService.voidTicket(ctx.tenantId, ctx.userId, id);
+  }
+
+  @Post(':id/refund')
+  @RequirePermissions('TICKET_UPDATE')
+  @ApiOperation({ summary: 'Refund a ticket' })
+  async refundTicket(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.ticketService.refundTicket(ctx.tenantId, ctx.userId, id);
+  }
+
+  @Get(':id/timeline')
+  @RequirePermissions('TICKET_READ')
+  @ApiOperation({ summary: 'Get ticket activity timeline' })
+  async getTimeline(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.ticketService.getTimeline(ctx.tenantId, id);
   }
 
   @Delete(':id')

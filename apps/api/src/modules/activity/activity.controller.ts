@@ -3,13 +3,15 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ActivityService } from './activity.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { TenantCtx } from '../../common/decorators/tenant-context.decorator';
 import { TenantContext } from '../../common/interceptors/tenant-context.interceptor';
 
 @ApiTags('Tenant - Activity') @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, TenantGuard)
+@UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 @Controller('tenant/activity')
 export class ActivityController {
   constructor(private readonly service: ActivityService) {}
-  @Get() @ApiOperation({ summary: 'List activity stream' }) async findAll(@TenantCtx() ctx: TenantContext, @Query('page') page?: number, @Query('limit') limit?: number, @Query('userId') userId?: string) { return this.service.findAll(ctx.tenantId, page ?? 1, limit ?? 50, userId); }
+  @Get() @RequirePermissions('AUDIT_LOG_READ') @ApiOperation({ summary: 'List activity stream' }) async findAll(@TenantCtx() ctx: TenantContext, @Query('page') page?: number, @Query('limit') limit?: number, @Query('userId') userId?: string) { return this.service.findAll(ctx.tenantId, page ?? 1, limit ?? 50, userId); }
 }

@@ -10,6 +10,7 @@
     "migrate:deploy": "prisma migrate deploy",
     "push": "prisma db push",
     "seed": "tsx prisma/seed.ts",
+    "seed:demo": "node prisma/demo-seed.cjs",
     "studio": "prisma studio"
   },
   "dependencies": {

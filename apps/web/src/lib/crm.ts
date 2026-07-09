@@ -60,6 +60,9 @@ export interface Client {
   preferredCommunication?: string | null; preferredPaymentMethod?: string | null;
   loyaltyStatus?: string | null; riskScore?: number | null;
   currencyCode?: string | null; outstandingBalance?: number;
+  creditLimit?: number; refundAmountTotal?: number;
+  overdueInvoices?: number; cancellationCount?: number;
+  refundFrequency?: string | null;
   phoneVerified?: boolean; emailVerified?: boolean;
   leadSource?: string | null; lastActivityAt?: string | null; lastBookingAt?: string | null;
   branchId?: string | null; notes?: string | null; metadata?: any;
@@ -187,6 +190,7 @@ export interface Booking {
   assignedToId?: string | null;
   travelStart?: string | null;
   travelEnd?: string | null;
+  holdExpiresAt?: string | null;
   notes?: string | null;
   branchId?: string | null;
   createdAt: string;
@@ -327,4 +331,75 @@ export function formatFileSize(bytes?: number | null): string {
     i++;
   }
   return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+export interface TimelineEvent {
+  id: string;
+  type: string;
+  subject: string;
+  content?: string | null;
+  entity?: string | null;
+  entityId?: string | null;
+  metadata?: any;
+  userId: string;
+  userName?: string;
+  createdAt: string;
+}
+
+export interface BookingPassenger {
+  id: string; bookingId: string; passengerType: string;
+  title?: string | null; firstName: string; lastName: string;
+  dateOfBirth?: string | null; seatPreference?: string | null; mealPreference?: string | null;
+}
+
+export interface BookingSegment {
+  id: string; bookingId: string; segmentType: string;
+  airlineId?: string | null; flightNumber?: string | null;
+  originAirportId?: string | null; destAirportId?: string | null;
+  departureAt?: string | null; arrivalAt?: string | null;
+  cabinClassId?: string | null; bookingClass?: string | null;
+  fareBasis?: string | null; status: string;
+}
+
+export interface BookingStatusLog {
+  id: string; bookingId: string; fromStatus?: string | null; toStatus: string;
+  note?: string | null; actorId?: string | null; createdAt: string;
+}
+
+export interface DashboardOverview {
+  leads: { total: number; new: number; won: number };
+  clients: { total: number; active: number };
+  quotations: { total: number; pending: number };
+  bookings: { total: number; held: number; confirmed: number; ticketed: number };
+  invoices: { total: number; unpaid: number; overdue: number };
+  tickets: { total: number; pending: number; issued: number };
+  refunds: { total: number; pending: number };
+  employees: { total: number; active: number };
+  recentActivity: TimelineEvent[];
+}
+
+export interface RefundRequest {
+  id: string; refundNumber: string; status: string;
+  bookingId?: string | null; ticketId?: string | null; invoiceId?: string | null; clientId?: string | null;
+  requestedAmount: number; approvedAmount?: number | null;
+  reason?: string | null; notes?: string | null;
+  requestedById?: string | null; approvedById?: string | null; processedById?: string | null;
+  requestedAt: string; approvedAt?: string | null; processedAt?: string | null;
+  branchId?: string | null; createdAt: string; updatedAt: string;
+}
+
+export interface Commission {
+  id: string; employeeId: string; sourceType: string;
+  sourceId?: string | null; amount: number; currencyCode: string;
+  calculationBasis?: string | null; status: string;
+  notes?: string | null; approvedById?: string | null; approvedAt?: string | null;
+  branchId?: string | null; createdAt: string; updatedAt: string;
+}
+
+export interface SalaryRun {
+  id: string; salaryRunNumber: string; period: string;
+  periodStart: string; periodEnd: string; status: string; currencyCode: string;
+  totalGross: number; totalDeductions: number; totalNet: number;
+  notes?: string | null; approvedById?: string | null; approvedAt?: string | null;
+  branchId?: string | null; createdAt: string; updatedAt: string;
 }

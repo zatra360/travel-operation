@@ -21,6 +21,11 @@ export class CreateTicketDto {
   @MaxLength(150)
   passengerName?: string;
 
+  @ApiPropertyOptional({ description: 'Passenger ID from booking passengers' })
+  @IsOptional()
+  @IsString()
+  passengerId?: string;
+
   @ApiPropertyOptional({ description: 'Airline ID from master data' })
   @IsOptional()
   @IsString()
@@ -49,4 +54,9 @@ export class CreateTicketDto {
   @IsOptional()
   @IsString()
   branchId?: string;
+
+  @ApiPropertyOptional({ description: 'Notes' })
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

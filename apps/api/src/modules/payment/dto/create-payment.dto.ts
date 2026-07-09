@@ -13,6 +13,10 @@ export class CreatePaymentDto {
   invoiceId?: string;
 
   @ApiPropertyOptional()
+  @IsOptional() @IsString()
+  clientId?: string;
+
+  @ApiPropertyOptional()
   @IsOptional() @IsNumber()
   amount?: number;
 
@@ -39,8 +43,6 @@ export class CreatePaymentDto {
   @ApiPropertyOptional()
   @IsOptional() @IsString()
   notes?: string;
-
-  @ApiPropertyOptional()
 
   @ApiPropertyOptional()
   @IsOptional() @IsDateString()

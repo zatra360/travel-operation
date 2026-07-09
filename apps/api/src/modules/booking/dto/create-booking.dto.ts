@@ -56,6 +56,11 @@ export class CreateBookingDto {
   @IsString()
   notes?: string;
 
+  @ApiPropertyOptional({ description: 'Hold expiry date/time' })
+  @IsOptional()
+  @IsDateString()
+  holdExpiresAt?: string;
+
   @ApiPropertyOptional({ description: 'Branch ID' })
   @IsOptional()
   @IsString()
