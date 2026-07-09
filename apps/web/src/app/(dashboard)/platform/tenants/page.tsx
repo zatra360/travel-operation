@@ -113,7 +113,8 @@ export default function TenantListPage() {
 
       <Dialog open={!!viewing} onOpenChange={() => setViewing(null)}>
         <DialogContent className="max-w-xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{viewing?.name}</DialogTitle><DialogDescription>{viewing?.slug} · <Badge variant={sv(viewing?.status || '')}>{viewing?.status}</Badge></DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{viewing?.name}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-3 mb-2">{viewing?.slug} · <Badge variant={sv(viewing?.status || '')}>{viewing?.status}</Badge></p>
           {viewing && (<div className="space-y-4">
             <div><h4 className="text-sm font-semibold flex items-center gap-2"><Building2 className="h-4 w-4" />Branches ({viewing.branches?.length ?? 0})</h4>{viewing.branches?.length ? <div className="mt-2 space-y-1">{viewing.branches.map((b) => (<div key={b.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"><span>{b.name} <span className="text-muted-foreground">({b.code})</span></span><Badge variant={b.status === 'ACTIVE' ? 'success' : 'secondary'}>{b.status}</Badge></div>))}</div> : <p className="text-sm text-muted-foreground mt-1">No branches</p>}</div>
             <div><h4 className="text-sm font-semibold flex items-center gap-2"><Users className="h-4 w-4" />Users ({viewing.users?.length ?? 0})</h4>{viewing.users?.length ? <div className="mt-2 space-y-1">{viewing.users.map((m) => (<div key={m.user.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"><span>{m.user.firstName} {m.user.lastName} <span className="text-muted-foreground">({m.user.email})</span></span><Badge variant={m.role === 'OWNER' ? 'default' : 'secondary'}>{m.role}</Badge></div>))}</div> : <p className="text-sm text-muted-foreground mt-1">No users</p>}</div>
