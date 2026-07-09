@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -12,7 +13,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, ip?: string, userAgent?: string) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
       select: {
@@ -27,13 +28,17 @@ export class AuthService {
     });
 
     if (!user || user.status !== 'ACTIVE') {
+      await this.recordLoginAttempt(dto.email, false, ip, userAgent, 'User not found or inactive');
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
+      await this.recordLoginAttempt(user.email, false, ip, userAgent, 'Invalid password');
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    await this.recordLoginAttempt(user.email, true, ip, userAgent);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -46,19 +51,19 @@ export class AuthService {
       isPlatformSuperAdmin: user.isPlatformSuperAdmin,
     };
 
-    const token = this.jwtService.sign(payload);
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = await this.generateRefreshToken(user.id, ip);
 
     const tenants = await this.prisma.userTenantMembership.findMany({
       where: { userId: user.id, isActive: true },
       include: {
-        tenant: {
-          select: { id: true, name: true, slug: true, logo: true },
-        },
+        tenant: { select: { id: true, name: true, slug: true, logo: true } },
       },
     });
 
     return {
-      accessToken: token,
+      accessToken,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -115,5 +120,57 @@ export class AuthService {
       data,
       select: { id: true, email: true, firstName: true, lastName: true, phone: true, avatar: true, lastLoginAt: true, createdAt: true, updatedAt: true },
     });
+  }
+
+  async revokeRefreshToken(token: string) {
+    await this.prisma.refreshToken.updateMany({
+      where: { token, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  private async generateRefreshToken(userId: string, ip?: string): Promise<string> {
+    const token = randomBytes(48).toString('hex');
+    await this.prisma.refreshToken.create({
+      data: {
+        userId,
+        token,
+        ip,
+        device: 'api',
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      },
+    });
+    return token;
+  }
+
+  private async recordLoginAttempt(
+    email: string,
+    success: boolean,
+    ip?: string,
+    userAgent?: string,
+    failReason?: string,
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+    await this.prisma.loginHistory.create({
+      data: {
+        userId: user?.id || 'unknown',
+        email,
+        ip,
+        userAgent,
+        success,
+        failReason,
+      },
+    });
+
+    if (!success && user) {
+      await this.prisma.securityEvent.create({
+        data: {
+          userId: user.id,
+          type: 'FAILED_LOGIN',
+          details: `Failed login attempt from IP: ${ip || 'unknown'}`,
+          ip,
+        },
+      });
+    }
   }
 }

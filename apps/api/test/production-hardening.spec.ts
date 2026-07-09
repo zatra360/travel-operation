@@ -23,7 +23,7 @@ describe('Production Hardening (e2e)', () => {
     const tenantRes = await request(app.getHttpServer())
       .get('/api/v1/platform/tenants')
       .set('Authorization', `Bearer ${adminToken}`);
-      const tenants = (res.body?.data?.data) || res.body?.data || res.body;
+      const tenants = (tenantRes.body?.data?.data) || tenantRes.body?.data || tenantRes.body || [];
       if (Array.isArray(tenants) && tenants.length > 0) tenantId = tenants[0].id;
   });
 
@@ -113,7 +113,7 @@ describe('Production Hardening (e2e)', () => {
       if (!token) return;
       const res = await request(app.getHttpServer()).post('/api/v1/tenant/leads')
         .set('Authorization', `Bearer ${token}`).set('X-Tenant-Id', tenantId)
-        .send({ fullName: 'Test Lead', email: 'test@example.com', status: 'NEW', priority: 'MEDIUM', source: 'WEBSITE', serviceType: 'FLIGHT' });
+        .send({ fullName: 'Test Lead', email: 'test@example.com', status: 'NEW', priority: 'MEDIUM', source: 'WEBSITE', serviceType: 'UMRAH' });
       expect(res.status).toBe(201);
     });
 

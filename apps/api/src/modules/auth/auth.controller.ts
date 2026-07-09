@@ -1,5 +1,6 @@
-import { Controller, Post, Get, Put, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -15,8 +16,10 @@ export class AuthController {
   @Public()
   @Post('login')
   @ApiOperation({ summary: 'User login' })
-  async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto, @Req() req: Request) {
+    const ip = (req.headers['x-forwarded-for'] as string) || req.ip || req.socket.remoteAddress;
+    const userAgent = req.headers['user-agent'] as string;
+    return this.authService.login(dto, ip, userAgent);
   }
 
   @UseGuards(JwtAuthGuard)
