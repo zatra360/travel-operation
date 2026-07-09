@@ -185,7 +185,7 @@ async function main() {
 
   console.log('\nDemo tenant created successfully!');
   console.log('================================');
-  console.log('Tenant: TripNow Limited (tripnow-limited)');
+  console.log('Tenant: Tripnow Limited (tripnow-limited)');
   console.log('Branches: Head Office (HO), Dhaka Office (DHK)');
   console.log('Departments: 7');
   console.log('Users: 7 staff members');

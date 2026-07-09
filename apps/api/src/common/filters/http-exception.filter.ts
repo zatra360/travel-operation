@@ -40,9 +40,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
       status = exception.getStatus();
       const res = exception.getResponse();
       message = typeof res === 'string' ? res : (res as any).message || message;
+    } else if (process.env.NODE_ENV !== 'test') {
+      console.error('Unhandled exception:', exception);
     }
-
-    console.error('Unhandled exception:', exception);
 
     response.status(status).json({
       success: false,
