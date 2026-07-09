@@ -1,4 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { randomInt } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -59,7 +60,7 @@ export class NumberGeneratorService {
     const maxRetries = 3;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const suffix = Math.floor(Math.random() * 9000 + 1000);
+      const suffix = randomInt(1000, 9999);
       const candidate = `${prefix}-${timestamp}-${suffix}`;
 
       const exists = await (this.prisma as any)[table].findFirst({
