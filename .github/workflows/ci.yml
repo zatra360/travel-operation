@@ -7,19 +7,33 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  validate:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
 
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @travelo/database exec prisma validate
+      - run: pnpm --filter @travelo/api build
+      - run: pnpm --filter @travelo/web build
+      - run: pnpm --filter @travelo/api lint
 
+  test:
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test
+          POSTGRES_USER: travelo
+          POSTGRES_PASSWORD: travelo_dev
+          POSTGRES_DB: travelo
         ports:
           - 5432:5432
         options: >-
@@ -28,6 +42,9 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    env:
+      DATABASE_URL: postgresql://travelo:travelo_dev@localhost:5432/travelo
+
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -35,31 +52,11 @@ jobs:
           version: 9
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: pnpm
+          node-version: 20
+          cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma Client
-        run: pnpm --filter @travelo/database generate
-
-      - name: Build API
-        run: pnpm --filter @travelo/api build
-
-      - name: Build Web
-        run: pnpm --filter @travelo/web build
-
-      - name: Lint API
-        run: pnpm --filter @travelo/api lint
-
-      - name: Type check API
-        run: pnpm --filter @travelo/api exec tsc --noEmit
-
-      - name: Type check Web
-        run: pnpm --filter @travelo/web exec tsc --noEmit
-
-      - name: Run migration
-        run: pnpm --filter @travelo/database exec prisma migrate deploy
-
-      - name: Run tests
-        run: pnpm --filter @travelo/api test
+      - run: pnpm --filter @travelo/database generate
+      - run: pnpm --filter @travelo/database exec prisma migrate deploy
+      - run: pnpm --filter @travelo/database seed
+      - run: pnpm --filter @travelo/api test
