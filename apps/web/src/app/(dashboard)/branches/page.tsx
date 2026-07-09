@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -37,13 +38,11 @@ export default function BranchesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Branches</h2>
-        <Button size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Branch
-        </Button>
-      </div>
+      <PageHeader
+        title="Branches"
+        subtitle="Manage office locations and branch operations"
+        actions={<Button size="sm"><Plus className="h-4 w-4 mr-2" />Add Branch</Button>}
+      />
 
       <Card>
         <CardHeader>

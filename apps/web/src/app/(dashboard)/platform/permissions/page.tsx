@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/ui/page-header';
 import { api } from '@/lib/api';
 
 interface Permission {
@@ -38,12 +39,7 @@ export default function PlatformPermissionsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Permissions</h2>
-        <p className="text-muted-foreground">
-          {totalCount} total permissions across {modules.length} modules
-        </p>
-      </div>
+      <PageHeader title="Permissions" subtitle="Global permission catalog for all modules" />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {modules.map((mod) => (

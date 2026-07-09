@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -76,13 +77,11 @@ export default function DocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Documents</h2>
-        <Button size="sm" onClick={() => setUploadOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Upload
-        </Button>
-      </div>
+      <PageHeader
+        title="Documents"
+        subtitle="Upload and manage client and booking documents"
+        actions={<Button size="sm" onClick={() => setUploadOpen(true)}><Plus className="h-4 w-4 mr-2" />Upload</Button>}
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]">

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -61,7 +62,7 @@ export default function PlatformUsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div><h2 className="text-2xl font-bold">Platform Users</h2><p className="text-muted-foreground">{users.length} total users across all companies</p></div>
+        <PageHeader title="Platform Users" subtitle="Manage super admin accounts across all companies" />
         <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />New User</Button>
       </div>
 

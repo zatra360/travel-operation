@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/ui/page-header';
 import { Building2, Users, Shield, Activity } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -36,10 +37,7 @@ export default function PlatformDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Platform Dashboard</h2>
-        <p className="text-muted-foreground">SaaS platform management overview</p>
-      </div>
+      <PageHeader title="Platform Dashboard" subtitle="Manage companies, users, and system-wide settings" />
 
       <div className="grid gap-4 md:grid-cols-3">
         {cards.map((card) => {

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
@@ -37,7 +38,7 @@ export default function CommissionsPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Commissions</h2>
+      <PageHeader title="Commissions" subtitle="Track employee commissions from bookings and tickets" />
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" /></div>
         {statuses.map((s) => (<Button key={s} variant={status === s ? 'default' : 'outline'} size="sm" onClick={() => setStatus(s)}>{s}</Button>))}

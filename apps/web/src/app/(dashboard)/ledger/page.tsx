@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -30,7 +31,7 @@ export default function LedgerPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Ledger</h2>
+      <PageHeader title="Ledger" subtitle="View all financial ledger entries and transactions" />
       <div className="relative max-w-sm">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Search description..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />

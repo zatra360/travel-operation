@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -49,10 +50,11 @@ export default function PaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Payments</h2>
-        <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />New Payment</Button>
-      </div>
+      <PageHeader
+        title="Payments"
+        subtitle="Track received payments against invoices and bookings"
+        actions={<Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />New Payment</Button>}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search reference..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" /></div>
         <div className="flex flex-wrap gap-1">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,7 +59,7 @@ export default function PlatformProfilePage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">My Profile</h2>
+      <PageHeader title="Platform Profile" subtitle="Manage your platform administrator account" />
       <Card>
         <CardHeader>
           <div className="flex items-center gap-4">

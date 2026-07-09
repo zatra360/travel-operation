@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -102,11 +103,11 @@ export default function SettingsPage() {
     } catch (err: any) { toast.error(err.message || 'Failed to save'); }
   };
 
-  if (loading) return <div className="space-y-6"><h2 className="text-2xl font-bold">Settings</h2><p className="text-muted-foreground">Loading...</p></div>;
+  if (loading) return <div className="space-y-6"><PageHeader title="Settings" subtitle="Manage company settings, logo, and preferences" /><p className="text-muted-foreground">Loading...</p></div>;
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Settings</h2>
+      <PageHeader title="Settings" subtitle="Manage company settings, logo, and preferences" />
 
       <Card>
         <CardHeader className="flex flex-row items-start gap-4">

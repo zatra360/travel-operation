@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search } from 'lucide-react';
@@ -38,10 +39,11 @@ export default function ReceiptsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Receipts</h2>
-        <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />New Receipt</Button>
-      </div>
+      <PageHeader
+        title="Receipts"
+        subtitle="View payment receipts issued to clients"
+        actions={<Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />New Receipt</Button>}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search receipt number..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" /></div>
       </div>

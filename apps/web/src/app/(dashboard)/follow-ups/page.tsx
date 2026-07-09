@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Plus, CheckCircle2, Trash2 } from 'lucide-react';
@@ -69,13 +70,11 @@ export default function FollowUpsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Follow-ups</h2>
-        <Button size="sm" onClick={() => setFormOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Follow-up
-        </Button>
-      </div>
+      <PageHeader
+        title="Follow-ups"
+        subtitle="Schedule and track client follow-up activities"
+        actions={<Button size="sm" onClick={() => setFormOpen(true)}><Plus className="h-4 w-4 mr-2" />Add Follow-up</Button>}
+      />
 
       <div className="flex flex-wrap gap-1">
         <Button
