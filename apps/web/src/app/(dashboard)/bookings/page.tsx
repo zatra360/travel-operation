@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
@@ -61,12 +62,15 @@ export default function BookingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Bookings</h2>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />New Booking
-        </Button>
-      </div>
+      <PageHeader
+        title="Bookings"
+        subtitle="Track PNRs, issue tickets, and manage passenger bookings"
+        actions={
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" />New Booking
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]">

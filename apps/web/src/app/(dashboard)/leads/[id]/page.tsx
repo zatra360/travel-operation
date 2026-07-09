@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Pencil, UserCheck, Clock } from 'lucide-react';
+import { Pencil, UserCheck, Clock } from 'lucide-react';
+import { Breadcrumb, PageHeader } from '@/components/ui/page-header';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime } from '@/lib/utils';
@@ -102,31 +103,26 @@ export default function LeadDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/leads')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h2 className="text-2xl font-bold">{lead.fullName}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant={leadStatusVariant[lead.status] || 'secondary'}>{lead.status}</Badge>
-              <Badge variant={leadPriorityVariant[lead.priority] || 'secondary'}>{lead.priority}</Badge>
-              {lead.source && <Badge variant="outline">{lead.source}</Badge>}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {lead.status !== 'WON' && (
-            <Button variant="outline" size="sm" onClick={handleConvert}>
-              <UserCheck className="h-4 w-4 mr-2" />Convert to client
+      <Breadcrumb items={[
+        { label: 'Leads', href: '/leads' },
+        { label: lead.fullName },
+      ]} />
+      <PageHeader
+        title={lead.fullName}
+        subtitle={`${lead.status} · ${lead.priority}${lead.source ? ` · ${lead.source}` : ''}`}
+        actions={
+          <>
+            {lead.status !== 'WON' && (
+              <Button variant="outline" size="sm" onClick={handleConvert}>
+                <UserCheck className="h-4 w-4 mr-2" />Convert to client
+              </Button>
+            )}
+            <Button size="sm" onClick={() => setEditOpen(true)}>
+              <Pencil className="h-4 w-4 mr-2" />Edit
             </Button>
-          )}
-          <Button size="sm" onClick={() => setEditOpen(true)}>
-            <Pencil className="h-4 w-4 mr-2" />Edit
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">

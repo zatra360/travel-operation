@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Clock, CreditCard, FileText, XCircle } from 'lucide-react';
+import { Clock, CreditCard, FileText, XCircle } from 'lucide-react';
+import { Breadcrumb, PageHeader } from '@/components/ui/page-header';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime } from '@/lib/utils';
@@ -56,21 +57,19 @@ export default function InvoiceDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/invoices')}><ArrowLeft className="h-4 w-4" /></Button>
-          <div>
-            <h2 className="text-2xl font-bold">{invoice.invoiceNumber}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant={invoiceStatusVariant[invoice.status] || 'secondary'}>{invoice.status}</Badge>
-              <span className="text-xs text-muted-foreground">{invoice.currencyCode}</span>
-            </div>
-          </div>
-        </div>
-        {invoice.status !== 'CANCELLED' && invoice.status !== 'PAID' && (
-          <Button size="sm" variant="outline" onClick={handleVoid}><XCircle className="h-4 w-4 mr-2" />Void</Button>
-        )}
-      </div>
+      <Breadcrumb items={[
+        { label: 'Invoices', href: '/invoices' },
+        { label: invoice.invoiceNumber },
+      ]} />
+      <PageHeader
+        title={invoice.invoiceNumber}
+        subtitle={`${invoice.status} · ${invoice.currencyCode}`}
+        actions={
+          invoice.status !== 'CANCELLED' && invoice.status !== 'PAID' ? (
+            <Button size="sm" variant="outline" onClick={handleVoid}><XCircle className="h-4 w-4 mr-2" />Void</Button>
+          ) : null
+        }
+      />
 
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
         <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Total</p><p className="text-xl font-bold">${Number(invoice.totalAmount).toFixed(2)}</p></CardContent></Card>

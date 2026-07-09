@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Send, CheckCircle, XCircle, Plane, CreditCard, Clock, History } from 'lucide-react';
+import { Send, CheckCircle, XCircle, Plane, CreditCard, Clock, History } from 'lucide-react';
+import { Breadcrumb, PageHeader } from '@/components/ui/page-header';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime } from '@/lib/utils';
@@ -54,25 +55,22 @@ export default function QuotationDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/quotations')}><ArrowLeft className="h-4 w-4" /></Button>
-          <div>
-            <h2 className="text-2xl font-bold">{q.quoteNumber}</h2>
-            <p className="text-sm text-muted-foreground">{q.title || 'No title'}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant={quotationStatusVariant[q.status] || 'secondary'}>{q.status}</Badge>
-              <span className="text-xs text-muted-foreground">{q.currencyCode}</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {q.status === 'DRAFT' && <Button size="sm" variant="outline" onClick={() => action('send')}><Send className="h-4 w-4 mr-2" />Send</Button>}
-          {q.status === 'SENT' && <><Button size="sm" variant="outline" onClick={() => action('accept')}><CheckCircle className="h-4 w-4 mr-2" />Accept</Button><Button size="sm" variant="outline" onClick={() => action('reject')}><XCircle className="h-4 w-4 mr-2" />Reject</Button></>}
-          {q.status === 'ACCEPTED' && <><Button size="sm" variant="outline" onClick={() => action('convert-to-booking')}><Plane className="h-4 w-4 mr-2" />Convert to Booking</Button><Button size="sm" variant="outline" onClick={() => action('convert-to-invoice')}><CreditCard className="h-4 w-4 mr-2" />Create Invoice</Button></>}
-          {(q.status === 'DRAFT' || q.status === 'SENT') && <Button size="sm" variant="outline" onClick={() => action('cancel')}><XCircle className="h-4 w-4 mr-2" />Cancel</Button>}
-        </div>
-      </div>
+      <Breadcrumb items={[
+        { label: 'Quotations', href: '/quotations' },
+        { label: q.quoteNumber },
+      ]} />
+      <PageHeader
+        title={q.quoteNumber}
+        subtitle={`${q.title || 'No title'} · ${q.status}`}
+        actions={
+          <>
+            {q.status === 'DRAFT' && <Button size="sm" variant="outline" onClick={() => action('send')}><Send className="h-4 w-4 mr-2" />Send</Button>}
+            {q.status === 'SENT' && <><Button size="sm" variant="outline" onClick={() => action('accept')}><CheckCircle className="h-4 w-4 mr-2" />Accept</Button><Button size="sm" variant="outline" onClick={() => action('reject')}><XCircle className="h-4 w-4 mr-2" />Reject</Button></>}
+            {q.status === 'ACCEPTED' && <><Button size="sm" variant="outline" onClick={() => action('convert-to-booking')}><Plane className="h-4 w-4 mr-2" />Convert to Booking</Button><Button size="sm" variant="outline" onClick={() => action('convert-to-invoice')}><CreditCard className="h-4 w-4 mr-2" />Create Invoice</Button></>}
+            {(q.status === 'DRAFT' || q.status === 'SENT') && <Button size="sm" variant="outline" onClick={() => action('cancel')}><XCircle className="h-4 w-4 mr-2" />Cancel</Button>}
+          </>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">

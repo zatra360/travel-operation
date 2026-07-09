@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
@@ -53,10 +54,13 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Invoices</h2>
-        <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />New Invoice</Button>
-      </div>
+      <PageHeader
+        title="Invoices"
+        subtitle="Track billing, payments, and outstanding amounts"
+        actions={
+          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />New Invoice</Button>
+        }
+      />
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Clock, UserCheck, Calendar, DollarSign, FileText, TrendingUp } from 'lucide-react';
+import { Clock, UserCheck, Calendar, DollarSign, FileText, TrendingUp } from 'lucide-react';
+import { Breadcrumb, PageHeader } from '@/components/ui/page-header';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime, formatDate } from '@/lib/utils';
@@ -53,19 +54,14 @@ export default function EmployeeDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/employees')}><ArrowLeft className="h-4 w-4" /></Button>
-          <div>
-            <h2 className="text-2xl font-bold">{emp.firstName} {emp.lastName}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline">{emp.employeeCode}</Badge>
-              <Badge variant={employeeStatusVariant[emp.status] || 'secondary'}>{emp.status}</Badge>
-              {emp.position && <span className="text-sm text-muted-foreground">{emp.position}</span>}
-            </div>
-          </div>
-        </div>
-      </div>
+      <Breadcrumb items={[
+        { label: 'Employees', href: '/employees' },
+        { label: `${emp.firstName} ${emp.lastName}` },
+      ]} />
+      <PageHeader
+        title={`${emp.firstName} ${emp.lastName}`}
+        subtitle={`${emp.position || 'No position'} · ${emp.employeeCode}`}
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

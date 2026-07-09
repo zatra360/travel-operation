@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Clock, Ticket, XCircle, RefreshCw } from 'lucide-react';
+import { Clock, Ticket, XCircle, RefreshCw } from 'lucide-react';
+import { Breadcrumb, PageHeader } from '@/components/ui/page-header';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime } from '@/lib/utils';
@@ -50,22 +51,20 @@ export default function TicketDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/tickets')}><ArrowLeft className="h-4 w-4" /></Button>
-          <div>
-            <h2 className="text-2xl font-bold">{ticket.ticketNumber}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant={ticketStatusVariant[ticket.status] || 'secondary'}>{ticket.status}</Badge>
-              {ticket.passengerName && <span className="text-sm text-muted-foreground">{ticket.passengerName}</span>}
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {ticket.status === 'PENDING' && <Button size="sm" variant="outline" onClick={() => action('issue')}><Ticket className="h-4 w-4 mr-2" />Issue</Button>}
-          {ticket.status === 'ISSUED' && <><Button size="sm" variant="outline" onClick={() => action('void')}><XCircle className="h-4 w-4 mr-2" />Void</Button><Button size="sm" variant="outline" onClick={() => action('refund')}><RefreshCw className="h-4 w-4 mr-2" />Refund</Button></>}
-        </div>
-      </div>
+      <Breadcrumb items={[
+        { label: 'Tickets', href: '/tickets' },
+        { label: ticket.ticketNumber },
+      ]} />
+      <PageHeader
+        title={ticket.ticketNumber}
+        subtitle={`${ticket.passengerName || 'Unknown passenger'} · ${ticket.status}`}
+        actions={
+          <>
+            {ticket.status === 'PENDING' && <Button size="sm" variant="outline" onClick={() => action('issue')}><Ticket className="h-4 w-4 mr-2" />Issue</Button>}
+            {ticket.status === 'ISSUED' && <><Button size="sm" variant="outline" onClick={() => action('void')}><XCircle className="h-4 w-4 mr-2" />Void</Button><Button size="sm" variant="outline" onClick={() => action('refund')}><RefreshCw className="h-4 w-4 mr-2" />Refund</Button></>}
+          </>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

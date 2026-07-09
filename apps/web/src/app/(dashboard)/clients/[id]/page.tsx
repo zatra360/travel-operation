@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Pencil, Clock, FileText, Plane, CreditCard } from 'lucide-react';
+import { Pencil, Clock, FileText, Plane, CreditCard } from 'lucide-react';
+import { Breadcrumb, PageHeader } from '@/components/ui/page-header';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime } from '@/lib/utils';
@@ -59,24 +60,19 @@ export default function ClientDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/clients')}>
-            <ArrowLeft className="h-4 w-4" />
+      <Breadcrumb items={[
+        { label: 'Clients', href: '/clients' },
+        { label: client.displayName },
+      ]} />
+      <PageHeader
+        title={client.displayName}
+        subtitle={`${client.type}${client.isVip ? ' · VIP' : ''} · ${client.status}`}
+        actions={
+          <Button size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil className="h-4 w-4 mr-2" />Edit
           </Button>
-          <div>
-            <h2 className="text-2xl font-bold">{client.displayName}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="secondary">{client.type}</Badge>
-              <Badge variant={clientStatusVariant[client.status] || 'secondary'}>{client.status}</Badge>
-              {client.isVip && <Badge variant="default">VIP</Badge>}
-            </div>
-          </div>
-        </div>
-        <Button size="sm" onClick={() => setEditOpen(true)}>
-          <Pencil className="h-4 w-4 mr-2" />Edit
-        </Button>
-      </div>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

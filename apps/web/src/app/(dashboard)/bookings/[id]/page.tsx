@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Pencil, FileText, Ticket, Clock, UserPlus, Plane } from 'lucide-react';
+import { FileText, Ticket, Clock, UserPlus, Plane } from 'lucide-react';
+import { Breadcrumb, PageHeader } from '@/components/ui/page-header';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime } from '@/lib/utils';
@@ -107,30 +108,26 @@ export default function BookingDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/bookings')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h2 className="text-2xl font-bold">{booking.bookingRef}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant={bookingStatusVariant[booking.status] || 'secondary'}>{booking.status}</Badge>
-              {booking.pnrLocator && <Badge variant="outline">PNR: {booking.pnrLocator}</Badge>}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {booking.status !== 'TICKETED' && (
-            <Button variant="outline" size="sm" onClick={handleIssueTicket}>
-              <Ticket className="h-4 w-4 mr-2" />Issue Ticket
+      <Breadcrumb items={[
+        { label: 'Bookings', href: '/bookings' },
+        { label: booking.bookingRef },
+      ]} />
+      <PageHeader
+        title={booking.bookingRef}
+        subtitle={`PNR: ${booking.pnrLocator || '--'} · ${booking.status}`}
+        actions={
+          <>
+            {booking.status !== 'TICKETED' && (
+              <Button variant="outline" size="sm" onClick={handleIssueTicket}>
+                <Ticket className="h-4 w-4 mr-2" />Issue Ticket
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleCreateInvoice}>
+              <FileText className="h-4 w-4 mr-2" />Create Invoice
             </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={handleCreateInvoice}>
-            <FileText className="h-4 w-4 mr-2" />Create Invoice
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
