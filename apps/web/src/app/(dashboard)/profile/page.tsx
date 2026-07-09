@@ -11,6 +11,8 @@ import { User, Mail, Phone, Calendar, KeyRound, Save } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface Profile { id: string; email: string; firstName: string; lastName: string; phone?: string | null; avatar?: string | null; lastLoginAt?: string | null; createdAt: string; updatedAt: string; }
 
@@ -55,7 +57,7 @@ export default function ProfilePage() {
     finally { setSaving(false); }
   };
 
-  if (loading) return <div className="space-y-6"><h2 className="text-2xl font-bold">My Profile</h2><p className="text-muted-foreground">Loading...</p></div>;
+  if (loading) return <div className="space-y-6"><PageHeader title="My Profile" /><Skeleton className="h-32 w-full" /></div>;
 
   const initials = `${profile?.firstName?.charAt(0) || ''}${profile?.lastName?.charAt(0) || ''}`;
 

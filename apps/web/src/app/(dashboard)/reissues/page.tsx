@@ -10,6 +10,7 @@ import { Search } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime } from '@/lib/utils';
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 
 export default function ReissuesPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -45,7 +46,7 @@ export default function ReissuesPage() {
         <Button variant={status === '' ? 'default' : 'outline'} size="sm" onClick={() => setStatus('')}>All</Button>
       </div>
       <Card><CardContent className="pt-6">
-        {loading ? <p className="text-muted-foreground">Loading...</p> :
+        {loading ? <TableSkeleton /> :
          error ? <p className="text-sm text-destructive">{error}</p> :
          items.length === 0 ? <p className="text-muted-foreground">No reissues found. Reissue requests appear here when ticket changes are needed.</p> : (
           <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3">Reissue #</th><th className="pb-3">Fare Diff</th><th className="pb-3">Service Charge</th><th className="pb-3">Total</th><th className="pb-3">Status</th><th className="pb-3">Created</th></tr></thead><tbody>

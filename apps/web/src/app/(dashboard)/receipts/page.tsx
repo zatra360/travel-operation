@@ -10,6 +10,7 @@ import { Plus, Search } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 import { Receipt, Paginated } from '@/lib/crm';
 import { ReceiptFormDialog } from './receipt-form-dialog';
 
@@ -50,7 +51,7 @@ export default function ReceiptsPage() {
       <Card>
         <CardHeader><CardTitle>All Receipts</CardTitle></CardHeader>
         <CardContent>
-          {loading ? <p className="text-muted-foreground">Loading receipts...</p>
+          {loading ? <TableSkeleton />
           : error ? <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           : items.length === 0 ? <div className="py-10 text-center"><p className="text-muted-foreground">No receipts found.</p><Button size="sm" variant="outline" className="mt-3" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Create your first receipt</Button></div>
           : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3 font-medium">Receipt #</th><th className="pb-3 font-medium">Amount</th><th className="pb-3 font-medium">Method</th><th className="pb-3 font-medium">Reference</th><th className="pb-3 font-medium">Received</th><th className="pb-3 font-medium">Created</th><th className="pb-3 font-medium text-right">Actions</th></tr></thead>

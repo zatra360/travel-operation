@@ -9,6 +9,7 @@ import { Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 
 interface Branch {
   id: string;
@@ -34,7 +35,7 @@ export default function BranchesPage() {
       .finally(() => setLoading(false));
   }, [activeTenant]);
 
-  if (loading) return <p className="text-muted-foreground">Loading branches...</p>;
+  if (loading) return <TableSkeleton />;
 
   return (
     <div className="space-y-6">

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Building2, Palette, Bell, Shield, Save, UploadCloud, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
@@ -103,7 +104,7 @@ export default function SettingsPage() {
     } catch (err: any) { toast.error(err.message || 'Failed to save'); }
   };
 
-  if (loading) return <div className="space-y-6"><PageHeader title="Settings" subtitle="Manage company settings, logo, and preferences" /><p className="text-muted-foreground">Loading...</p></div>;
+  if (loading) return <div className="space-y-6"><PageHeader title="Settings" subtitle="Manage company settings, logo, and preferences" /><Skeleton className="h-48 w-full" /></div>;
 
   return (
     <div className="space-y-6">

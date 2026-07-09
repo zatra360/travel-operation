@@ -10,6 +10,7 @@ import { Search } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime } from '@/lib/utils';
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 
 export default function CancellationsPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -45,7 +46,7 @@ export default function CancellationsPage() {
         <Button variant={status === '' ? 'default' : 'outline'} size="sm" onClick={() => setStatus('')}>All</Button>
       </div>
       <Card><CardContent className="pt-6">
-        {loading ? <p className="text-muted-foreground">Loading...</p> :
+        {loading ? <TableSkeleton /> :
          error ? <p className="text-sm text-destructive">{error}</p> :
          items.length === 0 ? <p className="text-muted-foreground">No cancellations found. Cancellation requests appear here when bookings need to be cancelled.</p> : (
           <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3">Cancel #</th><th className="pb-3">Charge</th><th className="pb-3">Refundable</th><th className="pb-3">Reason</th><th className="pb-3">Status</th><th className="pb-3">Created</th></tr></thead><tbody>

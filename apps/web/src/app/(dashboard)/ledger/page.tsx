@@ -8,6 +8,7 @@ import { Search } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 import { LedgerEntry, Paginated } from '@/lib/crm';
 
 export default function LedgerPage() {
@@ -37,7 +38,7 @@ export default function LedgerPage() {
         <Input placeholder="Search description..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
       </div>
       <Card><CardHeader><CardTitle>General Ledger</CardTitle></CardHeader><CardContent>
-        {loading ? <p className="text-muted-foreground">Loading...</p>
+        {loading ? <TableSkeleton />
         : error ? <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
         : items.length === 0 ? <p className="text-muted-foreground">No ledger entries found. Financial transactions automatically create ledger entries.</p>
         : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3 font-medium">Date</th><th className="pb-3 font-medium">Direction</th><th className="pb-3 font-medium">Amount</th><th className="pb-3 font-medium">Ref Type</th><th className="pb-3 font-medium">Description</th></tr></thead>

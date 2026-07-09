@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Calendar, KeyRound, Save } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Profile { id: string; email: string; firstName: string; lastName: string; phone?: string | null; lastLoginAt?: string | null; createdAt: string; updatedAt: string; isPlatformSuperAdmin: boolean; }
 
@@ -53,7 +54,7 @@ export default function PlatformProfilePage() {
     finally { setSaving(false); }
   };
 
-  if (loading) return <div className="space-y-6"><h2 className="text-2xl font-bold">My Profile</h2><p className="text-muted-foreground">Loading...</p></div>;
+  if (loading) return <div className="space-y-6"><PageHeader title="Platform Profile" /><Skeleton className="h-32 w-full" /></div>;
 
   const initials = `${profile?.firstName?.charAt(0) || ''}${profile?.lastName?.charAt(0) || ''}`;
 

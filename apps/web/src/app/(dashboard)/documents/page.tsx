@@ -12,6 +12,7 @@ import { Plus, Search, Download, Trash2, FileText } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 import {
   DocumentItem,
   Paginated,
@@ -120,7 +121,7 @@ export default function DocumentsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Loading documents...</p>
+            <TableSkeleton />
           ) : error ? (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           ) : items.length === 0 ? (

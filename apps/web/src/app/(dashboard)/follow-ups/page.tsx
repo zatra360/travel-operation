@@ -11,6 +11,7 @@ import { Plus, CheckCircle2, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime } from '@/lib/utils';
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 import { FollowUp, Paginated, FOLLOWUP_STATUSES, followUpStatusVariant } from '@/lib/crm';
 import { FollowUpFormDialog } from './follow-up-form-dialog';
 
@@ -102,7 +103,7 @@ export default function FollowUpsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Loading follow-ups...</p>
+            <TableSkeleton />
           ) : error ? (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           ) : items.length === 0 ? (

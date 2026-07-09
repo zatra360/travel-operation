@@ -13,6 +13,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 
 interface User {
   id: string; email: string; firstName: string; lastName: string;
@@ -69,7 +70,7 @@ export default function PlatformUsersPage() {
       <div className="relative max-w-sm"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search users..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
 
       <Card><CardHeader><CardTitle>All Platform Users ({filtered.length})</CardTitle></CardHeader><CardContent>
-        {loading ? <p className="text-muted-foreground">Loading...</p> : filtered.length === 0 ? <div className="py-10 text-center"><p className="text-muted-foreground">No users found.</p><Button size="sm" variant="outline" className="mt-3" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Create first user</Button></div> : (
+        {loading ? <TableSkeleton /> : filtered.length === 0 ? <div className="py-10 text-center"><p className="text-muted-foreground">No users found.</p><Button size="sm" variant="outline" className="mt-3" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Create first user</Button></div> : (
           <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead><tr className="border-b text-left"><th className="pb-3 font-medium">User</th><th className="pb-3 font-medium">Email</th><th className="pb-3 font-medium">Role</th><th className="pb-3 font-medium">Status</th><th className="pb-3 font-medium">Last Login</th><th className="pb-3 font-medium text-right">Actions</th></tr></thead>
             <tbody>{filtered.map((u) => (

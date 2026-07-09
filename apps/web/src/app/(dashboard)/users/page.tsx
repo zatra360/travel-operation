@@ -15,6 +15,7 @@ import { Plus, Search, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 
 interface TenantUser {
   id: string; email: string; firstName: string; lastName: string;
@@ -96,7 +97,7 @@ export default function UsersPage() {
       <Card>
         <CardHeader><CardTitle>Users ({filtered.length})</CardTitle></CardHeader>
         <CardContent>
-          {loading ? <p className="text-muted-foreground">Loading...</p> : filtered.length === 0 ? (
+          {loading ? <TableSkeleton /> : filtered.length === 0 ? (
             <div className="py-10 text-center"><p className="text-muted-foreground">No users found.</p><Button size="sm" variant="outline" className="mt-3" onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />Add your first user</Button></div>
           ) : (
             <div className="overflow-x-auto">

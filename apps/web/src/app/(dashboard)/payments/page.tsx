@@ -12,6 +12,7 @@ import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 import { Payment, Paginated, PAYMENT_STATUSES, paymentStatusVariant } from '@/lib/crm';
 import { PaymentFormDialog } from './payment-form-dialog';
 
@@ -65,7 +66,7 @@ export default function PaymentsPage() {
       <Card>
         <CardHeader><CardTitle>All Payments</CardTitle></CardHeader>
         <CardContent>
-          {loading ? <p className="text-muted-foreground">Loading payments...</p>
+          {loading ? <TableSkeleton />
           : error ? <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           : items.length === 0 ? <div className="py-10 text-center"><p className="text-muted-foreground">No payments found.</p><Button size="sm" variant="outline" className="mt-3" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Record a payment</Button></div>
           : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3 font-medium">Method</th><th className="pb-3 font-medium">Amount</th><th className="pb-3 font-medium">Status</th><th className="pb-3 font-medium">Reference</th><th className="pb-3 font-medium">Received</th><th className="pb-3 font-medium">Created</th><th className="pb-3 font-medium text-right">Actions</th></tr></thead>

@@ -10,6 +10,7 @@ import { Search } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime } from '@/lib/utils';
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 
 export default function CommissionsPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -45,7 +46,7 @@ export default function CommissionsPage() {
         <Button variant={status === '' ? 'default' : 'outline'} size="sm" onClick={() => setStatus('')}>All</Button>
       </div>
       <Card><CardContent className="pt-6">
-        {loading ? <p className="text-muted-foreground">Loading...</p> :
+        {loading ? <TableSkeleton /> :
          error ? <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div> :
          items.length === 0 ? <p className="text-muted-foreground">No commissions found. Commissions are generated from bookings and tickets.</p> : (
           <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3">Employee</th><th className="pb-3">Type</th><th className="pb-3">Amount</th><th className="pb-3">Status</th><th className="pb-3">Created</th></tr></thead><tbody>

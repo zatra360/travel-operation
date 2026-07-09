@@ -13,6 +13,7 @@ import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 import { Ticket, Paginated, TICKET_STATUSES, ticketStatusVariant } from '@/lib/crm';
 import { TicketFormDialog } from './ticket-form-dialog';
 
@@ -84,7 +85,7 @@ export default function TicketsPage() {
         <CardHeader><CardTitle>All Tickets</CardTitle></CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Loading tickets...</p>
+            <TableSkeleton />
           ) : error ? (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           ) : items.length === 0 ? (
