@@ -245,6 +245,8 @@ model User {
   status       UserStatus @default(ACTIVE)
   isPlatformSuperAdmin Boolean @default(false)
   lastLoginAt  DateTime?
+  failedLoginAttempts Int    @default(0)
+  lockedUntil  DateTime?
   metadata     Json?      @default("{}")
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
@@ -732,7 +734,7 @@ model Lead {
   // Sales pipeline
   leadScore             Int?
   conversionProbability Int?
-  potentialRevenue      Decimal  @default(0)
+  potentialRevenue      Decimal @db.Decimal(19, 4)  @default(0)
   urgencyLevel          String?
   firstResponseAt       DateTime?
   lastContactAt         DateTime?
@@ -745,7 +747,7 @@ model Lead {
   quoteCount           Int      @default(0)
   lastQuoteId          String?
   lastQuoteStatus      String?
-  lastQuoteAmount      Decimal  @default(0)
+  lastQuoteAmount      Decimal @db.Decimal(19, 4)  @default(0)
   selectedQuoteOption  String?
   quoteRevisionCount   Int      @default(0)
 
@@ -765,14 +767,14 @@ model Lead {
   escalationStatus  String?
 
   // Financial intelligence
-  approxBudget          Decimal  @default(0)
-  budgetMin             Decimal  @default(0)
-  budgetMax             Decimal  @default(0)
+  approxBudget          Decimal @db.Decimal(19, 4)  @default(0)
+  budgetMin             Decimal @db.Decimal(19, 4)  @default(0)
+  budgetMax             Decimal @db.Decimal(19, 4)  @default(0)
   currencyCode          String?
   paymentPreference     String?
   financingRequirement  String?
-  estimatedProfit       Decimal  @default(0)
-  estimatedCommission   Decimal  @default(0)
+  estimatedProfit       Decimal @db.Decimal(19, 4)  @default(0)
+  estimatedCommission   Decimal @db.Decimal(19, 4)  @default(0)
   vipPotential          Boolean  @default(false)
   repeatCustomerPotential Boolean @default(false)
 
@@ -875,10 +877,10 @@ model Client {
   // Finance/Intelligence
   currencyCode       String   @default("USD")
   riskScore          Int?
-  creditLimit        Decimal  @default(0)
+  creditLimit        Decimal @db.Decimal(19, 4)  @default(0)
   b2bCreditStatus    String?
-  outstandingBalance Decimal  @default(0)
-  refundAmountTotal  Decimal  @default(0)
+  outstandingBalance Decimal @db.Decimal(19, 4)  @default(0)
+  refundAmountTotal  Decimal @db.Decimal(19, 4)  @default(0)
   overdueInvoices    Int      @default(0)
   visaHistoryCount   Int      @default(0)
   cancellationCount  Int      @default(0)
@@ -1038,10 +1040,10 @@ model Quotation {
   currencyCode    String   @default("USD")
 
   // Computed totals (fed from line items)
-  subtotal        Decimal  @default(0)
-  taxTotal        Decimal  @default(0)
-  discountTotal   Decimal  @default(0)
-  grandTotal      Decimal  @default(0)
+  subtotal        Decimal @db.Decimal(19, 4)  @default(0)
+  taxTotal        Decimal @db.Decimal(19, 4)  @default(0)
+  discountTotal   Decimal @db.Decimal(19, 4)  @default(0)
+  grandTotal      Decimal @db.Decimal(19, 4)  @default(0)
 
   validUntil      DateTime?
   notes           String?
@@ -1104,8 +1106,10 @@ model QuotationLineItem {
   title       String?
   description String?
   quantity    Int      @default(1)
-  unitPrice   Decimal  @default(0)
-  lineTotal   Decimal  @default(0)
+  unitPrice   Decimal @db.Decimal(19, 4)  @default(0)
+  taxAmount   Decimal @db.Decimal(19, 4)  @default(0)
+  discountAmount Decimal @db.Decimal(19, 4) @default(0)
+  lineTotal   Decimal @db.Decimal(19, 4)  @default(0)
   airlineId   String?
   originAirportId String?
   destAirportId   String?
@@ -1113,6 +1117,7 @@ model QuotationLineItem {
   metadata    Json?    @default("{}")
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
 
@@ -1242,12 +1247,15 @@ model Invoice {
   bookingId     String?
   quotationId   String?
   currencyCode  String   @default("USD")
-  subtotal      Decimal  @default(0)
-  taxAmount     Decimal  @default(0)
-  discountAmount Decimal @default(0)
-  totalAmount   Decimal  @default(0)
-  paidAmount    Decimal  @default(0)
-  dueAmount     Decimal  @default(0)
+  exchangeRate   Decimal @db.Decimal(19, 4)  @default(1)
+  baseCurrencyCode String @default("USD")
+  baseAmount     Decimal @db.Decimal(19, 4)  @default(0)
+  subtotal      Decimal @db.Decimal(19, 4)  @default(0)
+  taxAmount     Decimal @db.Decimal(19, 4)  @default(0)
+  discountAmount Decimal @db.Decimal(19, 4) @default(0)
+  totalAmount   Decimal @db.Decimal(19, 4)  @default(0)
+  paidAmount    Decimal @db.Decimal(19, 4)  @default(0)
+  dueAmount     Decimal @db.Decimal(19, 4)  @default(0)
   status        String   @default("DRAFT")
   issuedAt      DateTime?
   dueAt         DateTime?
@@ -1281,7 +1289,7 @@ model Receipt {
   invoiceId   String?
   paymentId   String?
   paymentMethod String?
-  amount      Decimal  @default(0)
+  amount      Decimal @db.Decimal(19, 4)  @default(0)
   currencyCode String  @default("USD")
   reference   String?
   notes       String?
@@ -1306,8 +1314,11 @@ model Payment {
   bookingId      String?
   invoiceId      String?
   clientId       String?
-  amount         Decimal  @default(0)
+  amount         Decimal @db.Decimal(19, 4)  @default(0)
   currencyCode   String   @default("USD")
+  exchangeRate   Decimal @db.Decimal(19, 4)  @default(1)
+  baseCurrencyCode String @default("USD")
+  baseAmount     Decimal @db.Decimal(19, 4)  @default(0)
   paymentMethod  String?
   status         String   @default("PENDING")
   reference      String?
@@ -1329,7 +1340,7 @@ model Payment {
   @@index([tenantId])
   @@index([bookingId])
   @@index([invoiceId])
-  @@index([idempotencyKey])
+  @@unique([tenantId, idempotencyKey])
 }
 
 model Expense {
@@ -1340,7 +1351,7 @@ model Expense {
   category      String?
   vendorName    String?
   currencyCode  String   @default("USD")
-  amount        Decimal  @default(0)
+  amount        Decimal @db.Decimal(19, 4)  @default(0)
   status        String   @default("PENDING")
   description   String?
   expenseDate   DateTime?
@@ -1367,7 +1378,10 @@ model LedgerEntry {
   referenceId String?
   direction   String
   currencyCode String  @default("USD")
-  amount      Decimal  @default(0)
+  amount      Decimal @db.Decimal(19, 4)  @default(0)
+  exchangeRate Decimal @db.Decimal(19, 4)  @default(1)
+  baseCurrencyCode String @default("USD")
+  baseAmount  Decimal @db.Decimal(19, 4)  @default(0)
   description String?
   createdById String?
   createdAt   DateTime @default(now())
@@ -1566,8 +1580,8 @@ model InvoiceLine {
   serviceType String?
   description String?
   quantity    Int      @default(1)
-  unitPrice   Decimal  @default(0)
-  lineTotal   Decimal  @default(0)
+  unitPrice   Decimal @db.Decimal(19, 4)  @default(0)
+  lineTotal   Decimal @db.Decimal(19, 4)  @default(0)
   metadata    Json?    @default("{}")
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
@@ -1608,8 +1622,8 @@ model RefundRequest {
   invoiceId       String?
   clientId        String?
   refundNumber    String
-  requestedAmount Decimal  @default(0)
-  approvedAmount  Decimal?
+  requestedAmount Decimal @db.Decimal(19, 4)  @default(0)
+  approvedAmount  Decimal? @db.Decimal(19, 4)
   status          String   @default("REQUESTED")
   reason          String?
   notes           String?
@@ -1650,9 +1664,9 @@ model ReissueRequest {
   newTicketId     String?
   clientId        String?
   reissueNumber   String
-  fareDifference  Decimal  @default(0)
-  serviceCharge   Decimal  @default(0)
-  totalCharge     Decimal  @default(0)
+  fareDifference  Decimal @db.Decimal(19, 4)  @default(0)
+  serviceCharge   Decimal @db.Decimal(19, 4)  @default(0)
+  totalCharge     Decimal @db.Decimal(19, 4)  @default(0)
   status          String   @default("REQUESTED")
   reason          String?
   notes           String?
@@ -1691,8 +1705,8 @@ model CancellationRequest {
   ticketId          String?
   clientId          String?
   cancellationNumber String
-  cancellationCharge Decimal  @default(0)
-  refundableAmount  Decimal  @default(0)
+  cancellationCharge Decimal @db.Decimal(19, 4)  @default(0)
+  refundableAmount  Decimal @db.Decimal(19, 4)  @default(0)
   status            String   @default("REQUESTED")
   reason            String?
   notes             String?
@@ -1728,7 +1742,7 @@ model SalaryProfile {
   id           String   @id @default(cuid())
   tenantId     String
   employeeId   String
-  baseSalary   Decimal  @default(0)
+  baseSalary   Decimal @db.Decimal(19, 4)  @default(0)
   currencyCode String   @default("USD")
   effectiveFrom DateTime
   effectiveTo   DateTime?
@@ -1756,9 +1770,9 @@ model SalaryRun {
   periodEnd    DateTime
   status       String   @default("DRAFT")
   currencyCode String   @default("USD")
-  totalGross   Decimal  @default(0)
-  totalDeductions Decimal @default(0)
-  totalNet     Decimal  @default(0)
+  totalGross   Decimal @db.Decimal(19, 4)  @default(0)
+  totalDeductions Decimal @db.Decimal(19, 4) @default(0)
+  totalNet     Decimal @db.Decimal(19, 4)  @default(0)
   notes        String?
   createdById  String?
   approvedById String?
@@ -1783,14 +1797,14 @@ model SalarySlip {
   tenantId      String
   salaryRunId   String
   employeeId    String
-  basePay       Decimal  @default(0)
-  allowances    Decimal  @default(0)
-  commissionEarned Decimal @default(0)
-  incentiveEarned  Decimal @default(0)
-  overtimePay   Decimal  @default(0)
-  grossPay      Decimal  @default(0)
-  deductions    Decimal  @default(0)
-  netPay        Decimal  @default(0)
+  basePay       Decimal @db.Decimal(19, 4)  @default(0)
+  allowances    Decimal @db.Decimal(19, 4)  @default(0)
+  commissionEarned Decimal @db.Decimal(19, 4) @default(0)
+  incentiveEarned  Decimal @db.Decimal(19, 4) @default(0)
+  overtimePay   Decimal @db.Decimal(19, 4)  @default(0)
+  grossPay      Decimal @db.Decimal(19, 4)  @default(0)
+  deductions    Decimal @db.Decimal(19, 4)  @default(0)
+  netPay        Decimal @db.Decimal(19, 4)  @default(0)
   currencyCode  String   @default("USD")
   notes         String?
   createdAt     DateTime @default(now())
@@ -1812,7 +1826,7 @@ model Commission {
   employeeId      String
   sourceType      String
   sourceId        String?
-  amount          Decimal  @default(0)
+  amount          Decimal @db.Decimal(19, 4)  @default(0)
   currencyCode    String   @default("USD")
   status          String   @default("PENDING")
   calculationBasis String?
@@ -1841,7 +1855,7 @@ model Incentive {
   branchId      String?
   employeeId    String
   incentiveType String
-  amount        Decimal  @default(0)
+  amount        Decimal @db.Decimal(19, 4)  @default(0)
   currencyCode  String   @default("USD")
   period        String?
   status        String   @default("PENDING")

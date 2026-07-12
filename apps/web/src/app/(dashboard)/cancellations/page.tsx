@@ -1,59 +1,145 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { TableToolbar } from '@/components/ui/table-toolbar';
+import { Pagination } from '@/components/ui/pagination';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { Money } from '@/components/travel/money';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
-import { formatDateTime } from '@/lib/utils';
-import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
+import { formatDate } from '@/lib/utils';
+
+const ALL = '__all__';
+const PAGE_SIZE = 25;
+const STATUSES = ['REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'PROCESSED'];
+
+interface CancelRow {
+  id: string;
+  cancellationNumber?: string;
+  cancellationCharge?: number | string;
+  refundableAmount?: number | string;
+  currencyCode?: string;
+  reason?: string;
+  status: string;
+  createdAt: string;
+}
 
 export default function CancellationsPage() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<CancelRow[]>([]);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
-  const { activeTenant } = useAuthStore();
+  const [page, setPage] = useState(1);
+  const { activeTenant, activeBranch } = useAuthStore();
 
   const load = useCallback(() => {
     if (!activeTenant) return;
-    setLoading(true); setError('');
+    setLoading(true);
+    setError('');
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (status) params.set('status', status);
-    api.get<any>(`/api/v1/tenant/cancellations?${params.toString()}`, { tenantId: activeTenant.id })
-      .then((res) => setItems(res.data || []))
+    params.set('page', String(page));
+    params.set('limit', String(PAGE_SIZE));
+    api
+      .get<{ data: CancelRow[]; page: number; totalPages: number; total: number }>(
+        `/api/v1/tenant/cancellations?${params.toString()}`,
+        { tenantId: activeTenant.id, branchId: activeBranch?.id },
+      )
+      .then((res) => {
+        setItems(res.data || []);
+        setMeta({ page: res.page ?? 1, totalPages: res.totalPages ?? 1, total: res.total ?? 0 });
+      })
       .catch((err) => setError(err.message || 'Failed'))
       .finally(() => setLoading(false));
-  }, [activeTenant, search, status]);
+  }, [activeTenant, activeBranch, search, status, page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  useEffect(() => {
+    setPage(1);
+  }, [search, status]);
 
-  const statuses = ['REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'PROCESSED'];
-  const variant = (s: string) => s === 'APPROVED' ? 'success' : s === 'PROCESSED' ? 'default' : s === 'REJECTED' ? 'destructive' : 'secondary';
+  const columns: DataTableColumn<CancelRow>[] = [
+    { key: 'number', header: 'Cancel #', cell: (c) => <span className="font-medium">{c.cancellationNumber || c.id}</span> },
+    { key: 'charge', header: 'Charge', align: 'right', cell: (c) => <Money amount={c.cancellationCharge} currency={c.currencyCode || 'USD'} /> },
+    { key: 'refundable', header: 'Refundable', align: 'right', hideOnMobile: true, cell: (c) => <Money amount={c.refundableAmount} currency={c.currencyCode || 'USD'} /> },
+    { key: 'reason', header: 'Reason', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{c.reason || '—'}</span> },
+    { key: 'status', header: 'Status', cell: (c) => <StatusBadge status={c.status} /> },
+    { key: 'created', header: 'Created', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{formatDate(c.createdAt)}</span> },
+  ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader title="Cancellations" subtitle="Process booking and ticket cancellation requests" />
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" /></div>
-        {statuses.map((s) => (<Button key={s} variant={status === s ? 'default' : 'outline'} size="sm" onClick={() => setStatus(s)}>{s}</Button>))}
-        <Button variant={status === '' ? 'default' : 'outline'} size="sm" onClick={() => setStatus('')}>All</Button>
-      </div>
-      <Card><CardContent className="pt-6">
-        {loading ? <TableSkeleton /> :
-         error ? <p className="text-sm text-destructive">{error}</p> :
-         items.length === 0 ? <p className="text-muted-foreground">No cancellations found. Cancellation requests appear here when bookings need to be cancelled.</p> : (
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3">Cancel #</th><th className="pb-3">Charge</th><th className="pb-3">Refundable</th><th className="pb-3">Reason</th><th className="pb-3">Status</th><th className="pb-3">Created</th></tr></thead><tbody>
-            {items.map((c) => (<tr key={c.id} className="border-b last:border-0"><td className="py-3 font-medium">{c.cancellationNumber || c.id}</td><td className="py-3">${Number(c.cancellationCharge || 0).toFixed(2)}</td><td className="py-3">${Number(c.refundableAmount || 0).toFixed(2)}</td><td className="py-3 text-muted-foreground">{c.reason || '--'}</td><td className="py-3"><Badge variant={variant(c.status)}>{c.status}</Badge></td><td className="py-3 text-muted-foreground">{formatDateTime(c.createdAt)}</td></tr>))}
-          </tbody></table></div>
-        )}
-      </CardContent></Card>
+
+      <TableToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search cancel # or reason…"
+        hasActiveFilters={search !== '' || status !== ''}
+        onReset={() => {
+          setSearch('');
+          setStatus('');
+        }}
+        filters={
+          <Select value={status || ALL} onValueChange={(v) => setStatus(v === ALL ? '' : v)}>
+            <SelectTrigger className="h-9 w-44" aria-label="Filter by status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All statuses</SelectItem>
+              {STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+
+      {error ? (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            data={items}
+            rowKey={(c) => c.id}
+            loading={loading}
+            emptyTitle="No cancellations found"
+            emptyDescription="Cancellation requests appear here when bookings need to be cancelled."
+            mobileCard={(c) => (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">{c.cancellationNumber || c.id}</span>
+                  <StatusBadge status={c.status} />
+                </div>
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span className="text-muted-foreground">Charge</span>
+                  <Money amount={c.cancellationCharge} currency={c.currencyCode || 'USD'} />
+                </div>
+              </div>
+            )}
+          />
+          {!loading && items.length > 0 && (
+            <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total} limit={PAGE_SIZE} onPageChange={setPage} />
+          )}
+        </>
+      )}
     </div>
   );
 }

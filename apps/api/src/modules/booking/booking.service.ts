@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { RelationshipValidationService } from '../../common/services/relationship-validation.service';
@@ -65,7 +66,7 @@ export class BookingService {
     return booking;
   }
 
-  async findAll(tenantId: string, query: QueryBookingDto) {
+  async findAll(tenantId: string, query: QueryBookingDto, activeBranchId?: string) {
     const page = query.page ?? 1; const limit = query.limit ?? 50; const skip = (page - 1) * limit;
     const where: any = { tenantId, deletedAt: null };
     if (query.status) where.status = query.status;
@@ -78,6 +79,7 @@ export class BookingService {
         { pnrLocator: { contains: query.search, mode: 'insensitive' } },
       ];
     }
+    enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
       this.prisma.booking.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
       this.prisma.booking.count({ where }),

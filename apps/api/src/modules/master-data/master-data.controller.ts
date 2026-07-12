@@ -4,6 +4,7 @@ import { MasterDataService } from './master-data.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { TenantCtx } from '../../common/decorators/tenant-context.decorator';
 import { TenantContext } from '../../common/interceptors/tenant-context.interceptor';
@@ -23,7 +24,7 @@ export class MasterDataReferenceController {
 }
 
 @ApiTags('Platform - Master Data') @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PlatformAdminGuard, PermissionsGuard)
 @Controller('platform/master-data')
 export class PlatformMasterDataController {
   constructor(private readonly service: MasterDataService) {}

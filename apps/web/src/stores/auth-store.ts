@@ -30,10 +30,14 @@ interface AuthState {
   activeTenant: TenantInfo | null;
   activeBranch: BranchInfo | null;
   isAuthenticated: boolean;
+  /** Effective permissions for the active tenant (only set after login or explicit fetch). */
+  permissions: string[];
+  isPlatformSuperAdmin: boolean;
 
   setAuth: (user: User, token: string, tenants: TenantInfo[]) => void;
   setActiveTenant: (tenant: TenantInfo) => void;
-  setActiveBranch: (branch: BranchInfo) => void;
+  setActiveBranch: (branch: BranchInfo | null) => void;
+  setPermissions: (permissions: string[], isPlatformSuperAdmin: boolean) => void;
   logout: () => void;
 }
 
@@ -46,6 +50,8 @@ export const useAuthStore = create<AuthState>()(
       activeTenant: null,
       activeBranch: null,
       isAuthenticated: false,
+      permissions: [],
+      isPlatformSuperAdmin: false,
 
       setAuth: (user, accessToken, tenants) => {
         localStorage.setItem('accessToken', accessToken);
@@ -55,12 +61,15 @@ export const useAuthStore = create<AuthState>()(
           tenants,
           isAuthenticated: true,
           activeTenant: tenants.length > 0 ? tenants[0] : null,
+          isPlatformSuperAdmin: user.isPlatformSuperAdmin,
         });
       },
 
-      setActiveTenant: (tenant) => set({ activeTenant: tenant, activeBranch: null }),
+      setActiveTenant: (tenant) => set({ activeTenant: tenant, activeBranch: null, permissions: [] }),
 
       setActiveBranch: (branch) => set({ activeBranch: branch }),
+
+      setPermissions: (permissions, isPlatformSuperAdmin) => set({ permissions, isPlatformSuperAdmin }),
 
       logout: () => {
         localStorage.removeItem('accessToken');
@@ -72,6 +81,8 @@ export const useAuthStore = create<AuthState>()(
           activeTenant: null,
           activeBranch: null,
           isAuthenticated: false,
+          permissions: [],
+          isPlatformSuperAdmin: false,
         });
         window.location.href = '/login';
       },
@@ -85,7 +96,19 @@ export const useAuthStore = create<AuthState>()(
         activeTenant: state.activeTenant,
         activeBranch: state.activeBranch,
         isAuthenticated: state.isAuthenticated,
+        permissions: state.permissions,
+        isPlatformSuperAdmin: state.isPlatformSuperAdmin,
       }),
     },
   ),
 );
+
+/**
+ * Convenience helper: check whether the current user holds a given permission.
+ * Reads from the store's persistent state so it is safe to call outside React.
+ */
+export function hasPermission(permission: string): boolean {
+  const { permissions, isPlatformSuperAdmin } = useAuthStore.getState();
+  if (isPlatformSuperAdmin || permissions.includes('*')) return true;
+  return permissions.includes(permission);
+}

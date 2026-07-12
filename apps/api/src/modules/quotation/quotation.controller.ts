@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { QuotationService } from './quotation.service';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
 import { QueryQuotationDto } from './dto/query-quotation.dto';
+import { CreateQuotationLineItemDto } from './dto/create-quotation-line-item.dto';
+import { UpdateQuotationLineItemDto } from './dto/update-quotation-line-item.dto';
 import { JwtAuthGuard, TenantGuard, PermissionsGuard, RequirePermissions, TenantCtx, TenantContext } from '../../common';
 
 @ApiTags('Tenant - Quotations')
@@ -24,19 +26,19 @@ export class QuotationController {
   @RequirePermissions('QUOTATION_READ')
   @ApiOperation({ summary: 'List quotations' })
   async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryQuotationDto) {
-    return this.quotationService.findAll(ctx.tenantId, query);
+    return this.quotationService.findAll(ctx.tenantId, query, ctx.branchId);
   }
 
   @Get(':id')
   @RequirePermissions('QUOTATION_READ')
-  @ApiOperation({ summary: 'Get quotation by ID' })
+  @ApiOperation({ summary: 'Get quotation by ID with details' })
   async findById(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
     return this.quotationService.findById(ctx.tenantId, id, true);
   }
 
   @Put(':id')
   @RequirePermissions('QUOTATION_UPDATE')
-  @ApiOperation({ summary: 'Update quotation' })
+  @ApiOperation({ summary: 'Update quotation metadata' })
   async update(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: UpdateQuotationDto) {
     return this.quotationService.update(ctx.tenantId, ctx.userId, id, dto);
   }
@@ -86,14 +88,32 @@ export class QuotationController {
   @Post(':id/line-items')
   @RequirePermissions('QUOTATION_UPDATE')
   @ApiOperation({ summary: 'Add line item to quotation' })
-  async addLineItem(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: any) {
+  async addLineItem(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: CreateQuotationLineItemDto) {
     return this.quotationService.addLineItem(ctx.tenantId, ctx.userId, id, dto);
+  }
+
+  @Put(':id/line-items/:lineItemId')
+  @RequirePermissions('QUOTATION_UPDATE')
+  @ApiOperation({ summary: 'Update quotation line item' })
+  @ApiParam({ name: 'id', description: 'Quotation ID' })
+  @ApiParam({ name: 'lineItemId', description: 'Line item ID' })
+  async updateLineItem(
+    @TenantCtx() ctx: TenantContext,
+    @Param('id') id: string,
+    @Param('lineItemId') lineItemId: string,
+    @Body() dto: UpdateQuotationLineItemDto,
+  ) {
+    return this.quotationService.updateLineItem(ctx.tenantId, ctx.userId, id, lineItemId, dto);
   }
 
   @Delete(':id/line-items/:lineItemId')
   @RequirePermissions('QUOTATION_UPDATE')
   @ApiOperation({ summary: 'Remove line item' })
-  async removeLineItem(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Param('lineItemId') lineItemId: string) {
+  async removeLineItem(
+    @TenantCtx() ctx: TenantContext,
+    @Param('id') id: string,
+    @Param('lineItemId') lineItemId: string,
+  ) {
     return this.quotationService.removeLineItem(ctx.tenantId, ctx.userId, id, lineItemId);
   }
 

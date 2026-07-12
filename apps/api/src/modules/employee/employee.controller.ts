@@ -17,7 +17,7 @@ import { TenantContext } from '../../common/interceptors/tenant-context.intercep
 export class EmployeeController {
   constructor(private readonly employeeService: EmployeeService) {}
   @Post() @RequirePermissions('EMPLOYEE_CREATE') @ApiOperation({ summary: 'Create employee' }) async create(@TenantCtx() ctx: TenantContext, @Body() dto: CreateEmployeeDto) { return this.employeeService.create(ctx.tenantId, ctx.userId, dto); }
-  @Get() @RequirePermissions('EMPLOYEE_READ') @ApiOperation({ summary: 'List employees' }) async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryEmployeeDto) { return this.employeeService.findAll(ctx.tenantId, query); }
+  @Get() @RequirePermissions('EMPLOYEE_READ') @ApiOperation({ summary: 'List employees' }) async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryEmployeeDto) { return this.employeeService.findAll(ctx.tenantId, query, ctx.branchId); }
   @Get(':id') @RequirePermissions('EMPLOYEE_READ') @ApiOperation({ summary: 'Get employee' }) async findById(@TenantCtx() ctx: TenantContext, @Param('id') id: string) { return this.employeeService.findById(ctx.tenantId, id); }
   @Put(':id') @RequirePermissions('EMPLOYEE_UPDATE') @ApiOperation({ summary: 'Update employee' }) async update(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: UpdateEmployeeDto) { return this.employeeService.update(ctx.tenantId, ctx.userId, id, dto); }
   @Delete(':id') @RequirePermissions('EMPLOYEE_DELETE') @ApiOperation({ summary: 'Soft delete employee' }) async remove(@TenantCtx() ctx: TenantContext, @Param('id') id: string) { return this.employeeService.remove(ctx.tenantId, ctx.userId, id); }

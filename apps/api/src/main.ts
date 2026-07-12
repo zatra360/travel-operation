@@ -30,13 +30,21 @@ async function bootstrap() {
     .addApiKey({ type: 'apiKey', name: 'X-Branch-Id', in: 'header' }, 'X-Branch-Id')
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/v1/docs', app, document);
+  // Swagger is exposed only outside production, unless explicitly enabled via
+  // ENABLE_SWAGGER=true (e.g. for a protected staging environment).
+  const isProduction = process.env.NODE_ENV === 'production';
+  const swaggerEnabled = !isProduction || process.env.ENABLE_SWAGGER === 'true';
+  if (swaggerEnabled) {
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/v1/docs', app, document);
+  }
 
   const port = process.env.PORT || 3900;
   await app.listen(port);
-  console.log(`🚀 Travel Operation API running on http://localhost:${port}`);
-  console.log(`📚 Swagger docs at http://localhost:${port}/api/v1/docs`);
+  console.log(`Travel Operation API running on http://localhost:${port}`);
+  if (swaggerEnabled) {
+    console.log(`Swagger docs at http://localhost:${port}/api/v1/docs`);
+  }
 }
 
 bootstrap();

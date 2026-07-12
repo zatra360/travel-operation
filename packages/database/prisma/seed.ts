@@ -7,6 +7,22 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding database...');
 
+  // ─── Production safety guard ──────────────────────────────
+  // This seed creates a demo tenant and well-known demo accounts with weak,
+  // publicly-documented passwords. It must never run against a production
+  // database unless an operator explicitly opts in AND supplies a strong
+  // super-admin password.
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction && process.env.ALLOW_PROD_SEED !== 'true') {
+    throw new Error(
+      'Refusing to run the demo seed in production. It creates demo tenants and demo ' +
+        'accounts with known passwords. Set ALLOW_PROD_SEED=true only if you understand the risk.',
+    );
+  }
+  if (isProduction && !process.env.SUPER_ADMIN_PASSWORD) {
+    throw new Error('SUPER_ADMIN_PASSWORD must be set when seeding in production.');
+  }
+
   // ─── Platform Super Admin ─────────────────────────────────
   const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'admin@travelo.com';
   const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || 'Admin@123';

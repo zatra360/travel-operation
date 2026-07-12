@@ -16,5 +16,5 @@ export class LedgerController {
   constructor(private readonly ledgerService: LedgerService) {}
 
   @Get() @RequirePermissions('LEDGER_READ') @ApiOperation({ summary: 'List ledger entries' })
-  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryLedgerDto) { return this.ledgerService.findAll(ctx.tenantId, query); }
+  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryLedgerDto) { return this.ledgerService.findAll(ctx.tenantId, query, ctx.branchId); }
 }

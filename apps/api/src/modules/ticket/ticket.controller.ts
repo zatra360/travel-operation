@@ -29,7 +29,7 @@ export class TicketController {
   @RequirePermissions('TICKET_READ')
   @ApiOperation({ summary: 'List tickets' })
   async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryTicketDto) {
-    return this.ticketService.findAll(ctx.tenantId, query);
+    return this.ticketService.findAll(ctx.tenantId, query, ctx.branchId);
   }
 
   @Get(':id')

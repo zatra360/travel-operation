@@ -1,27 +1,17 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { Quotation, QUOTATION_STATUSES } from '@/lib/crm';
+import { humanizeStatus } from '@/lib/status';
 
 interface Props {
   open: boolean;
@@ -35,10 +25,6 @@ interface FormState {
   title: string;
   status: string;
   currencyCode: string;
-  subtotal: string;
-  taxTotal: string;
-  discountTotal: string;
-  grandTotal: string;
   validUntil: string;
   notes: string;
   terms: string;
@@ -49,10 +35,6 @@ const empty: FormState = {
   title: '',
   status: 'DRAFT',
   currencyCode: 'USD',
-  subtotal: '0',
-  taxTotal: '0',
-  discountTotal: '0',
-  grandTotal: '0',
   validUntil: '',
   notes: '',
   terms: '',
@@ -75,10 +57,6 @@ export function QuotationFormDialog({ open, onOpenChange, quotation, onSaved }: 
               title: quotation.title ?? '',
               status: quotation.status ?? 'DRAFT',
               currencyCode: quotation.currencyCode ?? 'USD',
-              subtotal: String(quotation.subtotal ?? 0),
-              taxTotal: String(quotation.taxTotal ?? 0),
-              discountTotal: String(quotation.discountTotal ?? 0),
-              grandTotal: String(quotation.grandTotal ?? 0),
               validUntil: quotation.validUntil?.split('T')[0] ?? '',
               notes: quotation.notes ?? '',
               terms: quotation.terms ?? '',
@@ -105,10 +83,6 @@ export function QuotationFormDialog({ open, onOpenChange, quotation, onSaved }: 
       title: form.title.trim() || undefined,
       status: form.status,
       currencyCode: form.currencyCode,
-      subtotal: Number(form.subtotal) || 0,
-      taxTotal: Number(form.taxTotal) || 0,
-      discountTotal: Number(form.discountTotal) || 0,
-      grandTotal: Number(form.grandTotal) || 0,
       validUntil: form.validUntil || undefined,
       notes: form.notes.trim() || undefined,
       terms: form.terms.trim() || undefined,
@@ -120,7 +94,7 @@ export function QuotationFormDialog({ open, onOpenChange, quotation, onSaved }: 
         toast.success('Quotation updated');
       } else {
         await api.post('/api/v1/tenant/quotations', payload, { tenantId: activeTenant.id });
-        toast.success('Quotation created');
+        toast.success('Quotation created — add line items on the detail page');
       }
       onOpenChange(false);
       onSaved();
@@ -138,7 +112,7 @@ export function QuotationFormDialog({ open, onOpenChange, quotation, onSaved }: 
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Quotation' : 'New Quotation'}</DialogTitle>
           <DialogDescription>
-            {isEdit ? 'Update the quotation details.' : 'Create a new quotation for a client.'}
+            {isEdit ? 'Update quotation metadata. Totals are calculated from line items.' : 'Create a quotation, then add line items on the detail page.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -148,36 +122,23 @@ export function QuotationFormDialog({ open, onOpenChange, quotation, onSaved }: 
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="quoteNumber">
-              Quote number <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="quoteNumber"
-              value={form.quoteNumber}
-              onChange={(e) => set('quoteNumber', e.target.value)}
-              placeholder="QTN-2026-0001"
-              required
-            />
+            <Label htmlFor="quoteNumber">Quote number <span className="text-destructive">*</span></Label>
+            <Input id="quoteNumber" value={form.quoteNumber} onChange={(e) => set('quoteNumber', e.target.value)} placeholder="QTN-2026-0001" required />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={form.title}
-              onChange={(e) => set('title', e.target.value)}
-              placeholder="Umrah Package January"
-            />
+            <Input id="title" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Umrah Package January" />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Status</Label>
               <Select value={form.status} onValueChange={(v) => set('status', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {QUOTATION_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                    <SelectItem key={s} value={s}>{humanizeStatus(s)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -187,35 +148,11 @@ export function QuotationFormDialog({ open, onOpenChange, quotation, onSaved }: 
               <Select value={form.currencyCode} onValueChange={(v) => set('currencyCode', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="GBP">GBP</SelectItem>
-                  <SelectItem value="JPY">JPY</SelectItem>
-                  <SelectItem value="AUD">AUD</SelectItem>
-                  <SelectItem value="INR">INR</SelectItem>
-                  <SelectItem value="AED">AED</SelectItem>
-                  <SelectItem value="SAR">SAR</SelectItem>
+                  {['USD','EUR','GBP','JPY','AUD','INR','AED','SAR','BDT','SGD'].map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="space-y-2">
-              <Label htmlFor="subtotal">Subtotal</Label>
-              <Input id="subtotal" type="number" value={form.subtotal} onChange={(e) => set('subtotal', e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="taxTotal">Tax</Label>
-              <Input id="taxTotal" type="number" value={form.taxTotal} onChange={(e) => set('taxTotal', e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="discountTotal">Discount</Label>
-              <Input id="discountTotal" type="number" value={form.discountTotal} onChange={(e) => set('discountTotal', e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="grandTotal">Grand total</Label>
-              <Input id="grandTotal" type="number" value={form.grandTotal} onChange={(e) => set('grandTotal', e.target.value)} />
             </div>
           </div>
 
@@ -234,13 +171,15 @@ export function QuotationFormDialog({ open, onOpenChange, quotation, onSaved }: 
             <Textarea id="terms" value={form.terms} onChange={(e) => set('terms', e.target.value)} placeholder="Terms and conditions..." />
           </div>
 
+          {!isEdit && (
+            <p className="text-xs text-muted-foreground">
+              After creating this quotation, open it to add line items. Totals are calculated automatically.
+            </p>
+          )}
+
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? 'Saving...' : isEdit ? 'Save changes' : 'Create quotation'}
-            </Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Saving...' : isEdit ? 'Save changes' : 'Create quotation'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

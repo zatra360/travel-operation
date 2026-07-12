@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../../common/storage/storage.service';
 import { RequestUploadDto } from './dto/request-upload.dto';
@@ -58,7 +59,7 @@ export class DocumentService {
     return doc;
   }
 
-  async findAll(tenantId: string, query: QueryDocumentDto) {
+  async findAll(tenantId: string, query: QueryDocumentDto, activeBranchId?: string) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;
     const skip = (page - 1) * limit;
@@ -70,6 +71,7 @@ export class DocumentService {
     if (query.branchId) where.branchId = query.branchId;
     if (query.search) where.fileName = { contains: query.search, mode: 'insensitive' };
 
+    enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
       this.prisma.document.findMany({
         where,

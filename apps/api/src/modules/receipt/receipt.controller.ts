@@ -21,7 +21,7 @@ export class ReceiptController {
   async create(@TenantCtx() ctx: TenantContext, @Body() dto: CreateReceiptDto) { return this.receiptService.create(ctx.tenantId, ctx.userId, dto); }
 
   @Get() @RequirePermissions('RECEIPT_READ') @ApiOperation({ summary: 'List receipts' })
-  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryReceiptDto) { return this.receiptService.findAll(ctx.tenantId, query); }
+  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryReceiptDto) { return this.receiptService.findAll(ctx.tenantId, query, ctx.branchId); }
 
   @Get(':id') @RequirePermissions('RECEIPT_READ') @ApiOperation({ summary: 'Get receipt' })
   async findById(@TenantCtx() ctx: TenantContext, @Param('id') id: string) { return this.receiptService.findById(ctx.tenantId, id); }

@@ -21,7 +21,7 @@ export class ReissueController {
   async create(@TenantCtx() ctx: TenantContext, @Body() dto: CreateReissueDto) { return this.reissueService.create(ctx.tenantId, ctx.userId, dto); }
 
   @Get() @RequirePermissions('REISSUE_READ') @ApiOperation({ summary: 'List reissue requests' })
-  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryReissueDto) { return this.reissueService.findAll(ctx.tenantId, query); }
+  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryReissueDto) { return this.reissueService.findAll(ctx.tenantId, query, ctx.branchId); }
 
   @Get(':id') @RequirePermissions('REISSUE_READ') @ApiOperation({ summary: 'Get reissue request' })
   async findById(@TenantCtx() ctx: TenantContext, @Param('id') id: string) { return this.reissueService.findById(ctx.tenantId, id); }

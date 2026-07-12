@@ -1,49 +1,127 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
-import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { TableToolbar } from '@/components/ui/table-toolbar';
+import { Pagination } from '@/components/ui/pagination';
+import { Money } from '@/components/travel/money';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
-import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 import { LedgerEntry, Paginated } from '@/lib/crm';
+
+const PAGE_SIZE = 25;
 
 export default function LedgerPage() {
   const [items, setItems] = useState<LedgerEntry[]>([]);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const { activeTenant } = useAuthStore();
+  const [page, setPage] = useState(1);
+  const { activeTenant, activeBranch } = useAuthStore();
 
   const load = useCallback(() => {
     if (!activeTenant) return;
-    setLoading(true); setError('');
+    setLoading(true);
+    setError('');
     const params = new URLSearchParams();
     if (search) params.set('search', search);
-    api.get<Paginated<LedgerEntry>>(`/api/v1/tenant/ledger?${params.toString()}`, { tenantId: activeTenant.id })
-      .then((res) => setItems(res.data))
+    params.set('page', String(page));
+    params.set('limit', String(PAGE_SIZE));
+    api
+      .get<Paginated<LedgerEntry>>(`/api/v1/tenant/ledger?${params.toString()}`, {
+        tenantId: activeTenant.id,
+        branchId: activeBranch?.id,
+      })
+      .then((res) => {
+        setItems(res.data);
+        setMeta({ page: res.page, totalPages: res.totalPages, total: res.total });
+      })
       .catch((err) => setError(err.message || 'Failed'))
       .finally(() => setLoading(false));
-  }, [activeTenant, search]);
-  useEffect(() => { load(); }, [load]);
+  }, [activeTenant, activeBranch, search, page]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  const isCredit = (d?: string) => (d || '').toUpperCase() === 'CREDIT';
+
+  const columns: DataTableColumn<LedgerEntry>[] = [
+    { key: 'date', header: 'Date', cell: (e) => <span className="text-muted-foreground">{formatDate(e.entryDate)}</span> },
+    {
+      key: 'direction',
+      header: 'Direction',
+      cell: (e) => (
+        <Badge variant={isCredit(e.direction) ? 'success' : 'secondary'} className="capitalize">
+          {(e.direction || '').toLowerCase()}
+        </Badge>
+      ),
+    },
+    {
+      key: 'amount',
+      header: 'Amount',
+      align: 'right',
+      cell: (e) => (
+        <Money
+          amount={(isCredit(e.direction) ? 1 : -1) * Number(e.amount)}
+          currency={e.currencyCode}
+          colorNegative
+          className="font-medium"
+        />
+      ),
+    },
+    { key: 'refType', header: 'Ref Type', hideOnMobile: true, cell: (e) => <span className="text-muted-foreground">{e.referenceType || '—'}</span> },
+    { key: 'description', header: 'Description', hideOnMobile: true, cell: (e) => <span className="text-muted-foreground">{e.description || '—'}</span> },
+  ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader title="Ledger" subtitle="View all financial ledger entries and transactions" />
-      <div className="relative max-w-sm">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search description..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
-      </div>
-      <Card><CardHeader><CardTitle>General Ledger</CardTitle></CardHeader><CardContent>
-        {loading ? <TableSkeleton />
-        : error ? <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
-        : items.length === 0 ? <p className="text-muted-foreground">No ledger entries found. Financial transactions automatically create ledger entries.</p>
-        : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3 font-medium">Date</th><th className="pb-3 font-medium">Direction</th><th className="pb-3 font-medium">Amount</th><th className="pb-3 font-medium">Ref Type</th><th className="pb-3 font-medium">Description</th></tr></thead>
-        <tbody>{items.map((e) => (<tr key={e.id} className="border-b last:border-0"><td className="py-3 text-muted-foreground">{formatDate(e.entryDate)}</td><td className="py-3 font-medium capitalize">{e.direction}</td><td className="py-3 font-medium">{e.currencyCode} {e.amount.toLocaleString()}</td><td className="py-3 text-muted-foreground">{e.referenceType || '--'}</td><td className="py-3 text-muted-foreground">{e.description || '--'}</td></tr>))}</tbody></table></div>}
-      </CardContent></Card>
+
+      <TableToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search description…"
+        hasActiveFilters={search !== ''}
+        onReset={() => setSearch('')}
+      />
+
+      {error ? (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            data={items}
+            rowKey={(e) => e.id}
+            loading={loading}
+            emptyTitle="No ledger entries found"
+            emptyDescription="Financial transactions (payments, refunds, cancellations) automatically create ledger entries."
+            mobileCard={(e) => (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <Badge variant={isCredit(e.direction) ? 'success' : 'secondary'} className="capitalize">
+                    {(e.direction || '').toLowerCase()}
+                  </Badge>
+                  <Money amount={(isCredit(e.direction) ? 1 : -1) * Number(e.amount)} currency={e.currencyCode} colorNegative className="font-semibold" />
+                </div>
+                <p className="text-sm text-muted-foreground">{e.description || e.referenceType || '—'}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(e.entryDate)}</p>
+              </div>
+            )}
+          />
+          {!loading && items.length > 0 && (
+            <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total} limit={PAGE_SIZE} onPageChange={setPage} />
+          )}
+        </>
+      )}
     </div>
   );
 }

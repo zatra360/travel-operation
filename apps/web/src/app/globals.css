@@ -53,6 +53,12 @@
   --accent-foreground: oklch(0.95 0.005 250);
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.7 0.15 160);
+  --success-foreground: oklch(0.15 0.02 250);
+  --warning: oklch(0.78 0.15 85);
+  --warning-foreground: oklch(0.2 0.05 50);
+  --info: oklch(0.65 0.12 240);
+  --info-foreground: oklch(0.15 0.02 250);
   --border: oklch(0.22 0.02 250);
   --input: oklch(0.22 0.02 250);
   --ring: oklch(0.55 0.06 250);
@@ -111,8 +117,8 @@ body {
 }
 
 ::selection {
-  background-color: oklch(0.35 0.06 255 / 0.15);
-  color: oklch(0.18 0.02 250);
+  background-color: var(--primary);
+  color: var(--primary-foreground);
 }
 
 table {
@@ -121,3 +127,29 @@ table {
 }
 
 tr:last-child td { border-bottom: none; }
+
+/* Financial & operational figures should align by digit. */
+.tabular-nums,
+table td,
+table th {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Accessible, always-visible keyboard focus (WCAG 2.2 AA). */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

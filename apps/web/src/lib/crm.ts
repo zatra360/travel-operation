@@ -154,9 +154,89 @@ export interface DocumentItem {
   } | null;
 }
 
-export const QUOTATION_STATUSES = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED'] as const;
+export const QUOTATION_STATUSES = ['DRAFT', 'SENT', 'VIEWED', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'CANCELLED', 'BOOKING_CREATED'] as const;
 export const BOOKING_STATUSES = ['HELD', 'CONFIRMED', 'TICKETED', 'CANCELLED', 'REFUNDED', 'VOIDED'] as const;
 export const TICKET_STATUSES = ['PENDING', 'ISSUED', 'VOIDED', 'REFUNDED', 'REISSUED'] as const;
+
+export interface QuotationLineItem {
+  id: string;
+  tenantId: string;
+  quotationId: string;
+  serviceType?: string | null;
+  title?: string | null;
+  description?: string | null;
+  quantity: number;
+  unitPrice: number;
+  taxAmount?: number;
+  discountAmount?: number;
+  lineTotal: number;
+  airlineId?: string | null;
+  originAirportId?: string | null;
+  destAirportId?: string | null;
+  routeId?: string | null;
+  metadata?: any;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QuotationStatusLog {
+  id: string;
+  tenantId: string;
+  quotationId: string;
+  fromStatus?: string | null;
+  toStatus: string;
+  note?: string | null;
+  actorId?: string | null;
+  createdAt: string;
+}
+
+export interface QuotationClientSummary {
+  id: string;
+  displayName: string;
+  email?: string | null;
+  phone?: string | null;
+}
+
+export interface QuotationLeadSummary {
+  id: string;
+  fullName: string;
+  status: string;
+}
+
+export interface QuotationUserSummary {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+export interface QuotationBranchSummary {
+  id: string;
+  name: string;
+}
+
+export interface QuotationRevision {
+  id: string;
+  tenantId: string;
+  quotationId: string;
+  revisionNumber: number;
+  summary?: string | null;
+  snapshot: any;
+  pdfAssetKey?: string | null;
+  createdById?: string | null;
+  createdAt: string;
+}
+
+export interface QuotationDetail extends Quotation {
+  lineItems: QuotationLineItem[];
+  revisions: QuotationRevision[];
+  statusLogs: QuotationStatusLog[];
+  client?: QuotationClientSummary | null;
+  lead?: QuotationLeadSummary | null;
+  assignedTo?: QuotationUserSummary | null;
+  branch?: QuotationBranchSummary | null;
+}
 
 export interface Quotation {
   id: string;
@@ -167,14 +247,15 @@ export interface Quotation {
   leadId?: string | null;
   assignedToId?: string | null;
   currencyCode: string;
-  subtotal: number;
-  taxTotal: number;
-  discountTotal: number;
-  grandTotal: number;
+  subtotal: number | string;
+  taxTotal: number | string;
+  discountTotal: number | string;
+  grandTotal: number | string;
   validUntil?: string | null;
   notes?: string | null;
   terms?: string | null;
   branchId?: string | null;
+  currentRevision?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -208,7 +289,7 @@ export interface Ticket {
 }
 
 export const quotationStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
-  DRAFT: 'secondary', SENT: 'default', ACCEPTED: 'success', REJECTED: 'destructive', EXPIRED: 'warning',
+  DRAFT: 'secondary', SENT: 'default', VIEWED: 'default', ACCEPTED: 'success', REJECTED: 'destructive', EXPIRED: 'warning', CANCELLED: 'destructive', BOOKING_CREATED: 'success',
 };
 
 export const bookingStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {

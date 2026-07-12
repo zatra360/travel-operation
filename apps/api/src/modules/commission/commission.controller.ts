@@ -29,7 +29,7 @@ export class CommissionController {
   @RequirePermissions('COMMISSION_READ')
   @ApiOperation({ summary: 'List commissions' })
   async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryCommissionDto) {
-    return this.commissionService.findAll(ctx.tenantId, query);
+    return this.commissionService.findAll(ctx.tenantId, query, ctx.branchId);
   }
 
   @Get(':id')

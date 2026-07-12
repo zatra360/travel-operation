@@ -21,6 +21,14 @@ export class TenantContextInterceptor implements NestInterceptor {
   async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
     const request = context.switchToHttp().getRequest();
 
+    // If a guard (e.g. TenantGuard) already resolved and verified the tenant
+    // context for this request, do not re-query membership. This avoids
+    // duplicated database round-trips and keeps a single source of truth for
+    // tenant/branch resolution.
+    if (request.tenantContext) {
+      return next.handle();
+    }
+
     if (request.user) {
       const userId = request.user.sub || request.user.id;
       const tenantId = request.headers['x-tenant-id'] as string;

@@ -68,15 +68,15 @@ pnpm dev
 
 The API will be available at http://localhost:3900 and the web app at http://localhost:3901.
 
-### Default Credentials
+### Local Development Accounts
 
-| Role | Email | Password |
-|------|-------|----------|
-| Super Admin | admin@travelo.com | Admin@123 |
-| Branch Manager | manager@travelo.com | Demo@123 |
-| Sales Executive | sales@travelo.com | Demo@123 |
-| Ticketing Officer | ticketing@travelo.com | Demo@123 |
-| Finance Officer | finance@travelo.com | Demo@123 |
+The database seed (`pnpm db:seed`) creates demo accounts **for local development only**.
+Their credentials are printed to the console at the end of a successful seed run.
+
+- The seed refuses to run when `NODE_ENV=production` unless `ALLOW_PROD_SEED=true` is set.
+- Set `SUPER_ADMIN_EMAIL` and a strong `SUPER_ADMIN_PASSWORD` in your environment to
+  control the platform super-admin account instead of relying on the demo default.
+- Never seed demo accounts into a production database.
 
 ## API Documentation
 

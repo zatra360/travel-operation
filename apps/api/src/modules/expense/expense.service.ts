@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
@@ -24,12 +25,13 @@ export class ExpenseService {
     return expense;
   }
 
-  async findAll(tenantId: string, query: QueryExpenseDto) {
+  async findAll(tenantId: string, query: QueryExpenseDto, activeBranchId?: string) {
     const page = query.page ?? 1; const limit = query.limit ?? 50; const skip = (page - 1) * limit;
     const where: any = { tenantId, deletedAt: null };
     if (query.status) where.status = query.status;
     if (query.branchId) where.branchId = query.branchId;
     if (query.search) where.OR = [{ expenseNumber: { contains: query.search, mode: 'insensitive' } }, { vendorName: { contains: query.search, mode: 'insensitive' } }];
+    enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([this.prisma.expense.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }), this.prisma.expense.count({ where })]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }

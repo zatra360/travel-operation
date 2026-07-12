@@ -2,10 +2,23 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { QueryProvider } from '@/components/providers/query-provider';
 import { Toaster } from 'sonner';
+import { brand } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Travel Operation',
-  description: 'SaaS platform for travel agencies, OTAs, visa agencies, and corporate travel teams',
+  title: { default: brand.name, template: `%s | ${brand.name}` },
+  description: brand.description,
+  applicationName: brand.name,
+  openGraph: {
+    title: brand.name,
+    description: brand.description,
+    siteName: brand.name,
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: brand.name,
+    description: brand.description,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

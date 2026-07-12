@@ -29,7 +29,7 @@ export class ClientController {
   @RequirePermissions('CLIENT_READ')
   @ApiOperation({ summary: 'List clients for current tenant' })
   async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryClientDto) {
-    return this.clientService.findAll(ctx.tenantId, query);
+    return this.clientService.findAll(ctx.tenantId, query, ctx.branchId);
   }
 
   @Get(':id')

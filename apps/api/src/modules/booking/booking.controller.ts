@@ -29,7 +29,7 @@ export class BookingController {
   @RequirePermissions('BOOKING_READ')
   @ApiOperation({ summary: 'List bookings' })
   async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryBookingDto) {
-    return this.bookingService.findAll(ctx.tenantId, query);
+    return this.bookingService.findAll(ctx.tenantId, query, ctx.branchId);
   }
 
   @Get(':id')

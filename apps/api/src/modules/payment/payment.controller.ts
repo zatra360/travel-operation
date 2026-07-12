@@ -21,7 +21,7 @@ export class PaymentController {
   async create(@TenantCtx() ctx: TenantContext, @Body() dto: CreatePaymentDto) { return this.paymentService.create(ctx.tenantId, ctx.userId, dto); }
 
   @Get() @RequirePermissions('PAYMENT_READ') @ApiOperation({ summary: 'List payments' })
-  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryPaymentDto) { return this.paymentService.findAll(ctx.tenantId, query); }
+  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryPaymentDto) { return this.paymentService.findAll(ctx.tenantId, query, ctx.branchId); }
 
   @Get(':id') @RequirePermissions('PAYMENT_READ') @ApiOperation({ summary: 'Get payment' })
   async findById(@TenantCtx() ctx: TenantContext, @Param('id') id: string) { return this.paymentService.findById(ctx.tenantId, id); }

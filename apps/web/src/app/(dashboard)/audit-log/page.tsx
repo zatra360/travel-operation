@@ -1,21 +1,92 @@
 'use client';
+
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { Pagination } from '@/components/ui/pagination';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
-import { formatDate } from '@/lib/utils';
-import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
+import { formatDateTime } from '@/lib/utils';
 
-interface AuditItem { id: string; action: string; module: string; entity: string; entityId?: string | null; actorId: string; createdAt: string; }
-interface Paginated<T> { data: T[]; total: number; }
+const PAGE_SIZE = 30;
+
+interface AuditItem {
+  id: string;
+  action: string;
+  module: string;
+  entity: string;
+  entityId?: string | null;
+  actorId: string;
+  createdAt: string;
+}
 
 export default function AuditLogPage() {
-  const [items, setItems] = useState<AuditItem[]>([]); const [loading, setLoading] = useState(true);
-  const { activeTenant } = useAuthStore();
-  const load = useCallback(() => { if (!activeTenant) return; setLoading(true); api.get<Paginated<AuditItem>>('/api/v1/tenant/audit-logs', { tenantId: activeTenant.id }).then((r) => setItems(r.data)).finally(() => setLoading(false)); }, [activeTenant]);
-  useEffect(() => { load(); }, [load]);
-  return (<div className="space-y-6"><PageHeader title="Audit Log" subtitle="View security and compliance audit trail" />
-    <Card><CardHeader><CardTitle>Mutation History</CardTitle></CardHeader><CardContent>{loading ? <TableSkeleton /> : items.length === 0 ? <p className="text-muted-foreground">No audit entries yet. Actions like creating, updating, and deleting records will appear here.</p> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3 font-medium">Date</th><th className="pb-3 font-medium">Module</th><th className="pb-3 font-medium">Action</th><th className="pb-3 font-medium">Entity</th><th className="pb-3 font-medium">Entity ID</th></tr></thead><tbody>{items.map((a) => (<tr key={a.id} className="border-b last:border-0"><td className="py-3 text-muted-foreground">{formatDate(a.createdAt)}</td><td className="py-3"><Badge variant="secondary">{a.module}</Badge></td><td className="py-3"><Badge variant={a.action === 'DELETE' ? 'destructive' : a.action === 'CREATE' ? 'success' : 'default'}>{a.action}</Badge></td><td className="py-3">{a.entity}</td><td className="py-3 text-muted-foreground text-xs">{a.entityId || '--'}</td></tr>))}</tbody></table></div>}</CardContent></Card></div>);
+  const [items, setItems] = useState<AuditItem[]>([]);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const { activeTenant, activeBranch } = useAuthStore();
+
+  const load = useCallback(() => {
+    if (!activeTenant) return;
+    setLoading(true);
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('limit', String(PAGE_SIZE));
+    api
+      .get<{ data: AuditItem[]; page: number; totalPages: number; total: number }>(
+        `/api/v1/tenant/audit-logs?${params.toString()}`,
+        { tenantId: activeTenant.id, branchId: activeBranch?.id },
+      )
+      .then((r) => {
+        setItems(r.data || []);
+        setMeta({ page: r.page ?? 1, totalPages: r.totalPages ?? 1, total: r.total ?? 0 });
+      })
+      .finally(() => setLoading(false));
+  }, [activeTenant, activeBranch, page]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const actionTone = (action: string) =>
+    action === 'DELETE' ? 'destructive' : action === 'CREATE' ? 'success' : 'info';
+
+  const columns: DataTableColumn<AuditItem>[] = [
+    { key: 'date', header: 'Date', cell: (a) => <span className="text-muted-foreground">{formatDateTime(a.createdAt)}</span> },
+    { key: 'module', header: 'Module', cell: (a) => <Badge variant="secondary">{a.module}</Badge> },
+    { key: 'action', header: 'Action', cell: (a) => <StatusBadge status={a.action} variant={actionTone(a.action)} /> },
+    { key: 'entity', header: 'Entity', hideOnMobile: true, cell: (a) => <span>{a.entity}</span> },
+    { key: 'entityId', header: 'Entity ID', hideOnMobile: true, cell: (a) => <span className="text-xs text-muted-foreground">{a.entityId || '—'}</span> },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <PageHeader title="Audit Log" subtitle="View security and compliance audit trail" />
+
+      <DataTable
+        columns={columns}
+        data={items}
+        rowKey={(a) => a.id}
+        loading={loading}
+        emptyTitle="No audit entries yet"
+        emptyDescription="Actions like creating, updating, and deleting records will appear here."
+        mobileCard={(a) => (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <Badge variant="secondary">{a.module}</Badge>
+              <StatusBadge status={a.action} variant={actionTone(a.action)} />
+            </div>
+            <p className="text-sm">{a.entity}</p>
+            <p className="text-xs text-muted-foreground">{formatDateTime(a.createdAt)}</p>
+          </div>
+        )}
+      />
+      {!loading && items.length > 0 && (
+        <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total} limit={PAGE_SIZE} onPageChange={setPage} />
+      )}
+    </div>
+  );
 }

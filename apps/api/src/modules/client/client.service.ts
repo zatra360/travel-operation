@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { CreateClientDto } from './dto/create-client.dto';
@@ -47,7 +48,7 @@ export class ClientService {
     return client;
   }
 
-  async findAll(tenantId: string, query: QueryClientDto) {
+  async findAll(tenantId: string, query: QueryClientDto, activeBranchId?: string) {
     const page = query.page ?? 1; const limit = query.limit ?? 50; const skip = (page - 1) * limit;
     const where: any = { tenantId, deletedAt: null };
     if (query.type) where.type = query.type;
@@ -62,6 +63,7 @@ export class ClientService {
         { companyName: { contains: query.search, mode: 'insensitive' } },
       ];
     }
+    enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
       this.prisma.client.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
       this.prisma.client.count({ where }),

@@ -29,7 +29,7 @@ export class LeadController {
   @RequirePermissions('LEAD_READ')
   @ApiOperation({ summary: 'List leads for current tenant' })
   async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryLeadDto) {
-    return this.leadService.findAll(ctx.tenantId, query);
+    return this.leadService.findAll(ctx.tenantId, query, ctx.branchId);
   }
 
   @Get(':id')

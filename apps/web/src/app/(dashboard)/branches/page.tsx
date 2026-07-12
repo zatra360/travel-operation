@@ -1,15 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
-import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 
 interface Branch {
   id: string;
@@ -29,63 +28,54 @@ export default function BranchesPage() {
 
   useEffect(() => {
     if (!activeTenant) return;
-    api.get<Branch[]>('/api/v1/tenant/branches', { tenantId: activeTenant.id })
+    setLoading(true);
+    api
+      .get<Branch[]>('/api/v1/tenant/branches', { tenantId: activeTenant.id })
       .then(setBranches)
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [activeTenant]);
 
-  if (loading) return <TableSkeleton />;
+  const columns: DataTableColumn<Branch>[] = [
+    { key: 'name', header: 'Name', cell: (b) => <span className="font-medium">{b.name}</span> },
+    { key: 'code', header: 'Code', cell: (b) => <span className="text-muted-foreground">{b.code}</span> },
+    { key: 'status', header: 'Status', cell: (b) => <StatusBadge status={b.status} /> },
+    { key: 'contact', header: 'Contact', hideOnMobile: true, cell: (b) => <span className="text-muted-foreground">{b.email || b.phone || '—'}</span> },
+    { key: 'created', header: 'Created', hideOnMobile: true, cell: (b) => <span className="text-muted-foreground">{formatDate(b.createdAt)}</span> },
+  ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Branches"
         subtitle="Manage office locations and branch operations"
-        actions={<Button size="sm"><Plus className="h-4 w-4 mr-2" />Add Branch</Button>}
+        actions={
+          <Button size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Branch
+          </Button>
+        }
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Branches</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {branches.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-muted-foreground">No branches yet. Create your first office location.</p>
+      <DataTable
+        columns={columns}
+        data={branches}
+        rowKey={(b) => b.id}
+        loading={loading}
+        emptyTitle="No branches yet"
+        emptyDescription="Create your first office location to organize operations by branch."
+        mobileCard={(b) => (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">{b.name}</span>
+              <StatusBadge status={b.status} />
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="pb-3 font-medium">Name</th>
-                    <th className="pb-3 font-medium">Code</th>
-                    <th className="pb-3 font-medium">Status</th>
-                    <th className="pb-3 font-medium">Contact</th>
-                    <th className="pb-3 font-medium">Created</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {branches.map((branch) => (
-                    <tr key={branch.id} className="border-b last:border-0">
-                      <td className="py-3 font-medium">{branch.name}</td>
-                      <td className="py-3 text-muted-foreground">{branch.code}</td>
-                      <td className="py-3">
-                        <Badge variant={branch.status === 'ACTIVE' ? 'success' : 'secondary'}>
-                          {branch.status}
-                        </Badge>
-                      </td>
-                      <td className="py-3 text-muted-foreground">{branch.email || branch.phone || '--'}</td>
-                      <td className="py-3 text-muted-foreground">{formatDate(branch.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            <p className="text-sm text-muted-foreground">
+              {b.code} · {b.email || b.phone || '—'}
+            </p>
+          </div>
+        )}
+      />
     </div>
   );
 }

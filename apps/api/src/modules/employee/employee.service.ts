@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
@@ -15,13 +16,14 @@ export class EmployeeService {
     return emp;
   }
 
-  async findAll(tenantId: string, query: QueryEmployeeDto) {
+  async findAll(tenantId: string, query: QueryEmployeeDto, activeBranchId?: string) {
     const page = query.page ?? 1; const limit = query.limit ?? 50; const skip = (page - 1) * limit;
     const where: any = { tenantId, deletedAt: null };
     if (query.status) where.status = query.status;
     if (query.departmentId) where.departmentId = query.departmentId;
     if (query.branchId) where.branchId = query.branchId;
     if (query.search) where.OR = [{ firstName: { contains: query.search, mode: 'insensitive' } }, { lastName: { contains: query.search, mode: 'insensitive' } }, { email: { contains: query.search, mode: 'insensitive' } }, { employeeCode: { contains: query.search, mode: 'insensitive' } }];
+    enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([this.prisma.employee.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }), this.prisma.employee.count({ where })]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }

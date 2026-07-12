@@ -1,10 +1,11 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { computeLockUntil } from '../../common/utils/lockout';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +25,8 @@ export class AuthService {
         lastName: true,
         isPlatformSuperAdmin: true,
         status: true,
+        failedLoginAttempts: true,
+        lockedUntil: true,
       },
     });
 
@@ -32,8 +35,21 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      await this.recordLoginAttempt(user.email, false, ip, userAgent, 'Account locked');
+      throw new ForbiddenException(
+        'Account is temporarily locked due to too many failed login attempts. Please try again later.',
+      );
+    }
+
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
+      const attempts = (user.failedLoginAttempts ?? 0) + 1;
+      const lockedUntil = computeLockUntil(attempts);
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: attempts, lockedUntil },
+      });
       await this.recordLoginAttempt(user.email, false, ip, userAgent, 'Invalid password');
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -42,7 +58,7 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { lastLoginAt: new Date() },
+      data: { lastLoginAt: new Date(), failedLoginAttempts: 0, lockedUntil: null },
     });
 
     const payload = {
@@ -80,7 +96,6 @@ export class AuthService {
       })),
     };
   }
-
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -98,6 +113,34 @@ export class AuthService {
     });
 
     return user;
+  }
+
+  async getPermissions(userId: string, tenantId: string, branchId?: string) {
+    const assignments = await this.prisma.userRoleAssignment.findMany({
+      where: {
+        userId,
+        tenantId,
+        ...(branchId ? { branchId } : {}),
+      },
+      include: {
+        role: {
+          include: {
+            permissions: {
+              include: { permission: true },
+            },
+          },
+        },
+      },
+    });
+
+    const permissionSet = new Set<string>();
+    for (const assignment of assignments) {
+      for (const rp of assignment.role.permissions) {
+        permissionSet.add(rp.permission.name);
+      }
+    }
+
+    return [...permissionSet].sort();
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
@@ -129,6 +172,49 @@ export class AuthService {
     });
   }
 
+  /**
+   * Rotates a refresh token: the presented token is revoked and a brand-new
+   * refresh token is issued alongside a fresh access token. Reusing a revoked
+   * or expired token is rejected.
+   */
+  async refresh(refreshToken: string, ip?: string) {
+    const stored = await this.prisma.refreshToken.findUnique({ where: { token: refreshToken } });
+
+    if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: stored.userId },
+      select: { id: true, email: true, isPlatformSuperAdmin: true, status: true },
+    });
+
+    if (!user || user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('User not found or inactive');
+    }
+
+    await this.prisma.refreshToken.update({
+      where: { id: stored.id },
+      data: { revokedAt: new Date() },
+    });
+
+    const accessToken = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+      isPlatformSuperAdmin: user.isPlatformSuperAdmin,
+    });
+    const newRefreshToken = await this.generateRefreshToken(user.id, ip);
+
+    return { accessToken, refreshToken: newRefreshToken };
+  }
+
+  async logout(refreshToken?: string) {
+    if (refreshToken) {
+      await this.revokeRefreshToken(refreshToken);
+    }
+    return { success: true };
+  }
+
   private async generateRefreshToken(userId: string, ip?: string): Promise<string> {
     const token = randomBytes(48).toString('hex');
     await this.prisma.refreshToken.create({
@@ -151,9 +237,10 @@ export class AuthService {
     failReason?: string,
   ) {
     const user = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (!user) return;
     await this.prisma.loginHistory.create({
       data: {
-        userId: user?.id || 'unknown',
+        userId: user.id,
         email,
         ip,
         userAgent,

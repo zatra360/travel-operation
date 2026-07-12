@@ -5,13 +5,14 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { TenantCtx } from '../../common/decorators/tenant-context.decorator';
 import { TenantContext } from '../../common/interceptors/tenant-context.interceptor';
 
 @ApiTags('Platform - Users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PlatformAdminGuard, PermissionsGuard)
 @Controller('platform/users')
 export class UserController {
   constructor(private readonly userService: UserService) {}

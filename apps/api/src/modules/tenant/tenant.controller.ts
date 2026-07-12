@@ -5,11 +5,12 @@ import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 
 @ApiTags('Platform - Tenants')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PlatformAdminGuard, PermissionsGuard)
 @Controller('platform/tenants')
 export class TenantController {
   constructor(private readonly tenantService: TenantService) {}

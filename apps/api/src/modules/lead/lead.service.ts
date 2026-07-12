@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { LookupValidationService } from '../master-data/lookup-validation.service';
@@ -94,7 +95,7 @@ export class LeadService {
     return lead;
   }
 
-  async findAll(tenantId: string, query: QueryLeadDto) {
+  async findAll(tenantId: string, query: QueryLeadDto, activeBranchId?: string) {
     const page = query.page ?? 1; const limit = query.limit ?? 50; const skip = (page - 1) * limit;
     const where: any = { tenantId, deletedAt: null };
     if (query.status) where.status = query.status;
@@ -122,6 +123,7 @@ export class LeadService {
         { primaryMobile: { contains: query.search, mode: 'insensitive' } },
       ];
     }
+    enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
       this.prisma.lead.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
       this.prisma.lead.count({ where }),
@@ -155,14 +157,17 @@ export class LeadService {
 
   async convertToClient(tenantId: string, actorId: string, id: string) {
     const lead = await this.findById(tenantId, id);
-    const client = await this.prisma.client.create({
-      data: {
-        tenantId, branchId: lead.branchId, displayName: lead.fullName,
-        email: lead.email, phone: lead.primaryMobile, type: 'PERSON', status: 'ACTIVE',
-        leadSource: lead.source, nationalityLabel: lead.nationalityId,
-      },
+    const client = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.client.create({
+        data: {
+          tenantId, branchId: lead.branchId, displayName: lead.fullName,
+          email: lead.email, phone: lead.primaryMobile, type: 'PERSON', status: 'ACTIVE',
+          leadSource: lead.source, nationalityLabel: lead.nationalityId,
+        },
+      });
+      await tx.lead.update({ where: { id }, data: { status: 'WON', clientId: created.id } });
+      return created;
     });
-    await this.prisma.lead.update({ where: { id }, data: { status: 'WON', clientId: client.id } });
     await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'UPDATE', { convertedToClientId: client.id }, lead.branchId ?? undefined);
     await this.activity.log(tenantId, actorId, 'LEAD_CONVERTED', `Lead converted to client: ${client.displayName}`, 'Client', client.id, lead.branchId);
     return client;
