@@ -924,6 +924,7 @@ model Client {
   reissues   ReissueRequest[] @relation("ReissueClient")
   cancellations CancellationRequest[] @relation("CancelClient")
   contracts    Contract[]             @relation("ContractClient")
+  orders       Order[]                @relation("OrderClient")
 
   @@index([tenantId])
   @@index([branchId])
@@ -1332,6 +1333,56 @@ model CurrencyConfig {
 
   @@unique([tenantId, code])
   @@index([tenantId])
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  tenantId        String
+  branchId        String?
+  clientId        String
+  orderNumber     String
+  status          String   @default("PENDING")
+  currencyCode    String   @default("USD")
+  subtotal        Decimal  @db.Decimal(19, 4) @default(0)
+  taxTotal        Decimal  @db.Decimal(19, 4) @default(0)
+  discountTotal   Decimal  @db.Decimal(19, 4) @default(0)
+  grandTotal      Decimal  @db.Decimal(19, 4) @default(0)
+  notes           String?
+  fulfilledAt     DateTime?
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  client Client @relation("OrderClient", fields: [clientId], references: [id])
+  items  OrderItem[]
+
+  @@unique([tenantId, orderNumber])
+  @@index([tenantId])
+  @@index([clientId])
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  tenantId    String
+  orderId     String
+  serviceType String?
+  title       String
+  description String?
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @db.Decimal(19, 4) @default(0)
+  taxAmount   Decimal  @db.Decimal(19, 4) @default(0)
+  discountAmount Decimal @db.Decimal(19, 4) @default(0)
+  lineTotal   Decimal  @db.Decimal(19, 4) @default(0)
+  metadata    Json?    @default("{}")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([orderId])
 }
 
 model Booking {

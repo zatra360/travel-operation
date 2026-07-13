@@ -25,6 +25,7 @@ import { ContractModule } from './modules/contract/contract.module';
 import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.module';
 import { TaxModule } from './modules/tax/tax.module';
 import { CurrencyModule } from './modules/currency-settings/currency.module';
+import { OrderModule } from './modules/order/order.module';
 import { BookingModule } from './modules/booking/booking.module';
 import { TicketModule } from './modules/ticket/ticket.module';
 import { InvoiceModule } from './modules/invoice/invoice.module';
@@ -75,6 +76,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     ServiceCatalogModule,
     TaxModule,
     CurrencyModule,
+    OrderModule,
     BookingModule,
     TicketModule,
     InvoiceModule,

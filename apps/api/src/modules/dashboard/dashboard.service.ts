@@ -82,4 +82,43 @@ export class DashboardService {
     ]);
     return { activeTenants, totalUsers, platformAdmins, recentTenants };
   }
+
+  async getExpiries(tenantId: string) {
+    const now = new Date();
+    const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+    const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const [passports, visas, contracts, quotations] = await Promise.all([
+      this.prisma.clientPassport.findMany({
+        where: { tenantId, isActive: true, expiryDate: { lte: in90Days, gte: now } },
+        include: { client: { select: { id: true, displayName: true } } },
+        orderBy: { expiryDate: 'asc' },
+        take: 20,
+      }),
+      this.prisma.clientVisa.findMany({
+        where: { tenantId, isActive: true, expiryDate: { lte: in90Days, gte: now } },
+        include: { client: { select: { id: true, displayName: true } }, country: { select: { id: true, name: true } } },
+        orderBy: { expiryDate: 'asc' },
+        take: 20,
+      }),
+      this.prisma.contract.findMany({
+        where: { tenantId, deletedAt: null, status: 'ACTIVE', endDate: { lte: in30Days } },
+        include: { client: { select: { id: true, displayName: true } } },
+        orderBy: { endDate: 'asc' },
+        take: 20,
+      }),
+      this.prisma.quotation.findMany({
+        where: { tenantId, deletedAt: null, status: 'SENT', validUntil: { lte: in30Days, gte: now } },
+        orderBy: { validUntil: 'asc' },
+        take: 20,
+      }),
+    ]);
+
+    return {
+      passports: passports.map((p) => ({ id: p.id, passportNumber: p.passportNumber, fullName: p.fullName, expiryDate: p.expiryDate, client: p.client })),
+      visas: visas.map((v) => ({ id: v.id, visaType: v.visaType, visaNumber: v.visaNumber, expiryDate: v.expiryDate, country: v.country, client: v.client })),
+      contracts: contracts.map((c) => ({ id: c.id, contractNumber: c.contractNumber, subject: c.subject, endDate: c.endDate, client: c.client })),
+      expiringQuotations: quotations,
+    };
+  }
 }

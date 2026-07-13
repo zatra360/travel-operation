@@ -24,6 +24,13 @@ export class DashboardController {
   async getStats(@TenantCtx() ctx: TenantContext) {
     return this.dashboardService.getTenantStats(ctx.tenantId, ctx.branchId);
   }
+
+  @Get('expiries')
+  @RequirePermissions('DASHBOARD_READ')
+  @ApiOperation({ summary: 'Get expiring documents (passports, visas, contracts, quotations)' })
+  async getExpiries(@TenantCtx() ctx: TenantContext) {
+    return this.dashboardService.getExpiries(ctx.tenantId);
+  }
 }
 
 @ApiTags('Platform - Dashboard')
