@@ -21,4 +21,17 @@ export class HealthController {
   @Get('storage')
   @ApiOperation({ summary: 'Storage health check' })
   storage() { return { status: 'ok', storage: process.env.R2_ENDPOINT ? 'configured' : 'not configured' }; }
+
+  @Get('expire-trials')
+  @ApiOperation({ summary: 'Auto-expire trials past their end date' })
+  async expireTrials() {
+    const expired = await this.prisma.tenant.updateMany({
+      where: {
+        status: 'TRIAL',
+        trialEndsAt: { lte: new Date() },
+      },
+      data: { status: 'EXPIRED' },
+    });
+    return { status: 'ok', expired: expired.count };
+  }
 }

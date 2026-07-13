@@ -13,8 +13,9 @@ export class TenantService {
     if (existing) throw new ConflictException('Tenant slug already exists');
 
     return this.prisma.$transaction(async (tx) => {
+      const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
       const tenant = await tx.tenant.create({
-        data: { name: dto.name, slug: dto.slug, status: 'ACTIVE' },
+        data: { name: dto.name, slug: dto.slug, status: 'TRIAL', trialEndsAt },
       });
 
       if (dto.ownerEmail) {
