@@ -4,6 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { Public } from '../../common/decorators/public.decorator';
@@ -26,6 +27,13 @@ export class AuthController {
     const ip = (req.headers['x-forwarded-for'] as string) || req.ip || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'] as string;
     return this.authService.login(dto, ip, userAgent);
+  }
+
+  @Public()
+  @Post('register')
+  @ApiOperation({ summary: 'Register a new company and admin account' })
+  async register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
   }
 
   @Public()

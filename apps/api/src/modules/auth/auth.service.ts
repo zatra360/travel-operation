@@ -1,9 +1,10 @@
-import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { computeLockUntil } from '../../common/utils/lockout';
 
@@ -213,6 +214,53 @@ export class AuthService {
       await this.revokeRefreshToken(refreshToken);
     }
     return { success: true };
+  }
+
+  async register(dto: RegisterDto) {
+    const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    if (existingUser) throw new ConflictException('Email already registered');
+
+    const slug = dto.companySlug || dto.companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const existingTenant = await this.prisma.tenant.findUnique({ where: { slug } });
+    if (existingTenant) throw new ConflictException('Company slug already taken');
+
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    const starterPkg = await this.prisma.package.findUnique({ where: { code: 'STARTER' } });
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({
+        data: { name: dto.companyName, slug, status: 'TRIAL', trialEndsAt },
+      });
+
+      if (starterPkg) {
+        await tx.tenantSubscription.create({
+          data: { tenantId: tenant.id, packageId: starterPkg.id, status: 'ACTIVE', trialEndsAt, billingCycle: 'MONTHLY' },
+        });
+      }
+
+      const user = await tx.user.create({
+        data: {
+          email: dto.email, passwordHash: await bcrypt.hash(dto.password, 12),
+          firstName: dto.firstName, lastName: dto.lastName, status: 'ACTIVE',
+        },
+      });
+
+      await tx.userTenantMembership.create({
+        data: { userId: user.id, tenantId: tenant.id, role: 'OWNER', isActive: true },
+      });
+
+      return { user, tenant };
+    });
+
+    const payload = { sub: result.user.id, email: result.user.email, isPlatformSuperAdmin: false };
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = await this.generateRefreshToken(result.user.id);
+
+    return {
+      accessToken, refreshToken,
+      user: { id: result.user.id, email: result.user.email, firstName: result.user.firstName, lastName: result.user.lastName },
+      tenant: { id: result.tenant.id, name: result.tenant.name, slug: result.tenant.slug },
+    };
   }
 
   private async generateRefreshToken(userId: string, ip?: string): Promise<string> {
