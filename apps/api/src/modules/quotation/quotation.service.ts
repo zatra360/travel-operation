@@ -523,7 +523,6 @@ export class QuotationService {
         quotationId,
         leadId: quotation.leadId,
         assignedToId: quotation.assignedToId,
-        travelStart: quotation.validUntil ?? undefined,
         notes: `Created from quotation ${quotation.quoteNumber}`,
         createdById: actorId,
       },
