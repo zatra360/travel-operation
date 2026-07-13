@@ -435,7 +435,7 @@ export class QuotationService {
       status: 'SENT',
       publicHash: hash,
       sendStatus: 'SENT',
-    } as any);
+    });
   }
 
   async regeneratePublicHash(tenantId: string, actorId: string, id: string) {
@@ -470,7 +470,7 @@ export class QuotationService {
     if (quotation.lineItems.length === 0) {
       throw new BadRequestException('Cannot accept a quotation with no line items');
     }
-    return this.update(tenantId, actorId, id, { status: 'ACCEPTED' } as any);
+    return this.update(tenantId, actorId, id, { status: 'ACCEPTED' });
   }
 
   async view(tenantId: string, actorId: string, id: string) {
@@ -479,15 +479,15 @@ export class QuotationService {
     if (!check.valid) {
       throw new BadRequestException(`Cannot mark quotation as viewed in ${quotation.status} status`);
     }
-    return this.update(tenantId, actorId, id, { status: 'VIEWED' } as any);
+    return this.update(tenantId, actorId, id, { status: 'VIEWED' });
   }
 
   async reject(tenantId: string, actorId: string, id: string) {
-    return this.update(tenantId, actorId, id, { status: 'REJECTED' } as any);
+    return this.update(tenantId, actorId, id, { status: 'REJECTED' });
   }
 
   async cancel(tenantId: string, actorId: string, id: string) {
-    return this.update(tenantId, actorId, id, { status: 'CANCELLED' } as any);
+    return this.update(tenantId, actorId, id, { status: 'CANCELLED' });
   }
 
   async convertToBooking(tenantId: string, actorId: string, quotationId: string) {
@@ -524,7 +524,7 @@ export class QuotationService {
       data: { tenantId, bookingId: booking.id, toStatus: 'HELD', actorId, note: 'Created from quotation' },
     });
 
-    await this.update(tenantId, actorId, quotationId, { status: 'BOOKING_CREATED' } as any);
+    await this.update(tenantId, actorId, quotationId, { status: 'BOOKING_CREATED' });
 
     await this.activity.logEntityEvent({
       tenantId, userId: actorId, type: 'BOOKING_CREATED',

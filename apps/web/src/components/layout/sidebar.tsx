@@ -8,6 +8,7 @@ import {
   Receipt, BarChart3, Settings, FileText, GitBranch, ScrollText, LogOut,
   CalendarClock, UserCog, Undo2, RefreshCw, XCircle, CreditCard, DollarSign,
   Calculator, Bell, Activity, Package, Percent, Coins, FileCheck, Globe,
+  PenTool, ShoppingCart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -38,6 +39,8 @@ const navGroups = [
     label: 'Operations',
     items: [
       { label: 'Quotations', href: '/quotations', icon: FileText, perm: 'QUOTATION_READ' },
+      { label: 'Contracts', href: '/contracts', icon: PenTool },
+      { label: 'Orders', href: '/orders', icon: ShoppingCart },
       { label: 'Bookings', href: '/bookings', icon: Plane, perm: 'BOOKING_READ' },
       { label: 'Tickets', href: '/tickets', icon: Ticket, perm: 'TICKET_READ' },
       { label: 'Documents', href: '/documents', icon: FileText, perm: 'DOCUMENT_READ' },
