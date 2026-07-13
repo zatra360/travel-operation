@@ -165,22 +165,35 @@ export function Sidebar() {
 
       <Separator className="shrink-0 bg-sidebar-border" />
 
-      <div className="p-4 shrink-0">
-        <div className="flex items-center gap-3 mb-2">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold">
-            {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+      <div className="border-t border-sidebar-border p-3 shrink-0 space-y-1.5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold ring-2 ring-primary/20">
+            {user?.firstName?.charAt(0) || ''}{user?.lastName?.charAt(0) || ''}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate text-sidebar-foreground">{user?.firstName} {user?.lastName}</p>
-            <p className="text-xs text-sidebar-foreground/60 truncate">{user?.email}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium truncate text-sidebar-foreground leading-tight">
+              {user?.firstName} {user?.lastName}
+            </p>
+            <p className="text-[11px] text-sidebar-foreground/50 truncate leading-tight">
+              {user?.isPlatformSuperAdmin ? 'Super Admin' : activeTenant?.role || 'Member'}
+            </p>
           </div>
         </div>
-        <Link href={isPlatform ? '/platform/profile' : '/profile'} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm w-full text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
-          <UserCog className="h-4 w-4" />My Profile
-        </Link>
-        <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={logout}>
-          <LogOut className="h-4 w-4 mr-2" />Sign Out
-        </Button>
+        <div className="flex items-center gap-1">
+          <Link
+            href={isPlatform ? '/platform/profile' : '/profile'}
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+          >
+            <UserCog className="h-3.5 w-3.5" />
+            Profile
+          </Link>
+          <button
+            onClick={logout}
+            className="flex items-center justify-center gap-1.5 rounded-lg py-1.5 px-2.5 text-xs font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-red-600 transition-colors"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </aside>
   );
