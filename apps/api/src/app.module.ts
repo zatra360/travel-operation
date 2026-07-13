@@ -22,6 +22,9 @@ import { FollowUpModule } from './modules/follow-up/follow-up.module';
 import { DocumentModule } from './modules/document/document.module';
 import { QuotationModule } from './modules/quotation/quotation.module';
 import { ContractModule } from './modules/contract/contract.module';
+import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.module';
+import { TaxModule } from './modules/tax/tax.module';
+import { CurrencyModule } from './modules/currency-settings/currency.module';
 import { BookingModule } from './modules/booking/booking.module';
 import { TicketModule } from './modules/ticket/ticket.module';
 import { InvoiceModule } from './modules/invoice/invoice.module';
@@ -69,6 +72,9 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     DocumentModule,
     QuotationModule,
     ContractModule,
+    ServiceCatalogModule,
+    TaxModule,
+    CurrencyModule,
     BookingModule,
     TicketModule,
     InvoiceModule,

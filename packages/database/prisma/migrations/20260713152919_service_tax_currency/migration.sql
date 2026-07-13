@@ -1,0 +1,14 @@
+CREATE TABLE "ServiceCategory" ("id" TEXT NOT NULL, "tenantId" TEXT NOT NULL, "name" TEXT NOT NULL, "code" TEXT NOT NULL, "description" TEXT, "icon" TEXT, "isActive" BOOLEAN NOT NULL DEFAULT true, "sortOrder" INTEGER NOT NULL DEFAULT 0, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "ServiceCategory_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "ServiceCategory_tenantId_code_key" ON "ServiceCategory"("tenantId","code");
+CREATE INDEX "ServiceCategory_tenantId_idx" ON "ServiceCategory"("tenantId");
+CREATE TABLE "ServiceItem" ("id" TEXT NOT NULL, "tenantId" TEXT NOT NULL, "categoryId" TEXT, "name" TEXT NOT NULL, "code" TEXT, "description" TEXT, "serviceType" TEXT, "basePrice" DECIMAL(19,4) NOT NULL DEFAULT 0, "currencyCode" TEXT NOT NULL DEFAULT 'USD', "isActive" BOOLEAN NOT NULL DEFAULT true, "isTaxable" BOOLEAN NOT NULL DEFAULT true, "metadata" JSONB DEFAULT '{}', "sortOrder" INTEGER NOT NULL DEFAULT 0, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "ServiceItem_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "ServiceItem_tenantId_code_key" ON "ServiceItem"("tenantId","code");
+CREATE INDEX "ServiceItem_tenantId_idx" ON "ServiceItem"("tenantId");
+CREATE INDEX "ServiceItem_categoryId_idx" ON "ServiceItem"("categoryId");
+ALTER TABLE "ServiceItem" ADD CONSTRAINT "ServiceItem_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "ServiceCategory"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+CREATE TABLE "TaxRate" ("id" TEXT NOT NULL, "tenantId" TEXT NOT NULL, "name" TEXT NOT NULL, "code" TEXT NOT NULL, "rate" DECIMAL(5,2) NOT NULL, "description" TEXT, "countryCode" TEXT, "isActive" BOOLEAN NOT NULL DEFAULT true, "isDefault" BOOLEAN NOT NULL DEFAULT false, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "TaxRate_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "TaxRate_tenantId_code_key" ON "TaxRate"("tenantId","code");
+CREATE INDEX "TaxRate_tenantId_idx" ON "TaxRate"("tenantId");
+CREATE TABLE "CurrencyConfig" ("id" TEXT NOT NULL, "tenantId" TEXT NOT NULL, "code" TEXT NOT NULL, "name" TEXT NOT NULL, "symbol" TEXT, "exchangeRate" DECIMAL(19,6) NOT NULL DEFAULT 1, "isActive" BOOLEAN NOT NULL DEFAULT true, "isDefault" BOOLEAN NOT NULL DEFAULT false, "decimalPlaces" INTEGER NOT NULL DEFAULT 2, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "CurrencyConfig_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "CurrencyConfig_tenantId_code_key" ON "CurrencyConfig"("tenantId","code");
+CREATE INDEX "CurrencyConfig_tenantId_idx" ON "CurrencyConfig"("tenantId");

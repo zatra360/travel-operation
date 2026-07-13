@@ -1258,6 +1258,82 @@ model Contract {
   @@index([clientId])
 }
 
+model ServiceCategory {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  code        String
+  description String?
+  icon        String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items ServiceItem[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model ServiceItem {
+  id              String   @id @default(cuid())
+  tenantId        String
+  categoryId      String?
+  name            String
+  code            String?
+  description     String?
+  serviceType     String?
+  basePrice       Decimal  @db.Decimal(19, 4) @default(0)
+  currencyCode    String   @default("USD")
+  isActive        Boolean  @default(true)
+  isTaxable       Boolean  @default(true)
+  metadata        Json?    @default("{}")
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  category ServiceCategory? @relation(fields: [categoryId], references: [id])
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([categoryId])
+}
+
+model TaxRate {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  code        String
+  rate        Decimal  @db.Decimal(5, 2)
+  description String?
+  countryCode String?
+  isActive    Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model CurrencyConfig {
+  id            String   @id @default(cuid())
+  tenantId      String
+  code          String
+  name          String
+  symbol        String?
+  exchangeRate  Decimal  @db.Decimal(19, 6) @default(1)
+  isActive      Boolean  @default(true)
+  isDefault     Boolean  @default(false)
+  decimalPlaces Int      @default(2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
 model Booking {
   id          String   @id @default(cuid())
   tenantId    String
