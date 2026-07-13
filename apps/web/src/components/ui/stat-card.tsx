@@ -1,24 +1,16 @@
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 type Tone = 'default' | 'success' | 'warning' | 'destructive' | 'info';
 
-const toneAccent: Record<Tone, string> = {
-  default: 'border-l-primary',
-  success: 'border-l-success',
-  warning: 'border-l-warning',
-  destructive: 'border-l-destructive',
-  info: 'border-l-info',
-};
-
-const toneIcon: Record<Tone, string> = {
-  default: 'bg-primary/10 text-primary',
-  success: 'bg-success/15 text-success',
-  warning: 'bg-warning/15 text-warning',
-  destructive: 'bg-destructive/10 text-destructive',
-  info: 'bg-info/15 text-info',
+const toneColors: Record<Tone, { bg: string; text: string; ring: string }> = {
+  default: { bg: 'bg-primary/8', text: 'text-primary', ring: 'ring-primary/20' },
+  success: { bg: 'bg-emerald-500/8', text: 'text-emerald-600 dark:text-emerald-400', ring: 'ring-emerald-500/20' },
+  warning: { bg: 'bg-amber-500/8', text: 'text-amber-600 dark:text-amber-400', ring: 'ring-amber-500/20' },
+  destructive: { bg: 'bg-red-500/8', text: 'text-red-600 dark:text-red-400', ring: 'ring-red-500/20' },
+  info: { bg: 'bg-sky-500/8', text: 'text-sky-600 dark:text-sky-400', ring: 'ring-sky-500/20' },
 };
 
 interface StatCardProps {
@@ -29,41 +21,44 @@ interface StatCardProps {
   href?: string;
   tone?: Tone;
   className?: string;
+  index?: number;
 }
 
-/**
- * Reusable KPI/stat card with token-based accents (no per-card ad-hoc colours).
- * Optionally links to the underlying module so a metric is one click from its
- * source data — every dashboard card should answer a real operational question.
- */
-export function StatCard({ label, value, hint, icon: Icon, href, tone = 'default', className }: StatCardProps) {
+export function StatCard({ label, value, hint, icon: Icon, href, tone = 'default', className, index = 0 }: StatCardProps) {
+  const c = toneColors[tone];
   const inner = (
-    <Card
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
       className={cn(
-        'h-full border-l-4 transition-shadow',
-        toneAccent[tone],
-        href && 'hover:shadow-md',
+        'group relative overflow-hidden rounded-xl border bg-card p-5 transition-all duration-200',
+        'hover:shadow-lg hover:border-primary/30 hover:-translate-y-0.5',
+        'ring-1 ring-transparent hover:ring-primary/20',
         className,
       )}
     >
-      <CardContent className="flex items-start justify-between gap-3 p-4">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-muted-foreground">{label}</p>
-          <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums">{value}</p>
-          {hint && <p className="mt-1 truncate text-xs text-muted-foreground">{hint}</p>}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+          <p className="text-[28px] font-semibold tracking-tight tabular-nums leading-none">{value}</p>
+          {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
         </div>
-        <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', toneIcon[tone])}>
-          <Icon className="h-4 w-4" />
-        </span>
-      </CardContent>
-    </Card>
+        <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-full', c.bg)}>
+          <Icon className={cn('h-5 w-5', c.text)} />
+        </div>
+      </div>
+      <div className={cn('absolute bottom-0 left-0 h-1 w-full rounded-b-xl bg-gradient-to-r', {
+        'from-primary/40 to-primary/10': tone === 'default',
+        'from-emerald-500/40 to-emerald-500/10': tone === 'success',
+        'from-amber-500/40 to-amber-500/10': tone === 'warning',
+        'from-red-500/40 to-red-500/10': tone === 'destructive',
+        'from-sky-500/40 to-sky-500/10': tone === 'info',
+      })} />
+    </motion.div>
   );
 
   return href ? (
-    <Link href={href} className="block focus-visible:outline-none">
-      {inner}
-    </Link>
-  ) : (
-    inner
-  );
+    <Link href={href} className="block focus-visible:outline-none">{inner}</Link>
+  ) : inner;
 }
