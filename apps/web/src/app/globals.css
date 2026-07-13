@@ -2,6 +2,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+}
+
 :root {
   --background: oklch(0.985 0.002 250);
   --foreground: oklch(0.18 0.02 250);

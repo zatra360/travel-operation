@@ -1,8 +1,15 @@
 import type { Metadata } from 'next';
+import { Instrument_Sans } from 'next/font/google';
 import './globals.css';
 import { QueryProvider } from '@/components/providers/query-provider';
 import { Toaster } from 'sonner';
 import { brand } from '@/lib/brand';
+
+const instrumentSans = Instrument_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-instrument',
+});
 
 export const metadata: Metadata = {
   title: { default: brand.name, template: `%s | ${brand.name}` },
@@ -38,7 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body>
+      <body className={`${instrumentSans.variable} font-sans`}>
         <QueryProvider>{children}</QueryProvider>
         <Toaster richColors position="top-right" />
       </body>
