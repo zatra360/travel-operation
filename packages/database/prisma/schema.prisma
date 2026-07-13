@@ -556,6 +556,7 @@ model Country {
   airlines     Airline[]      @relation("AirlineCountry")
   airports     Airport[]      @relation("AirportCountry")
   nationalities Nationality[]
+  visas         ClientVisa[]
 
   @@index([iso2])
   @@index([continent])
@@ -911,6 +912,7 @@ model Client {
   owner      User?           @relation("ClientOwner", fields: [ownerId], references: [id])
   leads      Lead[]          @relation("LeadClient")
   passports  ClientPassport[]
+  visas      ClientVisa[]
   activities ClientActivity[]
   tasks      ClientTask[]
   followUps  FollowUp[]      @relation("ClientFollowUps")
@@ -921,6 +923,7 @@ model Client {
   refunds    RefundRequest[] @relation("RefundClient")
   reissues   ReissueRequest[] @relation("ReissueClient")
   cancellations CancellationRequest[] @relation("CancelClient")
+  contracts    Contract[]             @relation("ContractClient")
 
   @@index([tenantId])
   @@index([branchId])
@@ -935,6 +938,7 @@ model ClientPassport {
   passportNumber String
   fullName       String
   expiryDate     DateTime
+  issueDate      DateTime?
   nationality    String?
   countryCode    String?
   status         String   @default("ACTIVE")
@@ -942,16 +946,51 @@ model ClientPassport {
   isVerified     Boolean  @default(false)
   hasMrz         Boolean  @default(false)
   hasOcr         Boolean  @default(false)
+  documentId     String?
   notes          String?
   verifiedById   String?
   verifiedAt     DateTime?
+  createdById    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  visas  ClientVisa[]
 
   @@index([tenantId])
   @@index([clientId])
+}
+
+model ClientVisa {
+  id              String    @id @default(cuid())
+  tenantId        String
+  branchId        String?
+  clientId        String
+  visaNumber      String?
+  visaType        String?
+  countryId       String?
+  passportId      String?
+  status          String    @default("PENDING")
+  entryType       String?
+  durationDays    Int?
+  issueDate       DateTime?
+  expiryDate      DateTime?
+  applicationDate DateTime?
+  approvalDate    DateTime?
+  documentId      String?
+  notes           String?
+  isActive        Boolean   @default(true)
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  client   Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  passport ClientPassport? @relation(fields: [passportId], references: [id])
+  country  Country?        @relation(fields: [countryId], references: [id])
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([passportId])
 }
 
 model ClientActivity {
@@ -1061,6 +1100,13 @@ model Quotation {
   // Revision tracking
   currentRevision   Int     @default(1)
 
+  // E-sign / public sharing
+  publicHash        String?  @unique
+  signatureRequired Boolean  @default(false)
+  clientComment     String?
+  lastViewedAt      DateTime?
+  sendStatus        String   @default("NOT_SENT")
+
   // Status timestamps
   sentAt          DateTime?
   viewedAt        DateTime?
@@ -1090,6 +1136,8 @@ model Quotation {
   lineItems   QuotationLineItem[]
   revisions   QuotationRevision[]
   statusLogs  QuotationStatusLog[]
+  sign        QuotationSign?
+  contracts   Contract[]           @relation("ContractQuotation")
   bookings    Booking[]
 
   @@unique([tenantId, quoteNumber])
@@ -1157,6 +1205,57 @@ model QuotationStatusLog {
 
   @@index([tenantId])
   @@index([quotationId])
+}
+
+model QuotationSign {
+  id              String   @id @default(cuid())
+  quotationId     String
+  fullName        String
+  email           String?
+  signature       String?
+  ipAddress       String?
+  consentGiven    Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@unique([quotationId])
+}
+
+model Contract {
+  id              String   @id @default(cuid())
+  tenantId        String
+  branchId        String?
+  clientId        String
+  quotationId     String?
+  contractNumber  String
+  subject         String
+  contractType    String   @default("SERVICE_AGREEMENT")
+  status          String   @default("DRAFT")
+  currencyCode    String   @default("USD")
+  amount          Decimal  @db.Decimal(19, 4) @default(0)
+  startDate       DateTime?
+  endDate         DateTime?
+  description     String?
+  terms           String?
+  publicHash      String?  @unique
+  signedAt        DateTime?
+  signedByName    String?
+  signedByEmail   String?
+  signature       String?
+  signatureIp     String?
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  client    Client       @relation("ContractClient", fields: [clientId], references: [id])
+  quotation Quotation?   @relation("ContractQuotation", fields: [quotationId], references: [id])
+
+  @@unique([tenantId, contractNumber])
+  @@index([tenantId])
+  @@index([clientId])
 }
 
 model Booking {

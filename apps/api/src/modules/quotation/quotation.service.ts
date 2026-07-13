@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
@@ -407,7 +408,35 @@ export class QuotationService {
     if (!check.valid) {
       throw new BadRequestException(`Cannot send a quotation in ${quotation.status} status`);
     }
-    return this.update(tenantId, actorId, id, { status: 'SENT' } as any);
+    const hash = quotation.publicHash || this.generateHash();
+    return this.update(tenantId, actorId, id, {
+      status: 'SENT',
+      publicHash: hash,
+      sendStatus: 'SENT',
+    } as any);
+  }
+
+  async regeneratePublicHash(tenantId: string, actorId: string, id: string) {
+    const quotation = await this.findById(tenantId, id);
+    const hash = this.generateHash();
+    return this.prisma.quotation.update({ where: { id: quotation.id }, data: { publicHash: hash } });
+  }
+
+  async setSignatureRequired(tenantId: string, id: string, required: boolean) {
+    const quotation = await this.findById(tenantId, id);
+    return this.prisma.quotation.update({
+      where: { id: quotation.id },
+      data: { signatureRequired: required },
+    });
+  }
+
+  async getSignature(tenantId: string, id: string) {
+    const quotation = await this.findById(tenantId, id);
+    return this.prisma.quotationSign.findUnique({ where: { quotationId: quotation.id } });
+  }
+
+  private generateHash(): string {
+    return randomBytes(16).toString('hex');
   }
 
   async accept(tenantId: string, actorId: string, id: string) {

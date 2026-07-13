@@ -137,4 +137,25 @@ export class QuotationController {
   async remove(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
     return this.quotationService.remove(ctx.tenantId, ctx.userId, id);
   }
+
+  @Post(':id/regenerate-hash')
+  @RequirePermissions('QUOTATION_UPDATE')
+  @ApiOperation({ summary: 'Regenerate public share hash' })
+  async regenerateHash(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.quotationService.regeneratePublicHash(ctx.tenantId, ctx.userId, id);
+  }
+
+  @Put(':id/signature-required')
+  @RequirePermissions('QUOTATION_UPDATE')
+  @ApiOperation({ summary: 'Toggle signature requirement' })
+  async setSignatureRequired(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body('required') required: boolean) {
+    return this.quotationService.setSignatureRequired(ctx.tenantId, id, required);
+  }
+
+  @Get(':id/signature')
+  @RequirePermissions('QUOTATION_READ')
+  @ApiOperation({ summary: 'Get quotation signature' })
+  async getSignature(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.quotationService.getSignature(ctx.tenantId, id);
+  }
 }

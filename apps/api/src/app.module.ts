@@ -16,9 +16,12 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { LeadModule } from './modules/lead/lead.module';
 import { ClientModule } from './modules/client/client.module';
+import { PassportModule } from './modules/passport/passport.module';
+import { VisaModule } from './modules/visa/visa.module';
 import { FollowUpModule } from './modules/follow-up/follow-up.module';
 import { DocumentModule } from './modules/document/document.module';
 import { QuotationModule } from './modules/quotation/quotation.module';
+import { ContractModule } from './modules/contract/contract.module';
 import { BookingModule } from './modules/booking/booking.module';
 import { TicketModule } from './modules/ticket/ticket.module';
 import { InvoiceModule } from './modules/invoice/invoice.module';
@@ -60,9 +63,12 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     DashboardModule,
     LeadModule,
     ClientModule,
+    PassportModule,
+    VisaModule,
     FollowUpModule,
     DocumentModule,
     QuotationModule,
+    ContractModule,
     BookingModule,
     TicketModule,
     InvoiceModule,
