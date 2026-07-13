@@ -105,13 +105,13 @@ function NavItem({ href, icon: Icon, label }: { href: string; icon: any; label: 
       href={href}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+        'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
         isActive
-          ? 'bg-primary text-primary-foreground'
-          : 'text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+          ? 'bg-primary text-primary-foreground shadow-sm'
+          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
       )}
     >
-      <Icon className="h-4 w-4 shrink-0" />
+      <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'opacity-100' : 'opacity-60')} />
       <span className="truncate">{label}</span>
     </Link>
   );
@@ -135,9 +135,11 @@ export function Sidebar() {
 
   return (
     <aside className="h-screen w-64 border-r border-sidebar-border bg-sidebar flex flex-col">
-      <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4 shrink-0">
-        <Plane className="h-6 w-6 text-primary" />
-        <span className="font-bold text-lg text-sidebar-foreground truncate">{brand.shortName}</span>
+      <div className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-5 shrink-0">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <Plane className="h-4 w-4" />
+        </div>
+        <span className="font-semibold text-base text-sidebar-foreground tracking-tight">{brand.shortName}</span>
       </div>
 
       {activeTenant && !isPlatform && (
@@ -165,7 +167,7 @@ export function Sidebar() {
 
       <div className="p-4 shrink-0">
         <div className="flex items-center gap-3 mb-2">
-          <div className="h-8 w-8 rounded-full bg-primary/20 text-primary flex items-center justify-center text-sm font-medium">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold">
             {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
           </div>
           <div className="flex-1 min-w-0">

@@ -39,12 +39,13 @@
   --ring: oklch(0.45 0.15 265);
   --radius: 0.625rem;
 
-  /* Zenith-style deep indigo sidebar */
-  --sidebar: oklch(0.25 0.06 265);
-  --sidebar-foreground: oklch(0.95 0.003 260);
-  --sidebar-accent: oklch(0.32 0.06 265);
-  --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(0.32 0.06 265);
+  /* Light indigo sidebar matching Zenith */
+  --sidebar: oklch(0.97 0.003 260);
+  --sidebar-foreground: oklch(0.35 0.02 260);
+  --sidebar-accent: oklch(0.93 0.01 265);
+  --sidebar-accent-foreground: oklch(0.45 0.15 265);
+  --sidebar-border: oklch(0.88 0.005 260);
+
 }
 
 .dark {
@@ -77,12 +78,13 @@
   --input: oklch(0.22 0.02 260);
   --ring: oklch(0.55 0.1 265);
 
-  /* Zenith-style deeper sidebar for dark mode */
-  --sidebar: oklch(0.13 0.04 265);
+  /* Light sidebar for dark mode */
+  --sidebar: oklch(0.18 0.01 260);
   --sidebar-foreground: oklch(0.93 0.003 260);
-  --sidebar-accent: oklch(0.18 0.05 265);
-  --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(0.18 0.05 265);
+  --sidebar-accent: oklch(0.24 0.02 265);
+  --sidebar-accent-foreground: oklch(0.9 0.05 265);
+  --sidebar-border: oklch(0.24 0.02 260);
+
 }
 
 @theme inline {
