@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Building2, Shield, ClipboardList, Plane, Ticket,
   Receipt, BarChart3, Settings, FileText, GitBranch, ScrollText, LogOut,
   CalendarClock, UserCog, Undo2, RefreshCw, XCircle, CreditCard, DollarSign,
-  Calculator, Bell, Activity, Package, Percent, Coins,
+  Calculator, Bell, Activity, Package, Percent, Coins, FileCheck, Globe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -29,6 +29,8 @@ const navGroups = [
     items: [
       { label: 'Leads', href: '/leads', icon: ClipboardList, perm: 'LEAD_READ' },
       { label: 'Clients', href: '/clients', icon: Building2, perm: 'CLIENT_READ' },
+      { label: 'Passports', href: '/passports', icon: FileCheck, perm: 'CLIENT_READ' },
+      { label: 'Visas', href: '/visas', icon: Globe, perm: 'CLIENT_READ' },
       { label: 'Follow-ups', href: '/follow-ups', icon: CalendarClock, perm: 'FOLLOW_UP_READ' },
     ],
   },

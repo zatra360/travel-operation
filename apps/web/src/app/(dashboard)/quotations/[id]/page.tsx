@@ -66,7 +66,7 @@ export default function QuotationDetailPage() {
       <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-96" />
-        <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-4">
             <Skeleton className="h-64" />
           </div>
@@ -146,7 +146,8 @@ export default function QuotationDetailPage() {
                 {isEditable ? 'Add line items to build this quotation.' : 'No line items.'}
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+                <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left">
@@ -180,6 +181,27 @@ export default function QuotationDetailPage() {
                   </tbody>
                 </table>
               </div>
+              <div className="sm:hidden space-y-2 mt-2">
+                {q.lineItems.map((li) => (
+                  <div key={li.id} className="border rounded-md p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{li.title || '—'}</span>
+                      <span className="font-bold tabular-nums">{formatMoney(li.lineTotal, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-muted-foreground text-xs mt-1">
+                      <span>{li.serviceType ? humanizeStatus(li.serviceType) : '—'} · Qty: {li.quantity}</span>
+                      <span>{formatMoney(li.unitPrice, currency)}/ea</span>
+                    </div>
+                    {isEditable && (
+                      <div className="flex justify-end gap-1 mt-2">
+                        <EditLineItemButton item={li} quotationId={id} tenantId={activeTenant!.id} onSaved={load} />
+                        <DeleteLineItemButton item={li} quotationId={id} tenantId={activeTenant!.id} onDeleted={load} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              </>
             )}
             <Separator className="my-4" />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-right text-sm">
