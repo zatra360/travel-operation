@@ -93,6 +93,9 @@ model Tenant {
   slug      String       @unique
   logo      String?
   status    TenantStatus @default(TRIAL)
+  trialEndsAt   DateTime?
+  maxUsers      Int       @default(5)
+  maxBranches   Int       @default(1)
   settings  Json?        @default("{}")
   metadata  Json?        @default("{}")
   createdAt DateTime     @default(now())
@@ -130,9 +133,46 @@ model Tenant {
   salarySlips     SalarySlip[]
   commissions     Commission[]
   incentives      Incentive[]
+  subscription    TenantSubscription?
 
   @@index([status])
   @@index([slug])
+}
+
+model Package {
+  id            String   @id @default(cuid())
+  name          String
+  code          String   @unique
+  description   String?
+  priceMonthly  Decimal  @db.Decimal(10, 2) @default(0)
+  priceYearly   Decimal  @db.Decimal(10, 2) @default(0)
+  maxUsers      Int      @default(5)
+  maxBranches   Int      @default(1)
+  features      Json?    @default("{}")
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subscriptions TenantSubscription[]
+}
+
+model TenantSubscription {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique
+  packageId       String
+  status          String   @default("ACTIVE")
+  startedAt       DateTime @default(now())
+  endsAt          DateTime?
+  trialEndsAt     DateTime?
+  cancelledAt     DateTime?
+  renewedAt       DateTime?
+  billingCycle    String   @default("MONTHLY")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  package Package @relation(fields: [packageId], references: [id])
 }
 
 model TenantSetting {

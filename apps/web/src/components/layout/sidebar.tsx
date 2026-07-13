@@ -93,6 +93,7 @@ const navGroups = [
 const platformNavItems = [
   { label: 'Dashboard', href: '/platform', icon: LayoutDashboard },
   { label: 'Companies', href: '/platform/tenants', icon: Building2 },
+  { label: 'Packages', href: '/platform/packages', icon: Package },
   { label: 'Users', href: '/platform/users', icon: Users },
   { label: 'Permissions', href: '/platform/permissions', icon: Shield },
 ];

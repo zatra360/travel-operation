@@ -77,6 +77,45 @@ async function main() {
 
   console.log(`  ✓ ${modules.length * actions.length} permissions created`);
 
+  // ─── Subscription Packages ─────────────────────────────
+  const freePackage = await prisma.package.upsert({
+    where: { code: 'STARTER' },
+    update: {},
+    create: {
+      name: 'Starter', code: 'STARTER',
+      description: 'For small agencies getting started. Up to 5 users, 1 branch.',
+      priceMonthly: 0, priceYearly: 0,
+      maxUsers: 5, maxBranches: 1,
+      features: ['leads', 'clients', 'quotations', 'invoices', 'bookings', 'tickets'],
+      sortOrder: 0,
+    },
+  });
+  await prisma.package.upsert({
+    where: { code: 'PRO' },
+    update: {},
+    create: {
+      name: 'Professional', code: 'PRO',
+      description: 'For growing agencies. Up to 25 users, 5 branches.',
+      priceMonthly: 49, priceYearly: 490,
+      maxUsers: 25, maxBranches: 5,
+      features: ['all_modules'],
+      sortOrder: 1,
+    },
+  });
+  await prisma.package.upsert({
+    where: { code: 'ENTERPRISE' },
+    update: {},
+    create: {
+      name: 'Enterprise', code: 'ENTERPRISE',
+      description: 'For large agencies. Unlimited users and branches.',
+      priceMonthly: 149, priceYearly: 1490,
+      maxUsers: 999, maxBranches: 999,
+      features: ['all_modules', 'priority_support', 'white_label', 'api_access'],
+      sortOrder: 2,
+    },
+  });
+  console.log('  ✓ 3 subscription packages created');
+
   // ─── Demo Tenant ──────────────────────────────────────────
   const demoSlug = process.env.DEMO_TENANT_SLUG || 'demo-travel';
   let tenant = await prisma.tenant.findUnique({ where: { slug: demoSlug } });
@@ -99,7 +138,15 @@ async function main() {
     console.log(`  ✓ Tenant exists: ${tenant.name}`);
   }
 
-  // ─── Demo Branch ──────────────────────────────────────────
+  // Attach the free Starter plan to demo tenant
+  await prisma.tenantSubscription.upsert({
+    where: { tenantId: tenant.id },
+    update: {},
+    create: { tenantId: tenant.id, packageId: freePackage.id, status: 'ACTIVE', billingCycle: 'MONTHLY' },
+  });
+  console.log('  ✓ Free plan assigned to tenant');
+
+// ─── Demo Branch ──────────────────────────────────────────
   let branch = await prisma.branch.findFirst({
     where: { tenantId: tenant.id, code: 'HQ' },
   });
