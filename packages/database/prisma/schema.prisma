@@ -1375,6 +1375,38 @@ model CurrencyConfig {
   @@index([tenantId])
 }
 
+model Event {
+  id          String    @id @default(cuid())
+  tenantId    String
+  branchId    String?
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  allDay      Boolean   @default(false)
+  color       String?
+  type        String    @default("GENERAL")
+  isRecurring Boolean   @default(false)
+  recurrenceRule String?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([startDate])
+}
+
+model Holiday {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  date      DateTime
+  isRecurring Boolean @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
 model Order {
   id              String   @id @default(cuid())
   tenantId        String

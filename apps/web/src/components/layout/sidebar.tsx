@@ -20,6 +20,7 @@ const navGroups = [
     label: 'Core',
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Calendar', href: '/calendar', icon: CalendarClock },
       { label: 'Branches', href: '/branches', icon: GitBranch, perm: 'BRANCH_READ' },
       { label: 'Users', href: '/users', icon: Users, perm: 'USER_READ' },
       { label: 'Roles', href: '/roles', icon: Shield, perm: 'ROLE_READ' },
