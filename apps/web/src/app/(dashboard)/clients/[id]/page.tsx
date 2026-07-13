@@ -6,16 +6,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, Clock, FileText, Plane, CreditCard } from 'lucide-react';
+import { Pencil, Clock, FileText, Plane, CreditCard, Globe, FileCheck } from 'lucide-react';
 import { Breadcrumb, PageHeader } from '@/components/ui/page-header';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, formatDate } from '@/lib/utils';
 import {
   Client, Booking, Invoice, Payment, Paginated, TimelineEvent,
   clientStatusVariant, bookingStatusVariant, invoiceStatusVariant,
 } from '@/lib/crm';
 import { ClientFormDialog } from '../client-form-dialog';
+
+const VISA_BADGE: Record<string, any> = {
+  PENDING: 'warning', APPLIED: 'default', UNDER_REVIEW: 'default', APPROVED: 'success', REJECTED: 'destructive', EXPIRED: 'destructive',
+};
+
+function isExpiringSoon(date: string) {
+  return new Date(date).getTime() - Date.now() < 90 * 24 * 60 * 60 * 1000;
+}
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -30,6 +38,8 @@ export default function ClientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editOpen, setEditOpen] = useState(false);
+  const [passports, setPassports] = useState<any[]>([]);
+  const [visas, setVisas] = useState<any[]>([]);
 
   const load = useCallback(() => {
     if (!activeTenant) return;
@@ -40,13 +50,12 @@ export default function ClientDetailPage() {
       api.get<Paginated<Invoice>>(`/api/v1/tenant/invoices?clientId=${id}&limit=10`, { tenantId: activeTenant.id }).catch(() => ({ data: [] as Invoice[], total: 0, page: 1, limit: 10, totalPages: 0 })),
       api.get<Paginated<Payment>>(`/api/v1/tenant/payments?clientId=${id}&limit=10`, { tenantId: activeTenant.id }).catch(() => ({ data: [] as Payment[], total: 0, page: 1, limit: 10, totalPages: 0 })),
       api.get<TimelineEvent[]>(`/api/v1/tenant/clients/${id}/timeline`, { tenantId: activeTenant.id }).catch(() => [] as TimelineEvent[]),
+      api.get<any[]>(`/api/v1/tenant/clients/${id}/passports`, { tenantId: activeTenant.id }).catch(() => []),
+      api.get<any[]>(`/api/v1/tenant/clients/${id}/visas`, { tenantId: activeTenant.id }).catch(() => []),
     ])
-      .then(([c, b, i, p, tl]) => {
-        setClient(c);
-        setBookings(b.data || []);
-        setInvoices(i.data || []);
-        setPayments(p.data || []);
-        setTimeline(tl);
+      .then(([c, b, i, p, tl, pp, v]) => {
+        setClient(c); setBookings(b.data || []); setInvoices(i.data || []);
+        setPayments(p.data || []); setTimeline(tl); setPassports(pp); setVisas(v);
       })
       .catch((err) => setError(err.message || 'Failed to load client'))
       .finally(() => setLoading(false));
@@ -102,6 +111,52 @@ export default function ClientDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {(passports.length > 0 || visas.length > 0) && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {passports.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2"><FileCheck className="h-4 w-4" />Passports ({passports.length})</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {passports.map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between border-b pb-2 last:border-0 text-sm">
+                    <div>
+                      <p className="font-medium">{p.fullName}</p>
+                      <p className="text-xs text-muted-foreground">#{p.passportNumber} · {p.nationality || p.countryCode}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">
+                        Expires {formatDate(p.expiryDate)}
+                        {isExpiringSoon(p.expiryDate) && <span className="text-warning ml-1">⚠</span>}
+                      </p>
+                      <Badge variant={p.isVerified ? 'default' : 'secondary'} className="text-xs mt-1">{p.isVerified ? 'Verified' : 'Pending'}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+          {visas.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2"><Globe className="h-4 w-4" />Visas ({visas.length})</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {visas.map((v: any) => (
+                  <div key={v.id} className="flex items-center justify-between border-b pb-2 last:border-0 text-sm">
+                    <div>
+                      <p className="font-medium">{v.visaType} {v.country ? `- ${v.country.name}` : ''}</p>
+                      <p className="text-xs text-muted-foreground">{v.visaNumber ? `#${v.visaNumber}` : 'No number'} · {v.entryType || 'N/A'}</p>
+                    </div>
+                    <div className="text-right">
+                      {v.expiryDate && <p className="text-xs text-muted-foreground">Expires {formatDate(v.expiryDate)}</p>}
+                      <Badge variant={VISA_BADGE[v.status] || 'secondary'} className="text-xs mt-1">{v.status}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {bookings.length > 0 && (
         <Card>
