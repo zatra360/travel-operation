@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
+import { ImportExportButtons } from '@/components/import-export-buttons';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   Select,
@@ -133,10 +134,10 @@ export default function ClientsPage() {
         title="Clients"
         subtitle="Manage customer profiles, bookings, and payment history"
         actions={
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Client
-          </Button>
+          <div className="flex items-center gap-2">
+            <ImportExportButtons type="clients" onImported={load} />
+            <Button size="sm" onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Add Client</Button>
+          </div>
         }
       />
 
