@@ -78,6 +78,13 @@ export class QuotationController {
     return this.quotationService.cancel(ctx.tenantId, ctx.userId, id);
   }
 
+  @Post(':id/reopen')
+  @RequirePermissions('QUOTATION_UPDATE')
+  @ApiOperation({ summary: 'Reopen a rejected or expired quotation' })
+  async reopen(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.quotationService.reopen(ctx.tenantId, ctx.userId, id);
+  }
+
   @Post(':id/convert-to-booking')
   @RequirePermissions('BOOKING_CREATE')
   @ApiOperation({ summary: 'Convert quotation to booking' })

@@ -121,7 +121,12 @@ export default function QuotationDetailPage() {
               </>
             )}
             {q.status === 'REJECTED' && (
-              <Button size="sm" variant="outline" onClick={() => action('update')} disabled={actionLoading === 'update'}>
+              <Button size="sm" variant="outline" onClick={() => action('reopen')} disabled={actionLoading === 'reopen'}>
+                <XCircle className="h-4 w-4 mr-2" />Reopen as Draft
+              </Button>
+            )}
+            {q.status === 'EXPIRED' && (
+              <Button size="sm" variant="outline" onClick={() => action('reopen')} disabled={actionLoading === 'reopen'}>
                 <XCircle className="h-4 w-4 mr-2" />Reopen as Draft
               </Button>
             )}

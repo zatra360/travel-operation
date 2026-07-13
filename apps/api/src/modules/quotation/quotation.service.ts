@@ -490,6 +490,15 @@ export class QuotationService {
     return this.update(tenantId, actorId, id, { status: 'CANCELLED' });
   }
 
+  async reopen(tenantId: string, actorId: string, id: string) {
+    const quotation = await this.findById(tenantId, id);
+    const check = validateStatusTransition('quotation', quotation.status, 'DRAFT');
+    if (!check.valid) {
+      throw new BadRequestException(`Cannot reopen a quotation in ${quotation.status} status`);
+    }
+    return this.update(tenantId, actorId, id, { status: 'DRAFT' });
+  }
+
   async convertToBooking(tenantId: string, actorId: string, quotationId: string) {
     const quotation = await this.prisma.quotation.findFirst({
       where: { id: quotationId, tenantId, deletedAt: null },
