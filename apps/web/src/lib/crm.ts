@@ -307,8 +307,8 @@ export const EXPENSE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'PAID'] as c
 export interface Invoice {
   id: string; invoiceNumber: string; status: string;
   clientId?: string | null; bookingId?: string | null;
-  currencyCode: string; subtotal: number; taxAmount: number;
-  discountAmount: number; totalAmount: number; paidAmount: number; dueAmount: number;
+  currencyCode: string; subtotal: number | string; taxAmount: number | string;
+  discountAmount: number | string; totalAmount: number | string; paidAmount: number | string; dueAmount: number | string;
   issuedAt?: string | null; dueAt?: string | null; notes?: string | null;
   branchId?: string | null; createdAt: string; updatedAt: string;
 }
@@ -316,14 +316,14 @@ export interface Invoice {
 export interface Receipt {
   id: string; receiptNumber: string;
   invoiceId?: string | null; paymentMethod?: string | null;
-  amount: number; currencyCode: string; reference?: string | null;
+  amount: number | string; currencyCode: string; reference?: string | null;
   notes?: string | null; receivedAt?: string | null;
   branchId?: string | null; createdAt: string; updatedAt: string;
 }
 
 export interface Payment {
   id: string; bookingId?: string | null; invoiceId?: string | null;
-  amount: number; currencyCode: string; paymentMethod?: string | null;
+  amount: number | string; currencyCode: string; paymentMethod?: string | null;
   status: string; reference?: string | null; idempotencyKey?: string | null;
   notes?: string | null; receivedAt?: string | null; branchId?: string | null;
   createdAt: string; updatedAt: string;
@@ -331,7 +331,7 @@ export interface Payment {
 
 export interface Expense {
   id: string; expenseNumber: string; category?: string | null;
-  vendorName?: string | null; amount: number; currencyCode: string;
+  vendorName?: string | null; amount: number | string; currencyCode: string;
   status: string; description?: string | null; expenseDate?: string | null;
   branchId?: string | null; createdAt: string; updatedAt: string;
 }

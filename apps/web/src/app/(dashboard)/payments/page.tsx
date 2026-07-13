@@ -101,7 +101,7 @@ export default function PaymentsPage() {
       key: 'amount',
       header: 'Amount',
       align: 'right',
-      cell: (p) => <Money amount={p.amount as unknown as number} currency={p.currencyCode} className="font-medium" />,
+      cell: (p) => <Money amount={p.amount} currency={p.currencyCode} className="font-medium" />,
     },
     { key: 'status', header: 'Status', cell: (p) => <StatusBadge status={p.status} /> },
     {
@@ -200,7 +200,7 @@ export default function PaymentsPage() {
             mobileCard={(p) => (
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <Money amount={p.amount as unknown as number} currency={p.currencyCode} className="font-semibold" />
+                  <Money amount={p.amount} currency={p.currencyCode} className="font-semibold" />
                   <StatusBadge status={p.status} />
                 </div>
                 <p className="text-sm text-muted-foreground">

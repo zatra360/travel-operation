@@ -66,7 +66,7 @@ export default function ReceiptsPage() {
 
   const columns: DataTableColumn<Receipt>[] = [
     { key: 'number', header: 'Receipt #', cell: (r) => <span className="font-medium">{r.receiptNumber}</span> },
-    { key: 'amount', header: 'Amount', align: 'right', cell: (r) => <Money amount={r.amount as unknown as number} currency={r.currencyCode} className="font-medium" /> },
+    { key: 'amount', header: 'Amount', align: 'right', cell: (r) => <Money amount={r.amount} currency={r.currencyCode} className="font-medium" /> },
     { key: 'method', header: 'Method', hideOnMobile: true, cell: (r) => <span className="text-muted-foreground">{r.paymentMethod || '—'}</span> },
     { key: 'reference', header: 'Reference', hideOnMobile: true, cell: (r) => <span className="text-muted-foreground">{r.reference || '—'}</span> },
     { key: 'received', header: 'Received', hideOnMobile: true, cell: (r) => <span className="text-muted-foreground">{r.receivedAt ? formatDate(r.receivedAt) : '—'}</span> },
@@ -119,7 +119,7 @@ export default function ReceiptsPage() {
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium">{r.receiptNumber}</span>
-                  <Money amount={r.amount as unknown as number} currency={r.currencyCode} className="font-semibold" />
+                  <Money amount={r.amount} currency={r.currencyCode} className="font-semibold" />
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {r.paymentMethod || '—'} · {formatDate(r.createdAt)}

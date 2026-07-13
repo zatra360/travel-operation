@@ -94,7 +94,7 @@ export default function ExpensesPage() {
     { key: 'number', header: 'Expense #', cell: (e) => <span className="font-medium">{e.expenseNumber}</span> },
     { key: 'category', header: 'Category', hideOnMobile: true, cell: (e) => <span className="text-muted-foreground">{e.category || '—'}</span> },
     { key: 'vendor', header: 'Vendor', hideOnMobile: true, cell: (e) => <span className="text-muted-foreground">{e.vendorName || '—'}</span> },
-    { key: 'amount', header: 'Amount', align: 'right', cell: (e) => <Money amount={e.amount as unknown as number} currency={e.currencyCode} className="font-medium" /> },
+    { key: 'amount', header: 'Amount', align: 'right', cell: (e) => <Money amount={e.amount} currency={e.currencyCode} className="font-medium" /> },
     { key: 'status', header: 'Status', cell: (e) => <StatusBadge status={e.status} /> },
     { key: 'date', header: 'Date', hideOnMobile: true, cell: (e) => <span className="text-muted-foreground">{e.expenseDate ? formatDate(e.expenseDate) : '—'}</span> },
     {
@@ -180,7 +180,7 @@ export default function ExpensesPage() {
                 </div>
                 <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
                   <span>{e.vendorName || e.category || '—'}</span>
-                  <Money amount={e.amount as unknown as number} currency={e.currencyCode} />
+                  <Money amount={e.amount} currency={e.currencyCode} />
                 </div>
               </div>
             )}

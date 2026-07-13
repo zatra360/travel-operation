@@ -102,9 +102,9 @@ export default function InvoicesPage() {
       ),
     },
     { key: 'status', header: 'Status', cell: (i) => <StatusBadge status={i.status} /> },
-    { key: 'total', header: 'Total', align: 'right', cell: (i) => <Money amount={i.totalAmount as unknown as number} currency={i.currencyCode} className="font-medium" /> },
-    { key: 'paid', header: 'Paid', align: 'right', hideOnMobile: true, cell: (i) => <Money amount={i.paidAmount as unknown as number} currency={i.currencyCode} /> },
-    { key: 'due', header: 'Due', align: 'right', hideOnMobile: true, cell: (i) => <Money amount={i.dueAmount as unknown as number} currency={i.currencyCode} colorNegative /> },
+    { key: 'total', header: 'Total', align: 'right', cell: (i) => <Money amount={i.totalAmount} currency={i.currencyCode} className="font-medium" /> },
+    { key: 'paid', header: 'Paid', align: 'right', hideOnMobile: true, cell: (i) => <Money amount={i.paidAmount} currency={i.currencyCode} /> },
+    { key: 'due', header: 'Due', align: 'right', hideOnMobile: true, cell: (i) => <Money amount={i.dueAmount} currency={i.currencyCode} colorNegative /> },
     { key: 'dueDate', header: 'Due date', hideOnMobile: true, cell: (i) => <span className="text-muted-foreground">{i.dueAt ? formatDate(i.dueAt) : '—'}</span> },
     {
       key: 'actions',
@@ -191,7 +191,7 @@ export default function InvoicesPage() {
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Due</span>
-                  <Money amount={i.dueAmount as unknown as number} currency={i.currencyCode} colorNegative />
+                  <Money amount={i.dueAmount} currency={i.currencyCode} colorNegative />
                 </div>
               </div>
             )}
