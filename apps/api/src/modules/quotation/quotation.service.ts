@@ -330,6 +330,28 @@ export class QuotationService {
     return { id: lineItemId, deleted: true };
   }
 
+  async reorderLineItems(tenantId: string, actorId: string, quotationId: string, itemIds: string[]) {
+    const quotation = await this.findById(tenantId, quotationId);
+    this.assertLineItemEditable(quotation);
+
+    await this.prisma.$transaction(
+      itemIds.map((id, index) =>
+        this.prisma.quotationLineItem.update({
+          where: { id },
+          data: { sortOrder: index },
+        }),
+      ),
+    );
+
+    await this.activity.logEntityEvent({
+      tenantId, userId: actorId, type: 'QUOTATION_LINE_ITEM_REORDERED',
+      subject: `Line items reordered in ${quotation.quoteNumber}`,
+      entity: 'Quotation', entityId: quotationId,
+    });
+
+    return { success: true };
+  }
+
   private assertLineItemEditable(quotation: any) {
     if (TERMINAL_STATUSES.includes(quotation.status)) {
       throw new BadRequestException(`Cannot modify line items on a ${quotation.status.toLowerCase()} quotation`);
@@ -449,6 +471,15 @@ export class QuotationService {
       throw new BadRequestException('Cannot accept a quotation with no line items');
     }
     return this.update(tenantId, actorId, id, { status: 'ACCEPTED' } as any);
+  }
+
+  async view(tenantId: string, actorId: string, id: string) {
+    const quotation = await this.findById(tenantId, id);
+    const check = validateStatusTransition('quotation', quotation.status, 'VIEWED');
+    if (!check.valid) {
+      throw new BadRequestException(`Cannot mark quotation as viewed in ${quotation.status} status`);
+    }
+    return this.update(tenantId, actorId, id, { status: 'VIEWED' } as any);
   }
 
   async reject(tenantId: string, actorId: string, id: string) {

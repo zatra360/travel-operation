@@ -57,6 +57,13 @@ export class QuotationController {
     return this.quotationService.accept(ctx.tenantId, ctx.userId, id);
   }
 
+  @Post(':id/view')
+  @RequirePermissions('QUOTATION_UPDATE')
+  @ApiOperation({ summary: 'Mark quotation as viewed' })
+  async view(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.quotationService.view(ctx.tenantId, ctx.userId, id);
+  }
+
   @Post(':id/reject')
   @RequirePermissions('QUOTATION_UPDATE')
   @ApiOperation({ summary: 'Reject quotation' })
@@ -115,6 +122,17 @@ export class QuotationController {
     @Param('lineItemId') lineItemId: string,
   ) {
     return this.quotationService.removeLineItem(ctx.tenantId, ctx.userId, id, lineItemId);
+  }
+
+  @Put(':id/line-items/reorder')
+  @RequirePermissions('QUOTATION_UPDATE')
+  @ApiOperation({ summary: 'Reorder quotation line items' })
+  async reorderLineItems(
+    @TenantCtx() ctx: TenantContext,
+    @Param('id') id: string,
+    @Body('itemIds') itemIds: string[],
+  ) {
+    return this.quotationService.reorderLineItems(ctx.tenantId, ctx.userId, id, itemIds);
   }
 
   @Get(':id/timeline')

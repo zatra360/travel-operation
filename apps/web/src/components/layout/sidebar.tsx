@@ -4,30 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
-  LayoutDashboard,
-  Users,
-  Building2,
-  Shield,
-  ClipboardList,
-  Plane,
-  Ticket,
-  Receipt,
-  BarChart3,
-  Settings,
-  FileText,
-  GitBranch,
-  ScrollText,
-  LogOut,
-  CalendarClock,
-  UserCog,
-  Undo2,
-  RefreshCw,
-  XCircle,
-  CreditCard,
-  DollarSign,
-  Calculator,
-  Bell,
-  Activity,
+  LayoutDashboard, Users, Building2, Shield, ClipboardList, Plane, Ticket,
+  Receipt, BarChart3, Settings, FileText, GitBranch, ScrollText, LogOut,
+  CalendarClock, UserCog, Undo2, RefreshCw, XCircle, CreditCard, DollarSign,
+  Calculator, Bell, Activity, Package, Percent, Coins,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -93,6 +73,9 @@ const navGroups = [
   {
     label: 'System',
     items: [
+      { label: 'Service Catalog', href: '/service-catalog', icon: Package },
+      { label: 'Tax Rates', href: '/tax-rates', icon: Percent },
+      { label: 'Currencies', href: '/currencies', icon: Coins },
       { label: 'Settings', href: '/settings', icon: Settings, perm: 'SETTINGS_READ' },
       { label: 'Reports', href: '/reports', icon: BarChart3, perm: 'REPORT_READ' },
       { label: 'Audit Log', href: '/audit-log', icon: ScrollText, perm: 'AUDIT_LOG_READ' },
