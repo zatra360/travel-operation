@@ -28,6 +28,7 @@ import { CurrencyModule } from './modules/currency-settings/currency.module';
 import { OrderModule } from './modules/order/order.module';
 import { PackageController, SubscriptionController } from './modules/platform/subscription.controller';
 import { PlatformModule } from './modules/platform/platform.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { BookingModule } from './modules/booking/booking.module';
 import { TicketModule } from './modules/ticket/ticket.module';
 import { InvoiceModule } from './modules/invoice/invoice.module';
@@ -80,6 +81,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     CurrencyModule,
     OrderModule,
     PlatformModule,
+    ReportsModule,
     BookingModule,
     TicketModule,
     InvoiceModule,

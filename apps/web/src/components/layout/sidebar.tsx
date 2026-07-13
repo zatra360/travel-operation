@@ -76,6 +76,17 @@ const navGroups = [
     ],
   },
   {
+    label: 'Reports',
+    items: [
+      { label: 'Finance', href: '/reports/finance', icon: BarChart3 },
+      { label: 'Sales', href: '/reports/sales', icon: BarChart3 },
+      { label: 'Leads', href: '/reports/leads', icon: BarChart3 },
+      { label: 'Attendance', href: '/reports/attendance', icon: BarChart3 },
+      { label: 'Tax', href: '/reports/tax', icon: BarChart3 },
+      { label: 'Profit & Loss', href: '/reports/profit-loss', icon: BarChart3 },
+    ],
+  },
+  {
     label: 'System',
     items: [
       { label: 'Service Catalog', href: '/service-catalog', icon: Package },
