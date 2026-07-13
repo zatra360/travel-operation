@@ -311,6 +311,7 @@ model User {
   assignedFollowUps FollowUp[]          @relation("FollowUpAssignee")
   assignedQuotations Quotation[]        @relation("QuotationAssignee")
   assignedBookings  Booking[]           @relation("BookingAssignee")
+  assignedCases     Case[]              @relation("CaseAssignee")
   receivedPayments  Payment[]           @relation("PaymentReceiver")
   employeeRecord    Employee?           @relation("EmployeeUser")
   refundRequested   RefundRequest[]     @relation("RefundRequester")
@@ -965,6 +966,7 @@ model Client {
   cancellations CancellationRequest[] @relation("CancelClient")
   contracts    Contract[]             @relation("ContractClient")
   orders       Order[]                @relation("OrderClient")
+  cases        Case[]                 @relation("CaseClient")
 
   @@index([tenantId])
   @@index([branchId])
@@ -1404,6 +1406,90 @@ model Holiday {
   isRecurring Boolean @default(true)
   createdAt DateTime @default(now())
 
+  @@index([tenantId])
+}
+
+model Case {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String?
+  caseNumber  String
+  subject     String
+  description String?
+  status      String   @default("OPEN")
+  priority    String   @default("MEDIUM")
+  channelId   String?
+  typeId      String?
+  groupId     String?
+  clientId    String?
+  assignedToId String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  channel  CaseChannel? @relation(fields: [channelId], references: [id])
+  type     CaseType?    @relation(fields: [typeId], references: [id])
+  group    CaseGroup?   @relation(fields: [groupId], references: [id])
+  client   Client?      @relation("CaseClient", fields: [clientId], references: [id])
+  assignedTo User?      @relation("CaseAssignee", fields: [assignedToId], references: [id])
+  replies  CaseReply[]
+
+  @@unique([tenantId, caseNumber])
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([status])
+}
+
+model CaseReply {
+  id        String   @id @default(cuid())
+  tenantId  String
+  caseId    String
+  message   String
+  isInternal Boolean @default(false)
+  createdById String?
+  createdAt DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([caseId])
+}
+
+model CaseChannel {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  code      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  cases     Case[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model CaseType {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  code      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  cases     Case[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model CaseGroup {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  code      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  cases     Case[]
+
+  @@unique([tenantId, code])
   @@index([tenantId])
 }
 

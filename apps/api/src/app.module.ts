@@ -31,6 +31,7 @@ import { PlatformModule } from './modules/platform/platform.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { ImportExportModule } from './modules/import-export/import-export.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
+import { SupportModule } from './modules/support/support.module';
 import { BookingModule } from './modules/booking/booking.module';
 import { TicketModule } from './modules/ticket/ticket.module';
 import { InvoiceModule } from './modules/invoice/invoice.module';
@@ -86,6 +87,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     ReportsModule,
     ImportExportModule,
     CalendarModule,
+    SupportModule,
     BookingModule,
     TicketModule,
     InvoiceModule,
