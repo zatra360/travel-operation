@@ -95,6 +95,7 @@ const navGroups = [
       { label: 'Tax Rates', href: '/tax-rates', icon: Percent },
       { label: 'Currencies', href: '/currencies', icon: Coins },
       { label: 'Settings', href: '/settings', icon: Settings, perm: 'SETTINGS_READ' },
+      { label: 'Custom Fields', href: '/settings/custom-fields', icon: Layers, perm: 'SETTINGS_READ' },
       { label: 'Reports', href: '/reports', icon: BarChart3, perm: 'REPORT_READ' },
       { label: 'Audit Log', href: '/audit-log', icon: ScrollText, perm: 'AUDIT_LOG_READ' },
       { label: 'Notifications', href: '/notifications', icon: Bell },

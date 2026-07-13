@@ -13,9 +13,9 @@ export class SupportController {
   @Get() @RequirePermissions('TICKET_READ')
   async list(@TenantCtx() ctx: TenantContext, @Query('status') status?: string) {
     return this.prisma.case.findMany({
-      where: { tenantId: ctx.tenantId, deletedAt: null, ...(status ? { status } : {}) },
+      where: { tenantId: ctx.tenantId, ...(status ? { status } : {}) },
       include: { channel: true, type: true, group: true, client: { select: { id: true, displayName: true } }, replies: { take: 1, orderBy: { createdAt: 'desc' } } },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { createdAt: 'desc' as const },
     });
   }
 
