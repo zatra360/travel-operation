@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Send, CheckCircle, XCircle, Plane, CreditCard, Clock, History, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Breadcrumb, PageHeader } from '@/components/ui/page-header';
 import { api } from '@/lib/api';
-import { useAuthStore } from '@/stores/auth-store';
+import { useAuthStore, hasPermission } from '@/stores/auth-store';
 import { formatDateTime, formatMoney } from '@/lib/utils';
 import { humanizeStatus } from '@/lib/status';
 import {
@@ -33,6 +33,12 @@ export default function QuotationDetailPage() {
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const canUpdate = hasPermission('QUOTATION_UPDATE');
+  const canDelete = hasPermission('QUOTATION_DELETE');
+  const canCreateBooking = hasPermission('BOOKING_CREATE');
+  const canCreateInvoice = hasPermission('INVOICE_CREATE');
 
   const load = useCallback(() => {
     if (!activeTenant) return;
@@ -95,12 +101,12 @@ export default function QuotationDetailPage() {
         subtitle={`${q.title || 'No title'} · ${humanizeStatus(q.status)}`}
         actions={
           <div className="flex flex-wrap gap-2">
-            {q.status === 'DRAFT' && (
+            {canUpdate && q.status === 'DRAFT' && (
               <Button size="sm" onClick={() => action('send')} disabled={actionLoading === 'send'}>
                 <Send className="h-4 w-4 mr-2" />Send
               </Button>
             )}
-            {q.status === 'SENT' && (
+            {canUpdate && q.status === 'SENT' && (
               <>
                 <Button size="sm" variant="outline" onClick={() => action('accept')} disabled={actionLoading === 'accept'}>
                   <CheckCircle className="h-4 w-4 mr-2" />Accept
@@ -110,29 +116,38 @@ export default function QuotationDetailPage() {
                 </Button>
               </>
             )}
-            {q.status === 'ACCEPTED' && (
+            {canUpdate && q.status === 'ACCEPTED' && (
               <>
-                <Button size="sm" variant="outline" onClick={() => action('convert-to-booking')} disabled={actionLoading === 'convert-to-booking'}>
-                  <Plane className="h-4 w-4 mr-2" />Convert to Booking
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => action('convert-to-invoice')} disabled={actionLoading === 'convert-to-invoice'}>
-                  <CreditCard className="h-4 w-4 mr-2" />Create Invoice
-                </Button>
+                {canCreateBooking && (
+                  <Button size="sm" variant="outline" onClick={() => action('convert-to-booking')} disabled={actionLoading === 'convert-to-booking'}>
+                    <Plane className="h-4 w-4 mr-2" />Convert to Booking
+                  </Button>
+                )}
+                {canCreateInvoice && (
+                  <Button size="sm" variant="outline" onClick={() => action('convert-to-invoice')} disabled={actionLoading === 'convert-to-invoice'}>
+                    <CreditCard className="h-4 w-4 mr-2" />Create Invoice
+                  </Button>
+                )}
               </>
             )}
-            {q.status === 'REJECTED' && (
+            {canUpdate && q.status === 'REJECTED' && (
               <Button size="sm" variant="outline" onClick={() => action('reopen')} disabled={actionLoading === 'reopen'}>
                 <XCircle className="h-4 w-4 mr-2" />Reopen as Draft
               </Button>
             )}
-            {q.status === 'EXPIRED' && (
+            {canUpdate && q.status === 'EXPIRED' && (
               <Button size="sm" variant="outline" onClick={() => action('reopen')} disabled={actionLoading === 'reopen'}>
                 <XCircle className="h-4 w-4 mr-2" />Reopen as Draft
               </Button>
             )}
-            {(q.status === 'DRAFT' || q.status === 'SENT') && (
+            {canUpdate && (q.status === 'DRAFT' || q.status === 'SENT') && (
               <Button size="sm" variant="outline" onClick={() => setCancelDialogOpen(true)} disabled={actionLoading === 'cancel'}>
                 <XCircle className="h-4 w-4 mr-2" />Cancel
+              </Button>
+            )}
+            {canDelete && (
+              <Button size="sm" variant="outline" onClick={() => setDeleteDialogOpen(true)}>
+                <Trash2 className="h-4 w-4 mr-2" />Delete
               </Button>
             )}
           </div>
@@ -307,6 +322,22 @@ export default function QuotationDetailPage() {
         confirmLabel="Cancel Quotation"
         destructive
         onConfirm={() => { action('cancel'); setCancelDialogOpen(false); }}
+      />
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={(o) => { if (!o) setDeleteDialogOpen(false); }}
+        title="Delete quotation?"
+        description={`Delete ${q.quoteNumber}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={async () => {
+          try {
+            await api.delete(`/api/v1/tenant/quotations/${id}`, { tenantId: activeTenant!.id });
+            toast.success('Quotation deleted');
+            window.location.href = '/quotations';
+          } catch (err: any) { toast.error(err.message || 'Failed to delete'); }
+          setDeleteDialogOpen(false);
+        }}
       />
     </div>
   );
