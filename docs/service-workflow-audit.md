@@ -212,4 +212,30 @@ sensitive access logging; Umrah deposit payment-approval gate with SoD.
 
 All 12 acceptance-criteria service types now run structured, gated workflows on the shared engine.
 
-**Remaining (Phase 6–7)**: service dashboards/reports, automation scheduler (TTL/SLA/escalation scans), team model UI.
+---
+
+## Phase 6 + 7 — Dashboards, Reporting & Automation (IMPLEMENTED)
+
+**Reporting** (`service-reports.service.ts` — all aggregation in the database via groupBy/SQL):
+
+| Endpoint (`SERVICE_REPORT_READ`) | Content |
+|---|---|
+| `GET /tenant/service-reports/dashboard` | Case status counts; per-service active/completed/cancelled volumes, revenue/cost/profit, avg completion hours; SLA breached + due-in-24h counters |
+| `GET /tenant/service-reports/sla` | Breached and at-risk (24h) items with stage, case link and resolved assignee names |
+| `GET /tenant/service-reports/workload` | Active + overdue item counts per assignee |
+| `GET /tenant/service-reports/bottlenecks` | Slowest workflow stages (avg hours from completed stage instances) + current items per stage |
+
+**Automation** (`workflow-automation.service.ts`, `POST /tenant/service-reports/automation/scan`, `SERVICE_REPORT_MANAGE`; designed for cron invocation):
+- SLA breach scan → item `slaStatus=BREACHED`, `SLA_BREACHED` activity, URGENT automation `WorkflowTask` + in-app notification to the assignee
+- SLA warning scan → `slaStatus=WARNING` for items due within 4h
+- TTL scan → items whose booking-linked `ticketingTimeLimit` expires within 24h get an URGENT "TTL approaching" task due at the deadline
+- Idempotent: open automation tasks are never duplicated; every effective run is audited
+
+**Frontend** — `/service-cases/dashboard`: KPI stat cards (active, SLA breached, due-soon, gross profit with tones), per-service performance rows (volumes, avg completion, revenue/profit), SLA-attention list (breached highlighted, deep links to cases), workload per assignee with overdue badges, slowest-stages panel, and a "Run SLA/TTL scan" action.
+
+**Tests** (`apps/api/test/service-reports.e2e-spec.ts` — 7 passing): dashboard aggregates (volumes/financials/SLA counters/avg completion), SLA report with assignee resolution, workload overdue counts, bottleneck aggregation, automation scan effects (breach status + tasks + notifications + activity), scan idempotence, WARNING window.
+
+**Full stack verification**: 108 service-ops+accounting e2e tests, 100 unit tests, API+web typecheck clean, lint at baseline, web production build green (4 service-cases routes).
+
+### ZATRA360 prompt roadmap status: Phases 1–7 delivered
+Remaining ideas beyond the prompt's mandatory scope: cron wiring for the scan endpoint, Team management UI, tenant workflow-template editor UI, per-service intake forms.

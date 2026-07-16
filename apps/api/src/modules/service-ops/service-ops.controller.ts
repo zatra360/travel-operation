@@ -5,6 +5,8 @@ import { ServiceTypeService } from './service-type.service';
 import { ServiceCaseService } from './service-case.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { CaseDocumentService } from './case-document.service';
+import { ServiceReportsService } from './service-reports.service';
+import { WorkflowAutomationService } from './workflow-automation.service';
 import { ConfigureServiceTypeDto } from './dto/service-type.dto';
 import {
   CreateServiceCaseDto, AddServiceItemDto, QueryServiceCaseDto, AssignDto, CloseCaseDto, ReopenCaseDto,
@@ -227,6 +229,52 @@ export class WorkflowApprovalController {
   @ApiOperation({ summary: 'Approve or reject a pending workflow approval (decider must differ from requester)' })
   decide(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: DecideApprovalDto) {
     return this.engine.decideApproval(ctx.tenantId, ctx.userId, id, dto.decision, dto.note);
+  }
+}
+
+@ApiTags('Tenant - Service Reports')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+@Controller('tenant/service-reports')
+export class ServiceReportController {
+  constructor(
+    private readonly reports: ServiceReportsService,
+    private readonly automation: WorkflowAutomationService,
+  ) {}
+
+  @Get('dashboard')
+  @RequirePermissions('SERVICE_REPORT_READ')
+  @ApiOperation({ summary: 'Per-service operational dashboard: volumes, financials, SLA counts' })
+  dashboard(@TenantCtx() ctx: TenantContext) {
+    return this.reports.dashboard(ctx.tenantId);
+  }
+
+  @Get('sla')
+  @RequirePermissions('SERVICE_REPORT_READ')
+  @ApiOperation({ summary: 'Breached and at-risk (24h) SLA items with assignees' })
+  sla(@TenantCtx() ctx: TenantContext) {
+    return this.reports.slaReport(ctx.tenantId);
+  }
+
+  @Get('workload')
+  @RequirePermissions('SERVICE_REPORT_READ')
+  @ApiOperation({ summary: 'Active/overdue item counts per assignee' })
+  workload(@TenantCtx() ctx: TenantContext) {
+    return this.reports.workloadReport(ctx.tenantId);
+  }
+
+  @Get('bottlenecks')
+  @RequirePermissions('SERVICE_REPORT_READ')
+  @ApiOperation({ summary: 'Slowest workflow stages (avg hours) and current items per stage' })
+  bottlenecks(@TenantCtx() ctx: TenantContext) {
+    return this.reports.bottlenecks(ctx.tenantId);
+  }
+
+  @Post('automation/scan')
+  @RequirePermissions('SERVICE_REPORT_MANAGE')
+  @ApiOperation({ summary: 'Run SLA breach/warning and TTL scans (idempotent; creates automation tasks + notifications)' })
+  scan(@TenantCtx() ctx: TenantContext) {
+    return this.automation.runScans(ctx.tenantId, ctx.userId);
   }
 }
 

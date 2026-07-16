@@ -80,4 +80,5 @@ packages/
 2. ~~Phase 3: integrate leads (convert-to-case), quotations, bookings, payments, suppliers + serviceTypeId backfill migration~~ — **DONE** (10 e2e tests; FLIGHT→AIR_TICKET backfill verified 14/14; generic fallback workflow for the remaining 8 types)
 3. ~~Phase 4: frontend — Service Selector card grid, /service-cases list + case detail with workflow stepper, blocked-transition explanations~~ — **DONE** (3 routes, production build green)
 4. ~~Phase 5: dedicated templates for remaining 8 services~~ — **DONE** (21 e2e tests; all 12 service types on gated workflows)
-5. Phase 6: service dashboards + SLA/workload reporting; Phase 7: automation scheduler (TTL/SLA/escalation scans, following RiskAlertService pattern)
+5. ~~Phase 6: service dashboards + SLA/workload reporting; Phase 7: automation scheduler~~ — **DONE** (all 7 phases of the ZATRA360 workflow prompt delivered; 108 e2e tests)
+6. Beyond-prompt ideas: cron wiring for automation scans, Team management UI, tenant workflow-template editor, per-service intake forms
