@@ -11,6 +11,7 @@ export const Modules = [
   'JOURNAL', 'GL_ACCOUNT', 'ACCOUNTING_PERIOD',
   'SERVICE_TYPE', 'SERVICE_CASE', 'SERVICE_ITEM', 'WORKFLOW',
   'WORKFLOW_TASK', 'WORKFLOW_APPROVAL', 'SERVICE_DOCUMENT', 'SERVICE_REPORT',
+  'TEAM',
 ] as const;
 
 export const Actions = ['CREATE', 'READ', 'UPDATE', 'DELETE', 'MANAGE'] as const;

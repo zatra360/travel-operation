@@ -70,6 +70,7 @@ const navGroups = [
     label: 'Team',
     items: [
       { label: 'Team', href: '/employees', icon: Users },
+      { label: 'Teams', href: '/teams', icon: Users, perm: 'TEAM_READ' },
       { label: 'Attendance', href: '/attendance', icon: ClipboardList, perm: 'ATTENDANCE_READ' },
       { label: 'Leaves', href: '/leaves', icon: CalendarClock, perm: 'LEAVE_READ' },
       { label: 'Commissions', href: '/commissions', icon: DollarSign, perm: 'COMMISSION_READ' },

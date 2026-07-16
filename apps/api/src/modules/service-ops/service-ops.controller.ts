@@ -7,6 +7,7 @@ import { WorkflowEngineService } from './workflow-engine.service';
 import { CaseDocumentService } from './case-document.service';
 import { ServiceReportsService } from './service-reports.service';
 import { WorkflowAutomationService } from './workflow-automation.service';
+import { TeamService, TeamDto } from './team.service';
 import { ConfigureServiceTypeDto } from './dto/service-type.dto';
 import {
   CreateServiceCaseDto, AddServiceItemDto, QueryServiceCaseDto, AssignDto, CloseCaseDto, ReopenCaseDto,
@@ -275,6 +276,49 @@ export class ServiceReportController {
   @ApiOperation({ summary: 'Run SLA breach/warning and TTL scans (idempotent; creates automation tasks + notifications)' })
   scan(@TenantCtx() ctx: TenantContext) {
     return this.automation.runScans(ctx.tenantId, ctx.userId);
+  }
+}
+
+@ApiTags('Tenant - Teams')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+@Controller('tenant/teams')
+export class TeamController {
+  constructor(private readonly teams: TeamService) {}
+
+  @Get()
+  @RequirePermissions('TEAM_READ')
+  @ApiOperation({ summary: 'List teams with members, leaders and workload counts' })
+  findAll(@TenantCtx() ctx: TenantContext) {
+    return this.teams.findAll(ctx.tenantId);
+  }
+
+  @Post()
+  @RequirePermissions('TEAM_CREATE')
+  @ApiOperation({ summary: 'Create a team (leader becomes a member automatically)' })
+  create(@TenantCtx() ctx: TenantContext, @Body() dto: TeamDto) {
+    return this.teams.create(ctx.tenantId, ctx.userId, dto);
+  }
+
+  @Put(':id')
+  @RequirePermissions('TEAM_UPDATE')
+  @ApiOperation({ summary: 'Update a team' })
+  update(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: TeamDto) {
+    return this.teams.update(ctx.tenantId, ctx.userId, id, dto);
+  }
+
+  @Post(':id/members')
+  @RequirePermissions('TEAM_UPDATE')
+  @ApiOperation({ summary: 'Add a tenant member to the team' })
+  addMember(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() body: { userId: string; role?: string }) {
+    return this.teams.addMember(ctx.tenantId, ctx.userId, id, body.userId, body.role);
+  }
+
+  @Post(':id/members/:userId/remove')
+  @RequirePermissions('TEAM_UPDATE')
+  @ApiOperation({ summary: 'Remove a member from the team (leaders must be replaced first)' })
+  removeMember(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Param('userId') userId: string) {
+    return this.teams.removeMember(ctx.tenantId, ctx.userId, id, userId);
   }
 }
 

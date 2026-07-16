@@ -238,4 +238,22 @@ All 12 acceptance-criteria service types now run structured, gated workflows on 
 **Full stack verification**: 108 service-ops+accounting e2e tests, 100 unit tests, API+web typecheck clean, lint at baseline, web production build green (4 service-cases routes).
 
 ### ZATRA360 prompt roadmap status: Phases 1–7 delivered
-Remaining ideas beyond the prompt's mandatory scope: cron wiring for the scan endpoint, Team management UI, tenant workflow-template editor UI, per-service intake forms.
+
+## Post-Prompt Additions (IMPLEMENTED)
+
+**Team management** (`team.service.ts`, `/tenant/teams`, new `TEAM` permission module, web `/teams` page):
+CRUD with tenant-membership validation (leaders auto-enrolled as members and protected from removal),
+add/remove members, workload counts per team, audited mutations. Case/item team assignment now has a
+real management surface; sidebar entry under Team gated by `TEAM_READ`.
+
+**Automation scheduler** (`automation-scheduler.service.ts`): interval-based background runner,
+enabled via `AUTOMATION_SCAN_INTERVAL_MINUTES` (default disabled — safe for tests/scripts). Each cycle
+scans every tenant with active service items, acting as the tenant's earliest active member (audit and
+activity rows require a real user); tenants without members are skipped with a warning; overlapping
+cycles are prevented.
+
+**Tests** (`apps/api/test/teams-scheduler.e2e-spec.ts` — 8 passing): team CRUD, duplicate code
+rejection, outsider rejection, leader protection, cross-tenant team assignment guard, system-actor
+resolution, multi-tenant scan effects, disabled-by-default scheduler.
+
+Remaining ideas beyond the prompt's mandatory scope: tenant workflow-template editor UI, per-service intake forms.

@@ -9,6 +9,7 @@ import {
   WorkflowApprovalController,
   ServiceDocumentController,
   ServiceReportController,
+  TeamController,
 } from './service-ops.controller';
 import { ServiceTypeService } from './service-type.service';
 import { ServiceCaseService } from './service-case.service';
@@ -16,6 +17,8 @@ import { WorkflowEngineService } from './workflow-engine.service';
 import { CaseDocumentService } from './case-document.service';
 import { ServiceReportsService } from './service-reports.service';
 import { WorkflowAutomationService } from './workflow-automation.service';
+import { AutomationSchedulerService } from './automation-scheduler.service';
+import { TeamService } from './team.service';
 
 @Module({
   imports: [AuditModule, ActivityModule, NotificationModule],
@@ -26,8 +29,9 @@ import { WorkflowAutomationService } from './workflow-automation.service';
     WorkflowApprovalController,
     ServiceDocumentController,
     ServiceReportController,
+    TeamController,
   ],
-  providers: [ServiceTypeService, ServiceCaseService, WorkflowEngineService, CaseDocumentService, ServiceReportsService, WorkflowAutomationService],
-  exports: [ServiceTypeService, ServiceCaseService, WorkflowEngineService, CaseDocumentService, ServiceReportsService, WorkflowAutomationService],
+  providers: [ServiceTypeService, ServiceCaseService, WorkflowEngineService, CaseDocumentService, ServiceReportsService, WorkflowAutomationService, AutomationSchedulerService, TeamService],
+  exports: [ServiceTypeService, ServiceCaseService, WorkflowEngineService, CaseDocumentService, ServiceReportsService, WorkflowAutomationService, AutomationSchedulerService, TeamService],
 })
 export class ServiceOpsModule {}
