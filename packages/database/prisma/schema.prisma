@@ -3255,3 +3255,410 @@ model FinancialRiskAlert {
   @@index([tenantId, status])
   @@index([tenantId, alertType])
 }
+
+// ================================================================
+// SERVICE OPERATIONS & WORKFLOW ENGINE (ZATRA360 Phase 2)
+// ServiceType master, Teams, ServiceCase/ServiceCaseItem, versioned
+// workflow templates with gated transitions, checklists, approvals,
+// SLA tracking, and case-document lifecycle.
+// See docs/service-workflow-audit.md and
+// docs/prompts/zatra360-service-workflow-prompt.md.
+// ================================================================
+
+model ServiceType {
+  id                  String   @id @default(cuid())
+  systemCode          String   @unique
+  displayName         String
+  slug                String   @unique
+  description         String?
+  icon                String?
+  category            String   @default("TRAVEL")
+  displayOrder        Int      @default(0)
+  isSystem            Boolean  @default(true)
+  supportsLead        Boolean  @default(true)
+  supportsQuotation   Boolean  @default(true)
+  supportsBooking     Boolean  @default(true)
+  supportsApplication Boolean  @default(false)
+  supportsTicketing   Boolean  @default(false)
+  supportsSupplier    Boolean  @default(true)
+  supportsInvoice     Boolean  @default(true)
+  supportsPayment     Boolean  @default(true)
+  supportsAfterSales  Boolean  @default(true)
+  defaultCurrencyCode String?
+  configuration       Json?    @default("{}")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenantConfigs     TenantServiceTypeConfig[]
+  caseItems         ServiceCaseItem[]
+  workflowTemplates WorkflowTemplate[]
+}
+
+model TenantServiceTypeConfig {
+  id                        String   @id @default(cuid())
+  tenantId                  String
+  serviceTypeId             String
+  isEnabled                 Boolean  @default(true)
+  displayName               String?
+  icon                      String?
+  displayOrder              Int?
+  defaultBranchId           String?
+  defaultTeamId             String?
+  defaultAssigneeId         String?
+  defaultWorkflowTemplateId String?
+  configuration             Json?    @default("{}")
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  serviceType ServiceType @relation(fields: [serviceTypeId], references: [id])
+
+  @@unique([tenantId, serviceTypeId])
+  @@index([tenantId, isEnabled])
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String?
+  name        String
+  code        String
+  description String?
+  leaderId    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members   TeamMember[]
+  cases     ServiceCase[]
+  caseItems ServiceCaseItem[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, isActive])
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  role      String   @default("MEMBER")
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+model ServiceCase {
+  id              String    @id @default(cuid())
+  tenantId        String
+  branchId        String?
+  caseNumber      String
+  leadId          String?
+  clientId        String?
+  title           String
+  status          String    @default("OPEN")
+  priority        String    @default("MEDIUM")
+  assignedToId    String?
+  ownerId         String?
+  teamId          String?
+  source          String?
+  expectedRevenue Decimal   @default(0) @db.Decimal(19, 4)
+  currencyCode    String    @default("USD")
+  openedAt        DateTime  @default(now())
+  dueAt           DateTime?
+  completedAt     DateTime?
+  closedAt        DateTime?
+  closureReason   String?
+  reopenedAt      DateTime?
+  reopenReason    String?
+  metadata        Json?     @default("{}")
+  createdById     String?
+  updatedById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  team  Team?             @relation(fields: [teamId], references: [id])
+  items ServiceCaseItem[]
+
+  @@unique([tenantId, caseNumber])
+  @@index([tenantId, status])
+  @@index([tenantId, assignedToId])
+  @@index([tenantId, clientId])
+  @@index([tenantId, leadId])
+  @@index([tenantId, createdAt])
+}
+
+model ServiceCaseItem {
+  id                   String    @id @default(cuid())
+  tenantId             String
+  branchId             String?
+  serviceCaseId        String
+  serviceTypeId        String
+  referenceNumber      String
+  workflowInstanceId   String?   @unique
+  currentStageCode     String?
+  status               String    @default("ACTIVE")
+  priority             String    @default("MEDIUM")
+  assignedToId         String?
+  ownerId              String?
+  teamId               String?
+  supplierId           String?
+  quotationId          String?
+  bookingId            String?
+  startDate            DateTime?
+  targetCompletionDate DateTime?
+  completedAt          DateTime?
+  cancelledAt          DateTime?
+  cancelReason         String?
+  serviceAmount        Decimal   @default(0) @db.Decimal(19, 4)
+  supplierCost         Decimal   @default(0) @db.Decimal(19, 4)
+  taxAmount            Decimal   @default(0) @db.Decimal(19, 4)
+  discountAmount       Decimal   @default(0) @db.Decimal(19, 4)
+  grossProfit          Decimal   @default(0) @db.Decimal(19, 4)
+  currencyCode         String    @default("USD")
+  slaDueAt             DateTime?
+  slaStatus            String?
+  metadata             Json?     @default("{}")
+  createdById          String?
+  updatedById          String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
+
+  serviceCase      ServiceCase       @relation(fields: [serviceCaseId], references: [id])
+  serviceType      ServiceType       @relation(fields: [serviceTypeId], references: [id])
+  team             Team?             @relation(fields: [teamId], references: [id])
+  workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id])
+  documents        CaseDocument[]
+
+  @@unique([tenantId, referenceNumber])
+  @@index([tenantId, serviceTypeId, status])
+  @@index([tenantId, assignedToId])
+  @@index([tenantId, currentStageCode])
+  @@index([tenantId, slaDueAt])
+  @@index([serviceCaseId])
+}
+
+model WorkflowTemplate {
+  id            String    @id @default(cuid())
+  tenantId      String?
+  serviceTypeId String
+  code          String
+  name          String
+  description   String?
+  version       Int       @default(1)
+  status        String    @default("DRAFT")
+  isSystem      Boolean   @default(false)
+  publishedAt   DateTime?
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  serviceType ServiceType             @relation(fields: [serviceTypeId], references: [id])
+  stages      WorkflowStageTemplate[]
+  instances   WorkflowInstance[]
+
+  @@index([serviceTypeId, status])
+  @@index([tenantId])
+}
+
+model WorkflowStageTemplate {
+  id                    String   @id @default(cuid())
+  templateId            String
+  code                  String
+  name                  String
+  description           String?
+  displayOrder          Int
+  stageGroup            String   @default("PROCESSING")
+  responsibleRole       String?
+  slaHours              Int?
+  isInitial             Boolean  @default(false)
+  isTerminal            Boolean  @default(false)
+  requiredDocumentTypes Json?
+  requiredChecklist     Json?
+  requiresApproval      Boolean  @default(false)
+  requiresPayment       Boolean  @default(false)
+  allowedNextStageCodes Json?
+  metadata              Json?    @default("{}")
+  createdAt             DateTime @default(now())
+
+  template WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, code])
+  @@index([templateId, displayOrder])
+}
+
+model WorkflowInstance {
+  id              String    @id @default(cuid())
+  tenantId        String
+  templateId      String
+  templateVersion Int       @default(1)
+  currentStageCode String
+  status          String    @default("ACTIVE")
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  metadata        Json?     @default("{}")
+
+  template       WorkflowTemplate        @relation(fields: [templateId], references: [id])
+  caseItem       ServiceCaseItem?
+  stageInstances WorkflowStageInstance[]
+  history        WorkflowStatusHistory[]
+  checklistItems WorkflowChecklistItem[]
+  approvals      WorkflowApproval[]
+  tasks          WorkflowTask[]
+
+  @@index([tenantId, status])
+  @@index([templateId])
+}
+
+model WorkflowStageInstance {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  workflowInstanceId String
+  stageCode          String
+  stageName          String
+  stageGroup         String    @default("PROCESSING")
+  sequence           Int
+  enteredAt          DateTime  @default(now())
+  completedAt        DateTime?
+  slaDueAt           DateTime?
+  slaStatus          String?
+  enteredById        String?
+
+  workflowInstance WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+
+  @@index([workflowInstanceId, sequence])
+  @@index([tenantId, slaDueAt])
+}
+
+model WorkflowStatusHistory {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  workflowInstanceId String
+  fromStageCode      String?
+  toStageCode        String
+  action             String   @default("TRANSITION")
+  reason             String?
+  actorId            String?
+  createdAt          DateTime @default(now())
+
+  workflowInstance WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+
+  @@index([workflowInstanceId, createdAt])
+  @@index([tenantId, createdAt])
+}
+
+model WorkflowChecklistItem {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  workflowInstanceId String
+  stageCode          String
+  code               String
+  title              String
+  isRequired         Boolean   @default(true)
+  isCompleted        Boolean   @default(false)
+  completedById      String?
+  completedAt        DateTime?
+  evidence           String?
+  sortOrder          Int       @default(0)
+  createdAt          DateTime  @default(now())
+
+  workflowInstance WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowInstanceId, stageCode, code])
+  @@index([workflowInstanceId, isCompleted])
+}
+
+model WorkflowTask {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  workflowInstanceId String?
+  serviceCaseItemId  String?
+  stageCode          String?
+  title              String
+  description        String?
+  status             String    @default("PENDING")
+  priority           String    @default("MEDIUM")
+  assignedToId       String?
+  dueAt              DateTime?
+  completedAt        DateTime?
+  completedById      String?
+  evidence           String?
+  source             String    @default("MANUAL")
+  createdById        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([tenantId, assignedToId, status])
+  @@index([workflowInstanceId])
+}
+
+model WorkflowApproval {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  workflowInstanceId String
+  stageCode          String
+  approvalType       String    @default("STAGE")
+  status             String    @default("PENDING")
+  requestedById      String?
+  requestedAt        DateTime  @default(now())
+  decidedById        String?
+  decidedAt          DateTime?
+  note               String?
+
+  workflowInstance WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+
+  @@index([workflowInstanceId, stageCode, status])
+  @@index([tenantId, status])
+}
+
+model CaseDocument {
+  id                     String    @id @default(cuid())
+  tenantId               String
+  serviceCaseId          String?
+  serviceCaseItemId      String?
+  documentType           String
+  title                  String?
+  status                 String    @default("REQUESTED")
+  isRequired             Boolean   @default(true)
+  documentId             String?
+  version                Int       @default(1)
+  accessClassification   String    @default("STANDARD")
+  requestedAt            DateTime  @default(now())
+  receivedAt             DateTime?
+  verifiedAt             DateTime?
+  expiryDate             DateTime?
+  rejectionReason        String?
+  correctionInstructions String?
+  requestedById          String?
+  uploadedById           String?
+  verifiedById           String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  caseItem   ServiceCaseItem? @relation(fields: [serviceCaseItemId], references: [id])
+  accessLogs DocumentAccessLog[]
+
+  @@index([serviceCaseItemId, status])
+  @@index([tenantId, documentType])
+}
+
+model DocumentAccessLog {
+  id             String   @id @default(cuid())
+  tenantId       String
+  caseDocumentId String
+  userId         String
+  action         String
+  createdAt      DateTime @default(now())
+
+  caseDocument CaseDocument @relation(fields: [caseDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([caseDocumentId, createdAt])
+  @@index([tenantId, userId])
+}

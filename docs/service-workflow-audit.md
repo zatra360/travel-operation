@@ -119,4 +119,24 @@ No workflow engine of any kind. Transitions are hard-coded per document in `stat
 
 ---
 
-**Recommendation**: approve this plan and begin Phase 2 (Shared Foundation). Each phase lands as small logical commits with typecheck + lint + e2e green before proceeding.
+## Phase 2 — Shared Foundation (IMPLEMENTED)
+
+**Database** (migration `20260716150000_service_workflow_foundation`, 15 tables):
+`ServiceType` (12 immutable system codes) + `TenantServiceTypeConfig` (per-tenant enable/rename/icon/order/default team/branch/assignee/workflow), `Team`/`TeamMember`, `ServiceCase` (gapless `CASE-YYYY-000001` via accounting counter), `ServiceCaseItem` (per-service reference `AIR_TICKET-YYYY-000001`, financials, SLA), `WorkflowTemplate` (versioned; instances stay pinned to their version) + `WorkflowStageTemplate` (groups, SLA hours, required documents/checklist, approval/payment gates, side-stage loops) + `WorkflowInstance`/`WorkflowStageInstance`/`WorkflowStatusHistory`/`WorkflowChecklistItem`/`WorkflowTask`/`WorkflowApproval`, `CaseDocument` (REQUESTED→…→VERIFIED lifecycle with versioning + classification) + `DocumentAccessLog`.
+
+**API** (`apps/api/src/modules/service-ops/`):
+- `GET/PUT /tenant/service-types[…/config]` — master list with tenant overlay, enable/disable/configure
+- `POST/GET /tenant/service-cases[…]` — multi-item case creation (workflows auto-start), list/detail/timeline/financials, add item, assign, close (blocked while items active; force+reason audited), reopen
+- `GET/POST /tenant/service-case-items/:id[/workflow|/transitions|/transition|/checklist/:id/complete|/approvals/request|/cancel|/documents]` — stepper timeline, blocker explanations, gated transitions, checklist, approvals
+- `POST /tenant/workflow-approvals/:id/decide` — SoD-enforced (decider ≠ requester; rejection requires note)
+- `POST/PUT/GET /tenant/service-documents[…]` — request, lifecycle transition (correction loop, resubmission increments version), access log
+
+**Server-side gates** (frontend cannot bypass): stage skipping rejected; required document types must be VERIFIED; mandatory checklist items must be complete; approval/payment stages need an APPROVED `WorkflowApproval`; side stages (corrections/revisions) only reachable/exitable via explicit links. Every transition writes stage instance + SLA status, history, activity, audit.
+
+**System workflow templates seeded (v3, published)**: Air Ticket (18 stages incl. name-verification, TTL, payment-approval gates), Visa (21, document verification gate on PASSPORT+PHOTO, correction loop, QA approval), Hotel (18, rate-recheck + reconfirmation checklists, payment gate), Tour (24, revision loop, deposit + final payment gates).
+
+**Permissions**: 8 new modules (`SERVICE_TYPE, SERVICE_CASE, SERVICE_ITEM, WORKFLOW, WORKFLOW_TASK, WORKFLOW_APPROVAL, SERVICE_DOCUMENT, SERVICE_REPORT`) × 5 actions in `packages/permissions` + seed.
+
+**Tests** (`apps/api/test/service-workflow.e2e-spec.ts` — 19 passing): system-type seeding, tenant rename/disable (system code stable), template stage counts, multi-service case with gapless numbers + auto-started workflows + audit/activity rows, tenant isolation, stage skipping rejected, checklist/document/approval blocking with structured blocker messages, SoD on approvals, correction-loop document lifecycle with version increment, sensitive-document access logging, force-close + reopen, item cancellation cancelling its workflow, financial roll-up.
+
+**Known limitations (planned for Phase 3+)**: lead→case conversion, quotation/booking/payment linkage, serviceTypeId backfill on legacy string columns, WorkflowTask automation (model exists, no scheduler), team-scoped visibility rules, frontend UI.

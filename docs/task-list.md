@@ -76,6 +76,7 @@ packages/
 
 ## Next Major Initiative (per zatra360-service-workflow-prompt)
 0. ~~Phase 1: read-only repo audit~~ — **DONE**, see `docs/service-workflow-audit.md`
-1. Phase 2: ServiceType master (12 immutable system codes) + Team + ServiceCase/ServiceCaseItem + workflow engine (versioned templates, instances, gated transitions, checklists, approvals, SLA) + document lifecycle + 8 new permission modules + seeds (12 types, Air Ticket/Visa/Hotel/Tour templates)
-2. Phase 3: integrate leads/quotations/bookings/payments/suppliers + serviceTypeId backfill migration (FLIGHT→AIR_TICKET, PACKAGE→OTHER w/ metadata preserve)
-3. Phase 4: Air Ticket, Visa, Hotel, Tour workflows live + Service Selector card grid + /service-cases UI — validate architecture before the remaining 8
+1. ~~Phase 2: ServiceType master + Team + ServiceCase/ServiceCaseItem + workflow engine + document lifecycle + permissions + Air Ticket/Visa/Hotel/Tour system templates~~ — **DONE** (19 e2e tests, `apps/api/src/modules/service-ops/`)
+2. Phase 3: integrate leads (convert-to-case), quotations, bookings, payments, suppliers + serviceTypeId backfill migration (FLIGHT→AIR_TICKET, PACKAGE→OTHER w/ metadata preserve)
+3. Phase 4: frontend — Service Selector card grid, /service-cases list + case detail with workflow stepper, blocked-transition explanations; wire Air Ticket TTL to Booking.holdExpiresAt and ticket issuance
+4. Phase 5: remaining 8 service templates (seed data on same engine); Phase 6 dashboards; Phase 7 automation scheduler

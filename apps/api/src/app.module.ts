@@ -59,6 +59,7 @@ import { BankingModule } from './modules/banking/banking.module';
 import { SearchModule } from './modules/search/search.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { AccountingModule } from './modules/accounting/accounting.module';
+import { ServiceOpsModule } from './modules/service-ops/service-ops.module';
 import { HealthController } from './health.controller';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -123,6 +124,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     SearchModule,
     KnowledgeModule,
     AccountingModule,
+    ServiceOpsModule,
   ],
   controllers: [HealthController],
   providers: [
