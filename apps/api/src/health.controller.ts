@@ -1,11 +1,15 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from './prisma/prisma.service';
+import { AlertService } from './common/services/alert.service';
 
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly alert: AlertService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Basic health check' })
@@ -26,12 +30,15 @@ export class HealthController {
   @ApiOperation({ summary: 'Auto-expire trials past their end date' })
   async expireTrials() {
     const expired = await this.prisma.tenant.updateMany({
-      where: {
-        status: 'TRIAL',
-        trialEndsAt: { lte: new Date() },
-      },
+      where: { status: 'TRIAL', trialEndsAt: { lte: new Date() } },
       data: { status: 'EXPIRED' },
     });
     return { status: 'ok', expired: expired.count };
+  }
+
+  @Post('check-expiries')
+  @ApiOperation({ summary: 'Check expiring bookings, quotations, passports, visas. ?send=true to email.' })
+  async checkExpiries(@Query('send') send?: string) {
+    return this.alert.checkExpiries(send === 'true');
   }
 }

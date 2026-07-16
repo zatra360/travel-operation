@@ -1,8 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsEmail, IsIn, IsBoolean, IsInt, IsDateString, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEmail, IsBoolean, IsInt, IsDateString, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-export const LEAD_STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'WON', 'LOST'] as const;
-export const LEAD_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
 
 export class CreateLeadDto {
   @ApiProperty({ example: 'John Doe' })
@@ -15,8 +12,8 @@ export class CreateLeadDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) phone?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) whatsappNumber?: string;
 
-  @ApiPropertyOptional({ enum: LEAD_STATUSES, default: 'NEW' }) @IsOptional() @IsIn(LEAD_STATUSES) status?: string;
-  @ApiPropertyOptional({ enum: LEAD_PRIORITIES, default: 'MEDIUM' }) @IsOptional() @IsIn(LEAD_PRIORITIES) priority?: string;
+  @ApiPropertyOptional({ default: 'NEW' }) @IsOptional() @IsString() @MaxLength(50) status?: string;
+  @ApiPropertyOptional({ default: 'MEDIUM' }) @IsOptional() @IsString() @MaxLength(50) priority?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) source?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) serviceType?: string;
 
@@ -39,4 +36,13 @@ export class CreateLeadDto {
   @ApiPropertyOptional() @IsOptional() @IsString() sourcePlatform?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() campaignName?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() referralSource?: string;
+
+  // Reference data IDs
+  @ApiPropertyOptional() @IsOptional() @IsString() countryId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() departureAirportId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() destinationAirportId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() preferredAirlineIds?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() cabinTypeId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() approxBudget?: string;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() returnDate?: string;
 }

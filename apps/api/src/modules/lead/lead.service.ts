@@ -4,7 +4,10 @@ import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { LookupValidationService } from '../master-data/lookup-validation.service';
+import { SlaService } from '../../common/services/sla.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
+import { SearchService } from '../../common/services/search.service';
+import { FollowUpService } from '../follow-up/follow-up.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { QueryLeadDto } from './dto/query-lead.dto';
@@ -42,6 +45,9 @@ export class LeadService {
     private readonly audit: AuditService,
     private readonly activity: ActivityService,
     private readonly lookup: LookupValidationService,
+    private readonly sla: SlaService,
+    private readonly search: SearchService,
+    private readonly followUps: FollowUpService,
   ) {}
 
   private async validateLinkedIds(tenantId: string, dto: any) {
@@ -87,11 +93,16 @@ export class LeadService {
       { categoryCode: 'trip-type', code: dto.tripType },
     ].filter((v) => v.code));
     const data = this.mapDateFields(dto);
+    const status = dto.status ?? 'NEW';
+    const slaDueAt = this.sla.isTerminal(status) ? null : this.sla.calculateDueAt(status);
+
     const lead = await this.prisma.lead.create({
-      data: { tenantId, status: dto.status ?? 'NEW', priority: dto.priority ?? 'MEDIUM', ...data },
+      data: { tenantId, status, slaDueAt, priority: dto.priority ?? 'MEDIUM', ...data },
     });
     await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'CREATE', { fullName: lead.fullName }, lead.branchId ?? undefined);
     await this.activity.log(tenantId, actorId, 'LEAD_CREATED', `New lead: ${lead.fullName}`, 'Lead', lead.id, lead.branchId);
+    this.search.indexLeads(tenantId, [lead]).catch(() => {});
+    this.autoAssign(tenantId, lead).catch(() => {});
     return lead;
   }
 
@@ -148,11 +159,35 @@ export class LeadService {
       }
     }
 
+    const newStatus = dto.status ?? current.status;
+    const slaDueAt = this.sla.isTerminal(newStatus) ? null : (newStatus !== current.status ? this.sla.calculateDueAt(newStatus) : current.slaDueAt);
+
     const data = this.mapDateFields(dto);
-    const lead = await this.prisma.lead.update({ where: { id }, data });
+    const lead = await this.prisma.lead.update({ where: { id }, data: { ...data, slaDueAt } });
     await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'UPDATE', { changes: dto }, lead.branchId ?? undefined);
     await this.activity.log(tenantId, actorId, 'LEAD_UPDATED', `Lead updated: ${lead.fullName}`, 'Lead', lead.id, lead.branchId);
+    this.search.indexLeads(tenantId, [lead]).catch(() => {});
+    if (dto.status === 'CONTACTED' && current.status !== 'CONTACTED') {
+      this.scheduleContactFollowUp(tenantId, actorId, lead, slaDueAt).catch(() => {});
+    }
     return lead;
+  }
+
+  private async scheduleContactFollowUp(tenantId: string, actorId: string, lead: any, slaDueAt: Date | null) {
+    const existing = await this.prisma.followUp.findFirst({
+      where: { tenantId, leadId: lead.id, status: 'PENDING' },
+      select: { id: true },
+    });
+    if (existing) return;
+    await this.followUps.create(tenantId, actorId, {
+      subject: `Follow up with ${lead.fullName}`,
+      description: 'Auto-scheduled after lead was marked as contacted.',
+      scheduledAt: (slaDueAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000)).toISOString(),
+      channel: lead.preferredContactMethod && ['PHONE', 'EMAIL', 'WHATSAPP', 'MEETING', 'SMS'].includes(lead.preferredContactMethod) ? lead.preferredContactMethod : 'PHONE',
+      leadId: lead.id,
+      assignedToId: lead.assignedToId ?? undefined,
+      branchId: lead.branchId ?? undefined,
+    });
   }
 
   async convertToClient(tenantId: string, actorId: string, id: string) {
@@ -161,15 +196,40 @@ export class LeadService {
       const created = await tx.client.create({
         data: {
           tenantId, branchId: lead.branchId, displayName: lead.fullName,
-          email: lead.email, phone: lead.primaryMobile, type: 'PERSON', status: 'ACTIVE',
+          givenNames: lead.firstName, surname: lead.lastName,
+          email: lead.email, phone: lead.primaryMobile,
+          whatsapp: lead.whatsappNumber,
+          type: lead.isCorporateLead ? 'COMPANY' : 'PERSON',
+          status: 'ACTIVE', isVip: lead.vipPotential ?? false,
           leadSource: lead.source, nationalityLabel: lead.nationalityId,
+          dateOfBirth: lead.dateOfBirth, gender: lead.gender,
+          profession: lead.profession, companyName: lead.companyName,
+          address: lead.fullAddress, city: lead.city, country: lead.countryId,
+          preferredCommunication: lead.preferredContactMethod,
+          language: lead.languagePreference,
+          ownerId: lead.assignedToId,
+          notes: lead.notes,
         },
       });
       await tx.lead.update({ where: { id }, data: { status: 'WON', clientId: created.id } });
+
+      if (lead.passportNationalityId) {
+        await tx.clientPassport.create({
+          data: {
+            tenantId, clientId: created.id,
+            passportNumber: lead.passportNationalityId,
+            fullName: lead.fullName,
+            expiryDate: new Date(Date.now() + 5 * 365 * 24 * 60 * 60 * 1000),
+            nationality: lead.nationalityId,
+          },
+        });
+      }
+
       return created;
     });
     await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'UPDATE', { convertedToClientId: client.id }, lead.branchId ?? undefined);
     await this.activity.log(tenantId, actorId, 'LEAD_CONVERTED', `Lead converted to client: ${client.displayName}`, 'Client', client.id, lead.branchId);
+    this.search.indexClients(tenantId, [client]).catch(() => {});
     return client;
   }
 
@@ -178,5 +238,67 @@ export class LeadService {
     await this.prisma.lead.update({ where: { id }, data: { deletedAt: new Date() } });
     await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'DELETE', { fullName: lead.fullName }, lead.branchId ?? undefined);
     return { id, deleted: true };
+  }
+
+  async checkDuplicates(tenantId: string, email: string | undefined, phone: string | undefined, excludeId?: string) {
+    const matches: any[] = [];
+    const safeEmail = email?.trim().toLowerCase();
+    const safePhone = phone?.trim();
+
+    if (safeEmail) {
+      const client = await this.prisma.client.findFirst({
+        where: { tenantId, email: { equals: safeEmail, mode: 'insensitive' }, deletedAt: null },
+        select: { id: true, displayName: true, phone: true },
+      });
+      if (client) matches.push({ id: client.id, name: client.displayName, type: 'client', matchOn: 'email', phone: client.phone });
+
+      const lead = await this.prisma.lead.findFirst({
+        where: { tenantId, email: { equals: safeEmail, mode: 'insensitive' }, deletedAt: null, status: { notIn: ['LOST', 'DUPLICATE', 'SPAM'] }, ...(excludeId ? { id: { not: excludeId } } : {}) },
+        select: { id: true, fullName: true, primaryMobile: true },
+      });
+      if (lead) matches.push({ id: lead.id, name: lead.fullName, type: 'lead', matchOn: 'email', phone: lead.primaryMobile });
+    }
+
+    if (safePhone) {
+      const client = await this.prisma.client.findFirst({
+        where: { tenantId, deletedAt: null, OR: [{ phone: { contains: safePhone } }, { whatsapp: { contains: safePhone } }] },
+        select: { id: true, displayName: true, phone: true },
+      });
+      if (client && !matches.find(m => m.id === client.id)) matches.push({ id: client.id, name: client.displayName, type: 'client', matchOn: 'phone', phone: client.phone });
+
+      const lead = await this.prisma.lead.findFirst({
+        where: { tenantId, deletedAt: null, status: { notIn: ['LOST', 'DUPLICATE', 'SPAM'] }, ...(excludeId ? { id: { not: excludeId } } : {}), OR: [{ primaryMobile: { contains: safePhone } }, { secondaryMobile: { contains: safePhone } }, { whatsappNumber: { contains: safePhone } }] },
+        select: { id: true, fullName: true, primaryMobile: true },
+      });
+      if (lead && !matches.find(m => m.id === lead.id)) matches.push({ id: lead.id, name: lead.fullName, type: 'lead', matchOn: 'phone', phone: lead.primaryMobile });
+    }
+
+    return { duplicates: matches };
+  }
+
+  async getTimeline(tenantId: string, id: string) {
+    return this.prisma.activity.findMany({
+      where: { tenantId, entity: 'Lead', entityId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { id: true, type: true, subject: true, content: true, metadata: true, createdAt: true },
+    });
+  }
+
+  private async autoAssign(tenantId: string, lead: any) {
+    if (lead.assignedToId || !lead.serviceType) return;
+    const setting = await this.prisma.tenantSetting.findUnique({
+      where: { tenantId_key: { tenantId, key: 'autoAssignRules' } },
+    }).catch(() => null);
+    if (!setting?.value) return;
+    const rules = (setting.value as any)?.rules || [];
+    const match = rules.find((r: any) => r.serviceType === lead.serviceType || r.source === lead.source);
+    if (match?.assignToUserId) {
+      await this.prisma.lead.update({
+        where: { id: lead.id },
+        data: { assignedToId: match.assignToUserId },
+      });
+      await this.activity.log(tenantId, match.assignToUserId, 'LEAD_AUTO_ASSIGNED', `Lead auto-assigned: ${lead.fullName}`, 'Lead', lead.id, lead.branchId);
+    }
   }
 }

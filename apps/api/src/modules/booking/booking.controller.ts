@@ -4,6 +4,7 @@ import { BookingService } from './booking.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { QueryBookingDto } from './dto/query-booking.dto';
+import { CreateItineraryDayDto, UpdateItineraryDayDto } from './dto/itinerary.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -79,5 +80,33 @@ export class BookingController {
   @ApiOperation({ summary: 'Soft delete booking' })
   async remove(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
     return this.bookingService.remove(ctx.tenantId, ctx.userId, id);
+  }
+
+  @Get(':id/itinerary')
+  @RequirePermissions('BOOKING_READ')
+  @ApiOperation({ summary: 'Get booking itinerary (day-by-day)' })
+  async getItinerary(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.bookingService.getItinerary(ctx.tenantId, id);
+  }
+
+  @Post(':id/itinerary')
+  @RequirePermissions('BOOKING_UPDATE')
+  @ApiOperation({ summary: 'Add itinerary day' })
+  async addItineraryDay(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: CreateItineraryDayDto) {
+    return this.bookingService.addItineraryDay(ctx.tenantId, id, dto);
+  }
+
+  @Put(':id/itinerary/:dayId')
+  @RequirePermissions('BOOKING_UPDATE')
+  @ApiOperation({ summary: 'Update itinerary day' })
+  async updateItineraryDay(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Param('dayId') dayId: string, @Body() dto: UpdateItineraryDayDto) {
+    return this.bookingService.updateItineraryDay(ctx.tenantId, dayId, dto);
+  }
+
+  @Delete(':id/itinerary/:dayId')
+  @RequirePermissions('BOOKING_DELETE')
+  @ApiOperation({ summary: 'Delete itinerary day' })
+  async removeItineraryDay(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Param('dayId') dayId: string) {
+    return this.bookingService.removeItineraryDay(ctx.tenantId, dayId);
   }
 }

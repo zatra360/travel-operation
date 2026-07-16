@@ -50,6 +50,13 @@ export class LeadController {
     return this.leadService.update(ctx.tenantId, ctx.userId, id, dto);
   }
 
+  @Post('check-duplicates')
+  @RequirePermissions('LEAD_CREATE')
+  @ApiOperation({ summary: 'Check for duplicate email/phone across clients and leads' })
+  async checkDuplicates(@TenantCtx() ctx: TenantContext, @Body() body: { email?: string; phone?: string; excludeId?: string }) {
+    return this.leadService.checkDuplicates(ctx.tenantId, body.email, body.phone, body.excludeId);
+  }
+
   @Post(':id/convert')
   @RequirePermissions('LEAD_UPDATE')
   @ApiOperation({ summary: 'Convert lead to client' })
@@ -62,5 +69,12 @@ export class LeadController {
   @ApiOperation({ summary: 'Soft delete lead' })
   async remove(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
     return this.leadService.remove(ctx.tenantId, ctx.userId, id);
+  }
+
+  @Get(':id/timeline')
+  @RequirePermissions('LEAD_READ')
+  @ApiOperation({ summary: 'Get lead activity timeline' })
+  async getTimeline(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.leadService.getTimeline(ctx.tenantId, id);
   }
 }

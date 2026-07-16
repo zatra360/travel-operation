@@ -33,6 +33,17 @@ export class CreatePassportDto {
   @MaxLength(3)
   countryCode?: string;
 
+  @ApiPropertyOptional({ example: 'SPOUSE' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  relation?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isVerified?: boolean;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -78,6 +89,17 @@ export class UpdatePassportDto {
   @IsString()
   @MaxLength(3)
   countryCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  relation?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isVerified?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()

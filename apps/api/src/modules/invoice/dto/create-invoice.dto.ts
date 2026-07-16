@@ -4,9 +4,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export const INVOICE_STATUSES = ['DRAFT', 'SENT', 'PAID', 'PARTIALLY_PAID', 'OVERDUE', 'CANCELLED'] as const;
 
 export class CreateInvoiceDto {
-  @ApiProperty({ example: 'INV-2026-0001' })
-  @IsString() @IsNotEmpty() @MaxLength(50)
-  invoiceNumber!: string;
+  @ApiPropertyOptional({ example: 'INV-2026-0001' })
+  @IsOptional() @IsString() @MaxLength(50)
+  invoiceNumber?: string;
 
   @ApiPropertyOptional({ enum: INVOICE_STATUSES, default: 'DRAFT' })
   @IsOptional() @IsIn(INVOICE_STATUSES)

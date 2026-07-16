@@ -82,7 +82,10 @@ export class ReissueService {
 
     enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
-      this.prisma.reissueRequest.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      this.prisma.reissueRequest.findMany({
+        where, orderBy: { createdAt: 'desc' }, skip, take: limit,
+        include: { oldTicket: { select: { ticketNumber: true, passengerName: true } }, newTicket: { select: { ticketNumber: true } }, booking: { select: { bookingRef: true } }, client: { select: { displayName: true } } },
+      }),
       this.prisma.reissueRequest.count({ where }),
     ]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };

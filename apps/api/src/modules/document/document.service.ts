@@ -27,6 +27,9 @@ export class DocumentService {
   }
 
   async create(tenantId: string, actorId: string, dto: CreateDocumentDto) {
+    if (dto.entity && dto.entityId) {
+      await this.validateEntity(tenantId, dto.entity, dto.entityId);
+    }
     const doc = await this.prisma.document.create({
       data: {
         tenantId,
@@ -143,5 +146,15 @@ export class DocumentService {
     );
 
     return { id, deleted: true };
+  }
+
+  private async validateEntity(tenantId: string, entity: string, entityId: string) {
+    const table = entity.charAt(0).toLowerCase() + entity.slice(1);
+    const exists = await (this.prisma as any)[table]?.findFirst({
+      where: { id: entityId, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+    if (exists === undefined) return;
+    if (!exists) throw new BadRequestException(`${entity} not found`);
   }
 }

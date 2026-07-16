@@ -4,9 +4,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export const EXPENSE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'PAID'] as const;
 
 export class CreateExpenseDto {
-  @ApiProperty({ example: 'EXP-2026-0001' })
-  @IsString() @IsNotEmpty() @MaxLength(50)
-  expenseNumber!: string;
+  @ApiPropertyOptional({ example: 'EXP-2026-0001' })
+  @IsOptional() @IsString() @MaxLength(50)
+  expenseNumber?: string;
 
   @ApiPropertyOptional()
   @IsOptional() @IsString()
@@ -15,6 +15,10 @@ export class CreateExpenseDto {
   @ApiPropertyOptional()
   @IsOptional() @IsString()
   vendorName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsString()
+  vendorId?: string;
 
   @ApiPropertyOptional()
   @IsOptional() @IsNumber()

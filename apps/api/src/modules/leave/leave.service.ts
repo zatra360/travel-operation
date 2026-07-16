@@ -1,15 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
+import { validateStatusTransition } from '../../common/utils/status-transitions';
 import { CreateLeaveDto } from './dto/create-leave.dto';
 import { UpdateLeaveDto } from './dto/update-leave.dto';
 import { QueryLeaveDto } from './dto/query-leave.dto';
 
 @Injectable()
 export class LeaveService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly lookup: LookupValidationService) {}
 
   async create(tenantId: string, actorId: string, dto: CreateLeaveDto) {
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'leave-type', code: dto.leaveType },
+    ].filter((v) => v.code));
     const leave = await this.prisma.leave.create({ data: { tenantId, employeeId: dto.employeeId, leaveType: dto.leaveType, startDate: new Date(dto.startDate), endDate: new Date(dto.endDate), status: dto.status ?? 'PENDING', reason: dto.reason ?? null } });
     await this.audit.logMutation(actorId, tenantId, 'LEAVE', 'Leave', leave.id, 'CREATE', { leaveType: leave.leaveType, status: leave.status });
     return leave;
@@ -25,7 +30,16 @@ export class LeaveService {
   async findById(tenantId: string, id: string) { const leave = await this.prisma.leave.findFirst({ where: { id, tenantId } }); if (!leave) throw new NotFoundException('Leave request not found'); return leave; }
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateLeaveDto) {
-    await this.findById(tenantId, id);
+    const current = await this.findById(tenantId, id);
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'leave-type', code: dto.leaveType },
+    ].filter((v) => v.code));
+    if (dto.status !== undefined && dto.status !== current.status) {
+      const check = validateStatusTransition('leave', current.status, dto.status);
+      if (!check.valid) {
+        throw new BadRequestException(`Cannot transition from ${current.status} to ${dto.status}. Allowed: ${check.allowed.join(', ') || 'none'}`);
+      }
+    }
     const leave = await this.prisma.leave.update({ where: { id }, data: { ...(dto.leaveType !== undefined && { leaveType: dto.leaveType }), ...(dto.status !== undefined && { status: dto.status }), ...(dto.reason !== undefined && { reason: dto.reason }), ...(dto.startDate !== undefined && { startDate: new Date(dto.startDate) }), ...(dto.endDate !== undefined && { endDate: new Date(dto.endDate) }), ...(dto.employeeId !== undefined && { employeeId: dto.employeeId }) } });
     await this.audit.logMutation(actorId, tenantId, 'LEAVE', 'Leave', leave.id, 'UPDATE', { changes: dto });
     return leave;

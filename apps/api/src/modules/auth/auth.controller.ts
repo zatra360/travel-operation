@@ -30,6 +30,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 3600000 } })
   @Post('register')
   @ApiOperation({ summary: 'Register a new company and admin account' })
   async register(@Body() dto: RegisterDto) {
@@ -77,5 +78,21 @@ export class AuthController {
   @ApiOperation({ summary: 'Update current user profile' })
   async updateProfile(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDto) {
     return this.authService.updateProfile(user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('preferences')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get notification preferences' })
+  async getPreferences(@CurrentUser() user: AuthUser) {
+    return this.authService.getPreferences(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('preferences')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update notification preferences' })
+  async updatePreferences(@CurrentUser() user: AuthUser, @Body() prefs: Record<string, boolean>) {
+    return this.authService.updatePreferences(user.id, prefs);
   }
 }

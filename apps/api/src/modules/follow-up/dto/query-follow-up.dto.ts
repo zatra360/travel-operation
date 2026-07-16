@@ -28,4 +28,9 @@ export class QueryFollowUpDto extends PaginationDto {
   @IsOptional()
   @IsString()
   assignedToId?: string;
+
+  @ApiPropertyOptional({ description: 'Search by subject' })
+  @IsOptional()
+  @IsString()
+  search?: string;
 }

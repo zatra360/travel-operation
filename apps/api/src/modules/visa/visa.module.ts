@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
-import { VisaController } from './visa.controller';
+import { VisaController, VisaListController } from './visa.controller';
 import { VisaService } from './visa.service';
+import { MasterDataModule } from '../master-data/master-data.module';
 
 @Module({
-  controllers: [VisaController],
+  imports: [MasterDataModule],
+  controllers: [VisaController, VisaListController],
   providers: [VisaService],
   exports: [VisaService],
 })

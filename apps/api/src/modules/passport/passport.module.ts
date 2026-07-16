@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { PassportController } from './passport.controller';
+import { PassportController, PassportListController } from './passport.controller';
 import { PassportService } from './passport.service';
 
 @Module({
-  controllers: [PassportController],
+  controllers: [PassportController, PassportListController],
   providers: [PassportService],
   exports: [PassportService],
 })

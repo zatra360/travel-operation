@@ -33,14 +33,14 @@ export class TenantContextInterceptor implements NestInterceptor {
       const userId = request.user.sub || request.user.id;
       const tenantId = request.headers['x-tenant-id'] as string;
 
-      if (tenantId) {
+        if (tenantId) {
         const membership = await this.prisma.userTenantMembership.findUnique({
-          where: {
-            userId_tenantId: { userId, tenantId },
-          },
+          where: { userId_tenantId: { userId, tenantId } },
         });
 
-        if (!membership || !membership.isActive) {
+        const isSuperAdmin = request.user?.isPlatformSuperAdmin;
+
+        if (!isSuperAdmin && (!membership || !membership.isActive)) {
           throw new ForbiddenException('You do not have access to this tenant');
         }
 
@@ -48,14 +48,30 @@ export class TenantContextInterceptor implements NestInterceptor {
 
         if (branchId) {
           const branchMembership = await this.prisma.userBranchMembership.findUnique({
-            where: {
-              userId_branchId: { userId, branchId },
-            },
+            where: { userId_branchId: { userId, branchId } },
           });
 
-          if (!branchMembership || !branchMembership.isActive) {
+          const isTenantAdmin = membership?.role === 'OWNER' || membership?.role === 'ADMIN';
+
+          if (!isSuperAdmin && !isTenantAdmin && (!branchMembership || !branchMembership.isActive)) {
             throw new ForbiddenException('You do not have access to this branch');
           }
+        }
+
+        if (isSuperAdmin && !membership) {
+          await this.prisma.auditLog.create({
+            data: {
+              tenantId,
+              actorId: userId,
+              action: 'IMPERSONATE',
+              module: 'AUTH',
+              entity: 'Tenant',
+              entityId: tenantId,
+              metadata: { email: request.user?.email, ip: request.ip },
+              ipAddress: request.ip,
+              userAgent: request.headers['user-agent'] as string,
+            },
+          }).catch(() => {});
         }
 
         request.tenantContext = {

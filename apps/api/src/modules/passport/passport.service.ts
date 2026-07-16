@@ -17,6 +17,8 @@ export class PassportService {
         issueDate: dto.issueDate ? new Date(dto.issueDate) : null,
         nationality: dto.nationality,
         countryCode: dto.countryCode,
+        relation: dto.relation,
+        isVerified: dto.isVerified ?? false,
         documentId: dto.documentId,
         notes: dto.notes,
         createdById: actorId,
@@ -27,9 +29,21 @@ export class PassportService {
   async findByClient(tenantId: string, clientId: string) {
     await this.prisma.client.findFirstOrThrow({ where: { id: clientId, tenantId, deletedAt: null } });
     return this.prisma.clientPassport.findMany({
-      where: { tenantId, clientId },
+      where: { tenantId, clientId, isActive: true },
       orderBy: { createdAt: 'desc' },
+      include: { client: { select: { id: true, displayName: true } } },
     });
+  }
+
+  async findAll(tenantId: string, query?: { page?: number; limit?: number; search?: string }) {
+    const page = query?.page ?? 1; const limit = query?.limit ?? 25; const skip = (page - 1) * limit;
+    const where: any = { tenantId };
+    if (query?.search) where.OR = [{ fullName: { contains: query.search, mode: 'insensitive' } }, { passportNumber: { contains: query.search, mode: 'insensitive' } }];
+    const [data, total] = await Promise.all([
+      this.prisma.clientPassport.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { client: { select: { id: true, displayName: true } } } }),
+      this.prisma.clientPassport.count({ where }),
+    ]);
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(tenantId: string, id: string) {
@@ -49,6 +63,8 @@ export class PassportService {
         ...(dto.issueDate !== undefined && { issueDate: dto.issueDate ? new Date(dto.issueDate) : null }),
         ...(dto.nationality !== undefined && { nationality: dto.nationality }),
         ...(dto.countryCode !== undefined && { countryCode: dto.countryCode }),
+        ...(dto.relation !== undefined && { relation: dto.relation }),
+        ...(dto.isVerified !== undefined && { isVerified: dto.isVerified, verifiedAt: dto.isVerified ? new Date() : null }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
         ...(dto.documentId !== undefined && { documentId: dto.documentId }),
         ...(dto.notes !== undefined && { notes: dto.notes }),

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RoleService } from './role.service';
+import { PermissionService } from '../permission/permission.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
@@ -14,7 +15,17 @@ import { TenantContext } from '../../common/interceptors/tenant-context.intercep
 @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 @Controller('tenant/roles')
 export class RoleController {
-  constructor(private readonly roleService: RoleService) {}
+  constructor(
+    private readonly roleService: RoleService,
+    private readonly permissionService: PermissionService,
+  ) {}
+
+  @Get('permissions')
+  @RequirePermissions('ROLE_READ')
+  @ApiOperation({ summary: 'List all permissions grouped by module' })
+  async getPermissions() {
+    return this.permissionService.findAll();
+  }
 
   @Post()
   @RequirePermissions('ROLE_CREATE')

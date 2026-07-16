@@ -7,9 +7,12 @@ import { RelationshipValidationService } from '../../common/services/relationshi
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
 import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
+import { NotificationService } from '../notification/notification.service';
+import { ClientScoringService } from '../client/client-scoring.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { QueryBookingDto } from './dto/query-booking.dto';
+import { CreateItineraryDayDto, UpdateItineraryDayDto } from './dto/itinerary.dto';
 
 @Injectable()
 export class BookingService {
@@ -20,6 +23,8 @@ export class BookingService {
     private readonly relValidation: RelationshipValidationService,
     private readonly numberGen: NumberGeneratorService,
     private readonly lookup: LookupValidationService,
+    private readonly notification: NotificationService,
+    private readonly scoring: ClientScoringService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateBookingDto) {
@@ -41,13 +46,13 @@ export class BookingService {
         bookingRef,
         pnrLocator: dto.pnrLocator ?? null,
         status: dto.status ?? 'HELD',
+        holdExpiresAt: dto.holdExpiresAt ? new Date(dto.holdExpiresAt) : ((dto.status ?? 'HELD') === 'HELD' ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null),
         clientId: dto.clientId ?? null,
         quotationId: dto.quotationId ?? null,
         leadId: dto.leadId ?? null,
         assignedToId: dto.assignedToId ?? null,
         travelStart: dto.travelStart ? new Date(dto.travelStart) : null,
         travelEnd: dto.travelEnd ? new Date(dto.travelEnd) : null,
-        holdExpiresAt: dto.holdExpiresAt ? new Date(dto.holdExpiresAt) : null,
         notes: dto.notes ?? null,
         createdById: actorId,
       },
@@ -63,8 +68,27 @@ export class BookingService {
       subject: `Booking ${bookingRef} created`, entity: 'Booking', entityId: booking.id, branchId: booking.branchId,
     });
 
+    if (dto.assignedToId) {
+      const employee = await this.prisma.employee.findFirst({
+        where: { tenantId, userId: dto.assignedToId },
+        select: { id: true },
+      });
+      if (employee) {
+        await this.prisma.commission.create({
+          data: {
+            tenantId, employeeId: employee.id,
+            sourceType: 'BOOKING', sourceId: booking.id,
+            amount: 0, currencyCode: 'USD',
+            status: 'PENDING', notes: `Commission for booking ${bookingRef}`,
+          },
+        }).catch(() => {});
+      }
+    }
+
+    this.scoring.refreshInBackground(tenantId, booking.clientId);
     return booking;
   }
+
 
   async findAll(tenantId: string, query: QueryBookingDto, activeBranchId?: string) {
     const page = query.page ?? 1; const limit = query.limit ?? 50; const skip = (page - 1) * limit;
@@ -81,7 +105,7 @@ export class BookingService {
     }
     enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
-      this.prisma.booking.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      this.prisma.booking.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { client: { select: { displayName: true } }, lead: { select: { fullName: true } } } }),
       this.prisma.booking.count({ where }),
     ]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
@@ -153,7 +177,26 @@ export class BookingService {
       });
     }
 
+    if (dto.status && dto.status !== oldStatus && (dto.status === 'CONFIRMED' || dto.status === 'TICKETED')) {
+      const client = booking.clientId
+        ? await this.prisma.client.findFirst({ where: { id: booking.clientId, tenantId }, select: { email: true, displayName: true } })
+        : null;
+      if (client?.email) {
+        this.notification.notify({
+          tenantId, userId: actorId, channel: 'EMAIL',
+          title: `Booking ${booking.bookingRef} ${dto.status.toLowerCase()}`,
+          body: `Dear ${client.displayName},\n\nYour booking ${booking.bookingRef} has been ${dto.status.toLowerCase()}.\n\nTravel dates: ${booking.travelStart ? new Date(booking.travelStart).toLocaleDateString() : 'TBD'} — ${booking.travelEnd ? new Date(booking.travelEnd).toLocaleDateString() : 'TBD'}`,
+          userEmail: client.email,
+        }).catch(() => {});
+      }
+    }
+
     await this.audit.logMutation(actorId, tenantId, 'BOOKING', 'Booking', id, dto.status !== oldStatus ? 'STATUS_CHANGE' : 'UPDATE', { changes: dto });
+
+    this.scoring.refreshInBackground(tenantId, booking.clientId);
+    if (current.clientId && current.clientId !== booking.clientId) {
+      this.scoring.refreshInBackground(tenantId, current.clientId);
+    }
 
     return booking;
   }
@@ -246,6 +289,52 @@ export class BookingService {
     const booking = await this.findById(tenantId, id);
     await this.prisma.booking.update({ where: { id }, data: { deletedAt: new Date() } });
     await this.audit.logMutation(actorId, tenantId, 'BOOKING', 'Booking', id, 'DELETE', { bookingRef: booking.bookingRef });
+    this.scoring.refreshInBackground(tenantId, booking.clientId);
     return { id, deleted: true };
+  }
+
+  async getItinerary(tenantId: string, bookingId: string) {
+    return this.prisma.tourItineraryDay.findMany({
+      where: { tenantId, bookingId },
+      orderBy: { dayNumber: 'asc' },
+    });
+  }
+
+  async addItineraryDay(tenantId: string, bookingId: string, dto: CreateItineraryDayDto) {
+    return this.prisma.tourItineraryDay.create({
+      data: {
+        tenantId, bookingId,
+        dayNumber: dto.dayNumber, title: dto.title,
+        description: dto.description ?? null,
+        activities: dto.activities ?? null,
+        hotelName: dto.hotelName ?? null,
+        hotelConfirmation: dto.hotelConfirmation ?? null,
+        meals: dto.meals ?? null, transfers: dto.transfers ?? null,
+        guideName: dto.guideName ?? null, notes: dto.notes ?? null,
+      },
+    });
+  }
+
+  async updateItineraryDay(tenantId: string, dayId: string, dto: UpdateItineraryDayDto) {
+    return this.prisma.tourItineraryDay.update({
+      where: { id: dayId },
+      data: {
+        ...(dto.dayNumber !== undefined && { dayNumber: dto.dayNumber }),
+        ...(dto.title !== undefined && { title: dto.title }),
+        ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.activities !== undefined && { activities: dto.activities }),
+        ...(dto.hotelName !== undefined && { hotelName: dto.hotelName }),
+        ...(dto.hotelConfirmation !== undefined && { hotelConfirmation: dto.hotelConfirmation }),
+        ...(dto.meals !== undefined && { meals: dto.meals }),
+        ...(dto.transfers !== undefined && { transfers: dto.transfers }),
+        ...(dto.guideName !== undefined && { guideName: dto.guideName }),
+        ...(dto.notes !== undefined && { notes: dto.notes }),
+      },
+    });
+  }
+
+  async removeItineraryDay(tenantId: string, dayId: string) {
+    await this.prisma.tourItineraryDay.delete({ where: { id: dayId } });
+    return { id: dayId, deleted: true };
   }
 }

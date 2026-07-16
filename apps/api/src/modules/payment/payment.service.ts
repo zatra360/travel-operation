@@ -5,8 +5,11 @@ import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { RelationshipValidationService } from '../../common/services/relationship-validation.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
+import { ClientScoringService } from '../client/client-scoring.service';
+import { GLPostingService } from '../accounting/gl-posting.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { QueryPaymentDto } from './dto/query-payment.dto';
@@ -18,7 +21,10 @@ export class PaymentService {
     private readonly audit: AuditService,
     private readonly activity: ActivityService,
     private readonly relValidation: RelationshipValidationService,
+    private readonly lookup: LookupValidationService,
     private readonly numberGen: NumberGeneratorService,
+    private readonly scoring: ClientScoringService,
+    private readonly glPosting: GLPostingService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreatePaymentDto) {
@@ -36,6 +42,9 @@ export class PaymentService {
       invoiceId: dto.invoiceId,
       branchId: dto.branchId,
     });
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'payment-method', code: dto.paymentMethod },
+    ].filter((v) => v.code));
 
     const currencyCode = dto.currencyCode ?? 'USD';
     const exchangeRate = dto.exchangeRate ?? 1;
@@ -60,6 +69,7 @@ export class PaymentService {
           reference: dto.reference,
           idempotencyKey: dto.idempotencyKey,
           notes: dto.notes,
+          bankAccountId: dto.bankAccountId ?? null,
           createdById: actorId,
         },
       })
@@ -75,6 +85,18 @@ export class PaymentService {
     await this.audit.logMutation(actorId, tenantId, 'PAYMENT', 'Payment', payment.id, 'CREATE', { amount: dto.amount });
     await this.activity.log(tenantId, actorId, 'PAYMENT_CREATED', `Payment of ${dto.amount} ${dto.currencyCode} recorded`, 'Payment', payment.id, dto.branchId);
 
+    // Log payment gateway attempt
+    await this.prisma.transactionLog.create({
+      data: {
+        tenantId, paymentId: payment.id,
+        gateway: dto.paymentMethod ?? 'manual',
+        gatewayRef: dto.reference ?? null,
+        amount: dto.amount ?? 0, currencyCode,
+        status: 'PENDING', attemptedAt: new Date(),
+      },
+    });
+
+    this.scoring.refreshInBackground(tenantId, payment.clientId);
     return payment;
   }
 
@@ -128,6 +150,7 @@ export class PaymentService {
           ...(dto.paymentMethod !== undefined && { paymentMethod: dto.paymentMethod }),
           ...(dto.status !== undefined && { status: dto.status }),
           ...(dto.reference !== undefined && { reference: dto.reference }),
+          ...(dto.bankAccountId !== undefined && { bankAccountId: dto.bankAccountId }),
           ...(dto.amount !== undefined && { amount: dto.amount }),
           ...(dto.receivedAt !== undefined && { receivedAt: new Date(dto.receivedAt) }),
           ...(dto.notes !== undefined && { notes: dto.notes }),
@@ -137,6 +160,7 @@ export class PaymentService {
       let createdReceipt: { id: string } | undefined;
       if (willReceive) {
         createdReceipt = await this.processReceivedPayment(tx, tenantId, actorId, u, receiptNumber!);
+        await this.glPosting.postPaymentReceived(tx, tenantId, actorId, u);
       }
       return { updated: u, receipt: createdReceipt };
     });
@@ -144,12 +168,23 @@ export class PaymentService {
     await this.audit.logMutation(actorId, tenantId, 'PAYMENT', 'Payment', id, 'STATUS_CHANGE', { from: payment.status, to: updated.status });
     await this.activity.log(tenantId, actorId, 'PAYMENT_UPDATED', `Payment status: ${payment.status} -> ${updated.status}`, 'Payment', id, payment.branchId);
 
+    if (dto.status !== undefined && dto.status !== payment.status) {
+      await this.prisma.transactionLog.updateMany({
+        where: { paymentId: id, status: 'PENDING' },
+        data: {
+          status: dto.status === 'RECEIVED' ? 'SUCCESS' : dto.status === 'FAILED' ? 'FAILED' : dto.status,
+          completedAt: new Date(),
+        },
+      });
+    }
+
     if (willReceive && receipt) {
       await this.activity.log(tenantId, actorId, 'PAYMENT_RECEIVED', `Payment of ${updated.amount} ${updated.currencyCode} received`, 'Payment', updated.id);
       await this.activity.log(tenantId, actorId, 'RECEIPT_CREATED', `Receipt #${receiptNumber} generated`, 'Receipt', receipt.id, updated.branchId);
       await this.activity.log(tenantId, actorId, 'LEDGER_ENTRY_CREATED', `Ledger entry for payment ${updated.id}`, 'LedgerEntry', updated.id, updated.branchId);
     }
 
+    this.scoring.refreshInBackground(tenantId, updated.clientId);
     return updated;
   }
 
@@ -197,6 +232,13 @@ export class PaymentService {
       await this.updateInvoiceBalances(tx, tenantId, payment.invoiceId);
     }
 
+    if (payment.bankAccountId) {
+      await tx.bankAccount.update({
+        where: { id: payment.bankAccountId },
+        data: { currentBalance: { increment: Number(payment.amount) } },
+      });
+    }
+
     return receipt;
   }
 
@@ -239,6 +281,7 @@ export class PaymentService {
     }
     await this.prisma.payment.delete({ where: { id } });
     await this.audit.logMutation(actorId, tenantId, 'PAYMENT', 'Payment', id, 'DELETE', { reference: payment.reference });
+    this.scoring.refreshInBackground(tenantId, payment.clientId);
     return { id, deleted: true };
   }
 }

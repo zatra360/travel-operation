@@ -21,4 +21,9 @@ export class QueryClientDto extends PaginationDto {
 
   @ApiPropertyOptional() @IsOptional() @IsString() branchId?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isVip?: boolean;
+
+  @ApiPropertyOptional({ enum: ['createdAt', 'activityScore'], default: 'createdAt' })
+  @IsOptional()
+  @IsIn(['createdAt', 'activityScore'])
+  sortBy?: string;
 }

@@ -3,6 +3,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
+import { SearchService } from '../../common/services/search.service';
+import { ClientScoringService } from './client-scoring.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { QueryClientDto } from './dto/query-client.dto';
@@ -16,12 +19,13 @@ const CLIENT_FIELDS = [
   'currencyCode', 'riskScore', 'creditLimit', 'b2bCreditStatus', 'outstandingBalance',
   'refundAmountTotal', 'overdueInvoices', 'visaHistoryCount', 'cancellationCount', 'refundFrequency',
   'ownerId', 'branchName', 'leadSource', 'aiInsights', 'alerts', 'lastActivityAt', 'lastBookingAt',
-  'phoneVerified', 'emailVerified', 'whatsappAvailable', 'notes',
+  'phoneVerified', 'emailVerified', 'whatsappAvailable',
+  'activityScore', 'lifetimeValue', 'totalBookings', 'totalPayments', 'totalSpent', 'lastScoredAt', 'notes',
 ] as const;
 
 @Injectable()
 export class ClientService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly activity: ActivityService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly activity: ActivityService, private readonly lookup: LookupValidationService, private readonly search: SearchService, private readonly scoring: ClientScoringService) {}
 
   private async validateLinkedIds(tenantId: string, dto: any) {
     if (dto.branchId) {
@@ -41,10 +45,17 @@ export class ClientService {
 
   async create(tenantId: string, actorId: string, dto: CreateClientDto) {
     await this.validateLinkedIds(tenantId, dto);
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'client-type', code: dto.type },
+      { categoryCode: 'client-status', code: dto.status },
+      { categoryCode: 'contact-method', code: dto.preferredCommunication },
+      { categoryCode: 'payment-method', code: dto.preferredPaymentMethod },
+    ].filter((v) => v.code));
     const data = this.mapFields(dto);
     const client = await this.prisma.client.create({ data: { tenantId, ...data } });
     await this.audit.logMutation(actorId, tenantId, 'CLIENT', 'Client', client.id, 'CREATE', { displayName: client.displayName }, client.branchId ?? undefined);
     await this.activity.log(tenantId, actorId, 'CLIENT_CREATED', `New client: ${client.displayName}`, 'Client', client.id, client.branchId);
+    this.search.indexClients(tenantId, [client]).catch(() => {});
     return client;
   }
 
@@ -64,8 +75,11 @@ export class ClientService {
       ];
     }
     enforceBranchScope(where, activeBranchId);
+    const orderBy: any = query.sortBy === 'activityScore'
+      ? [{ activityScore: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }]
+      : { createdAt: 'desc' };
     const [data, total] = await Promise.all([
-      this.prisma.client.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      this.prisma.client.findMany({ where, orderBy, skip, take: limit }),
       this.prisma.client.count({ where }),
     ]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
@@ -80,10 +94,17 @@ export class ClientService {
   async update(tenantId: string, actorId: string, id: string, dto: UpdateClientDto) {
     await this.findById(tenantId, id);
     await this.validateLinkedIds(tenantId, dto);
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'client-type', code: dto.type },
+      { categoryCode: 'client-status', code: dto.status },
+      { categoryCode: 'contact-method', code: dto.preferredCommunication },
+      { categoryCode: 'payment-method', code: dto.preferredPaymentMethod },
+    ].filter((v) => v.code));
     const data = this.mapFields(dto);
     const client = await this.prisma.client.update({ where: { id }, data });
     await this.audit.logMutation(actorId, tenantId, 'CLIENT', 'Client', client.id, 'UPDATE', { changes: dto }, client.branchId ?? undefined);
     await this.activity.log(tenantId, actorId, 'CLIENT_UPDATED', `Client updated: ${client.displayName}`, 'Client', client.id, client.branchId);
+    this.search.indexClients(tenantId, [client]).catch(() => {});
     return client;
   }
 
@@ -92,5 +113,55 @@ export class ClientService {
     await this.prisma.client.update({ where: { id }, data: { deletedAt: new Date() } });
     await this.audit.logMutation(actorId, tenantId, 'CLIENT', 'Client', client.id, 'DELETE', { displayName: client.displayName }, client.branchId ?? undefined);
     return { id, deleted: true };
+  }
+
+  async checkDuplicates(tenantId: string, email: string | undefined, phone: string | undefined, excludeId?: string) {
+    const matches: any[] = [];
+    const safeEmail = email?.trim().toLowerCase();
+    const safePhone = phone?.trim();
+
+    if (safeEmail) {
+      const client = await this.prisma.client.findFirst({
+        where: { tenantId, email: { equals: safeEmail, mode: 'insensitive' }, deletedAt: null, ...(excludeId ? { id: { not: excludeId } } : {}) },
+        select: { id: true, displayName: true, phone: true },
+      });
+      if (client) matches.push({ id: client.id, name: client.displayName, type: 'client', matchOn: 'email', phone: client.phone });
+
+      const lead = await this.prisma.lead.findFirst({
+        where: { tenantId, email: { equals: safeEmail, mode: 'insensitive' }, deletedAt: null, status: { notIn: ['LOST', 'DUPLICATE', 'SPAM'] } },
+        select: { id: true, fullName: true, primaryMobile: true },
+      });
+      if (lead) matches.push({ id: lead.id, name: lead.fullName, type: 'lead', matchOn: 'email', phone: lead.primaryMobile });
+    }
+
+    if (safePhone) {
+      const client = await this.prisma.client.findFirst({
+        where: { tenantId, deletedAt: null, ...(excludeId ? { id: { not: excludeId } } : {}), OR: [{ phone: { contains: safePhone } }, { whatsapp: { contains: safePhone } }] },
+        select: { id: true, displayName: true, phone: true },
+      });
+      if (client && !matches.find(m => m.id === client.id)) matches.push({ id: client.id, name: client.displayName, type: 'client', matchOn: 'phone', phone: client.phone });
+
+      const lead = await this.prisma.lead.findFirst({
+        where: { tenantId, deletedAt: null, status: { notIn: ['LOST', 'DUPLICATE', 'SPAM'] }, OR: [{ primaryMobile: { contains: safePhone } }, { secondaryMobile: { contains: safePhone } }, { whatsappNumber: { contains: safePhone } }] },
+        select: { id: true, fullName: true, primaryMobile: true },
+      });
+      if (lead && !matches.find(m => m.id === lead.id)) matches.push({ id: lead.id, name: lead.fullName, type: 'lead', matchOn: 'phone', phone: lead.primaryMobile });
+    }
+
+    return { duplicates: matches };
+  }
+
+  async calculateActivityScore(tenantId: string, clientId: string) {
+    await this.findById(tenantId, clientId);
+    return this.scoring.computeAndPersist(tenantId, clientId);
+  }
+
+  async getTimeline(tenantId: string, id: string) {
+    return this.prisma.activity.findMany({
+      where: { tenantId, OR: [{ entity: 'Client', entityId: id }, { entity: 'Lead', entityId: id }] },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { id: true, type: true, subject: true, content: true, metadata: true, createdAt: true },
+    });
   }
 }

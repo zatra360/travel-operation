@@ -5,8 +5,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { RelationshipValidationService } from '../../common/services/relationship-validation.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
 import { validateStatusTransition, isTerminalStatus } from '../../common/utils/status-transitions';
+import { NotificationService } from '../notification/notification.service';
 
 describe('QuotationService', () => {
   let service: QuotationService;
@@ -85,7 +87,9 @@ describe('QuotationService', () => {
         { provide: AuditService, useValue: mockAudit },
         { provide: ActivityService, useValue: mockActivity },
         { provide: RelationshipValidationService, useValue: mockRelValidation },
+        { provide: LookupValidationService, useValue: { validate: jest.fn(), validateMultiple: jest.fn() } },
         { provide: NumberGeneratorService, useValue: mockNumberGen },
+        { provide: NotificationService, useValue: { notify: jest.fn().mockResolvedValue({}) } },
       ],
     }).compile();
 

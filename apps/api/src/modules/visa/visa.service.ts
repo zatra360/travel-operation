@@ -1,13 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { CreateVisaDto, UpdateVisaDto } from './dto/visa.dto';
 
 @Injectable()
 export class VisaService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly lookup: LookupValidationService) {}
 
   async create(tenantId: string, clientId: string, actorId: string, dto: CreateVisaDto) {
     await this.prisma.client.findFirstOrThrow({ where: { id: clientId, tenantId, deletedAt: null } });
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'visa-type', code: dto.visaType },
+    ].filter((v) => v.code));
 
     return this.prisma.clientVisa.create({
       data: {
@@ -33,13 +37,21 @@ export class VisaService {
   async findByClient(tenantId: string, clientId: string) {
     await this.prisma.client.findFirstOrThrow({ where: { id: clientId, tenantId, deletedAt: null } });
     return this.prisma.clientVisa.findMany({
-      where: { tenantId, clientId },
-      include: {
-        country: { select: { id: true, name: true, iso2: true } },
-        passport: { select: { id: true, passportNumber: true } },
-      },
+      where: { tenantId, clientId, isActive: true },
+      include: { country: { select: { id: true, name: true, iso2: true } }, passport: { select: { id: true, passportNumber: true } }, client: { select: { id: true, displayName: true } } },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async findAll(tenantId: string, query?: { page?: number; limit?: number; search?: string }) {
+    const page = query?.page ?? 1; const limit = query?.limit ?? 25; const skip = (page - 1) * limit;
+    const where: any = { tenantId };
+    if (query?.search) where.OR = [{ visaNumber: { contains: query.search, mode: 'insensitive' } }];
+    const [data, total] = await Promise.all([
+      this.prisma.clientVisa.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { country: { select: { id: true, name: true } }, client: { select: { id: true, displayName: true } } } }),
+      this.prisma.clientVisa.count({ where }),
+    ]);
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(tenantId: string, id: string) {
@@ -53,6 +65,9 @@ export class VisaService {
 
   async update(tenantId: string, id: string, dto: UpdateVisaDto) {
     await this.findOne(tenantId, id);
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'visa-type', code: dto.visaType },
+    ].filter((v) => v.code));
     return this.prisma.clientVisa.update({
       where: { id },
       data: {

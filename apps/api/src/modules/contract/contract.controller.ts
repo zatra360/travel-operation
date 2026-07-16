@@ -1,8 +1,17 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ContractService } from './contract.service';
 import { CreateContractDto, UpdateContractDto, SignContractDto } from './dto/contract.dto';
 import { JwtAuthGuard, TenantGuard, PermissionsGuard, RequirePermissions, TenantCtx, TenantContext } from '../../common';
+
+@ApiTags('Tenant - Contracts')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+@Controller('tenant/contracts')
+export class ContractListController {
+  constructor(private readonly service: ContractService) {}
+  @Get() @RequirePermissions('CONTRACT_READ') async findAll(@TenantCtx() ctx: TenantContext, @Query('page') page?: number, @Query('limit') limit?: number, @Query('search') search?: string) { return this.service.findAll(ctx.tenantId, { page, limit, search }); }
+}
 
 @ApiTags('Tenant - Contracts')
 @ApiBearerAuth()

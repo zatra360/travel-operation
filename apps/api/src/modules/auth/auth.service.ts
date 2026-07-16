@@ -74,7 +74,7 @@ export class AuthService {
     const tenants = await this.prisma.userTenantMembership.findMany({
       where: { userId: user.id, isActive: true },
       include: {
-        tenant: { select: { id: true, name: true, slug: true, logo: true } },
+        tenant: { select: { id: true, name: true, slug: true, logo: true, settings: true } },
       },
     });
 
@@ -307,5 +307,27 @@ export class AuthService {
         },
       });
     }
+  }
+
+  async getPreferences(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { metadata: true },
+    });
+    const meta = (user?.metadata as any) || {};
+    return {
+      emailNotifications: meta.emailNotifications !== false,
+      smsNotifications: meta.smsNotifications !== undefined ? meta.smsNotifications : false,
+      bookingUpdates: meta.bookingUpdates !== false,
+      quotationUpdates: meta.quotationUpdates !== false,
+    };
+  }
+
+  async updatePreferences(userId: string, prefs: Record<string, boolean>) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { metadata: true } });
+    const meta = (user?.metadata as any) || {};
+    const updated = { ...meta, ...prefs };
+    await this.prisma.user.update({ where: { id: userId }, data: { metadata: updated } });
+    return updated;
   }
 }

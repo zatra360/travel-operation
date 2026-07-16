@@ -1,15 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { QueryAttendanceDto } from './dto/query-attendance.dto';
 
 @Injectable()
 export class AttendanceService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly lookup: LookupValidationService) {}
 
   async create(tenantId: string, actorId: string, dto: CreateAttendanceDto) {
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'attendance-status', code: dto.status },
+    ].filter((v) => v.code));
     const att = await this.prisma.attendance.create({ data: { tenantId, employeeId: dto.employeeId, date: new Date(dto.date), status: dto.status ?? 'PRESENT', clockIn: dto.clockIn ? new Date(dto.clockIn) : null, clockOut: dto.clockOut ? new Date(dto.clockOut) : null, notes: dto.notes ?? null } });
     await this.audit.logMutation(actorId, tenantId, 'ATTENDANCE', 'Attendance', att.id, 'CREATE', { employeeId: att.employeeId, date: att.date.toISOString(), status: att.status });
     return att;
@@ -26,6 +30,9 @@ export class AttendanceService {
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateAttendanceDto) {
     await this.findById(tenantId, id);
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'attendance-status', code: dto.status },
+    ].filter((v) => v.code));
     const att = await this.prisma.attendance.update({ where: { id }, data: { ...(dto.status !== undefined && { status: dto.status }), ...(dto.clockIn !== undefined && { clockIn: dto.clockIn ? new Date(dto.clockIn) : null }), ...(dto.clockOut !== undefined && { clockOut: dto.clockOut ? new Date(dto.clockOut) : null }), ...(dto.notes !== undefined && { notes: dto.notes }), ...(dto.employeeId !== undefined && { employeeId: dto.employeeId }), ...(dto.date !== undefined && { date: new Date(dto.date) }) } });
     await this.audit.logMutation(actorId, tenantId, 'ATTENDANCE', 'Attendance', att.id, 'UPDATE', { changes: dto });
     return att;

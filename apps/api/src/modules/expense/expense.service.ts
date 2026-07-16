@@ -1,21 +1,29 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { enforceBranchScope } from '../../common/utils/scope';
+import { validateStatusTransition } from '../../common/utils/status-transitions';
 import { AuditService } from '../audit/audit.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
+import { NumberGeneratorService } from '../../common/services/number-generator.service';
+import { GLPostingService } from '../accounting/gl-posting.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { QueryExpenseDto } from './dto/query-expense.dto';
 
 @Injectable()
 export class ExpenseService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly lookup: LookupValidationService, private readonly numberGen: NumberGeneratorService, private readonly glPosting: GLPostingService) {}
 
   async create(tenantId: string, actorId: string, dto: CreateExpenseDto) {
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'expense-category', code: dto.category },
+    ].filter((v) => v.code));
+    const expenseNumber = dto.expenseNumber || (await this.numberGen.generateExpenseNumber(tenantId));
     const expense = await this.prisma.expense.create({
       data: {
         tenantId, branchId: dto.branchId ?? null,
-        expenseNumber: dto.expenseNumber, category: dto.category ?? null,
-        vendorName: dto.vendorName ?? null, amount: dto.amount ?? 0,
+        expenseNumber, category: dto.category ?? null,
+        vendorName: dto.vendorName ?? null, vendorId: dto.vendorId ?? null, amount: dto.amount ?? 0,
         currencyCode: dto.currencyCode ?? 'USD', status: dto.status ?? 'PENDING',
         description: dto.description ?? null,
         expenseDate: dto.expenseDate ? new Date(dto.expenseDate) : null,
@@ -43,20 +51,38 @@ export class ExpenseService {
   }
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateExpenseDto) {
-    await this.findById(tenantId, id);
-    const expense = await this.prisma.expense.update({
-      where: { id },
-      data: {
-        ...(dto.expenseNumber !== undefined && { expenseNumber: dto.expenseNumber }),
-        ...(dto.category !== undefined && { category: dto.category }),
-        ...(dto.vendorName !== undefined && { vendorName: dto.vendorName }),
-        ...(dto.amount !== undefined && { amount: dto.amount }),
-        ...(dto.currencyCode !== undefined && { currencyCode: dto.currencyCode }),
-        ...(dto.status !== undefined && { status: dto.status }),
-        ...(dto.description !== undefined && { description: dto.description }),
-        ...(dto.expenseDate !== undefined && { expenseDate: dto.expenseDate ? new Date(dto.expenseDate) : null }),
-        ...(dto.branchId !== undefined && { branchId: dto.branchId }),
-      },
+    const current = await this.findById(tenantId, id);
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'expense-category', code: dto.category },
+    ].filter((v) => v.code));
+    if (dto.status !== undefined && dto.status !== current.status) {
+      const check = validateStatusTransition('expense', current.status, dto.status);
+      if (!check.valid) {
+        throw new BadRequestException(`Cannot transition from ${current.status} to ${dto.status}. Allowed: ${check.allowed.join(', ') || 'none'}`);
+      }
+    }
+    const becomingPaid = dto.status === 'PAID' && current.status !== 'PAID';
+
+    const expense = await this.prisma.$transaction(async (tx) => {
+      const exp = await tx.expense.update({
+        where: { id },
+        data: {
+          ...(dto.expenseNumber !== undefined && { expenseNumber: dto.expenseNumber }),
+          ...(dto.category !== undefined && { category: dto.category }),
+          ...(dto.vendorName !== undefined && { vendorName: dto.vendorName }),
+          ...(dto.vendorId !== undefined && { vendorId: dto.vendorId }),
+          ...(dto.amount !== undefined && { amount: dto.amount }),
+          ...(dto.currencyCode !== undefined && { currencyCode: dto.currencyCode }),
+          ...(dto.status !== undefined && { status: dto.status }),
+          ...(dto.description !== undefined && { description: dto.description }),
+          ...(dto.expenseDate !== undefined && { expenseDate: dto.expenseDate ? new Date(dto.expenseDate) : null }),
+          ...(dto.branchId !== undefined && { branchId: dto.branchId }),
+        },
+      });
+      if (becomingPaid) {
+        await this.glPosting.postExpensePaid(tx, tenantId, actorId, exp);
+      }
+      return exp;
     });
     await this.audit.logMutation(actorId, tenantId, 'EXPENSE', 'Expense', expense.id, 'UPDATE', { changes: dto }, expense.branchId ?? undefined);
     return expense;

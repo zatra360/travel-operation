@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AttendanceController } from './attendance.controller';
 import { AttendanceService } from './attendance.service';
-@Module({ controllers: [AttendanceController], providers: [AttendanceService], exports: [AttendanceService] })
+import { MasterDataModule } from '../master-data/master-data.module';
+@Module({ imports: [MasterDataModule], controllers: [AttendanceController], providers: [AttendanceService], exports: [AttendanceService] })
 export class AttendanceModule {}

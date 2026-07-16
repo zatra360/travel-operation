@@ -31,6 +31,13 @@ export class DashboardController {
   async getExpiries(@TenantCtx() ctx: TenantContext) {
     return this.dashboardService.getExpiries(ctx.tenantId);
   }
+
+  @Get('performance')
+  @RequirePermissions('DASHBOARD_READ')
+  @ApiOperation({ summary: 'Get employee performance metrics (commission, bookings, leads)' })
+  async getPerformance(@TenantCtx() ctx: TenantContext) {
+    return this.dashboardService.getPerformanceMetrics(ctx.tenantId);
+  }
 }
 
 @ApiTags('Platform - Dashboard')

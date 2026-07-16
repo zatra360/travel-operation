@@ -14,7 +14,18 @@ export class OrderService {
   }
 
   async findByClient(tenantId: string, clientId: string) {
-    return this.prisma.order.findMany({ where: { tenantId, clientId, deletedAt: null }, include: { items: true }, orderBy: { createdAt: 'desc' } });
+    return this.prisma.order.findMany({ where: { tenantId, clientId, deletedAt: null }, include: { items: true, client: { select: { id: true, displayName: true } } }, orderBy: { createdAt: 'desc' } });
+  }
+
+  async findAll(tenantId: string, query?: { page?: number; limit?: number; search?: string }) {
+    const page = query?.page ?? 1; const limit = query?.limit ?? 25; const skip = (page - 1) * limit;
+    const where: any = { tenantId, deletedAt: null };
+    if (query?.search) where.OR = [{ orderNumber: { contains: query.search, mode: 'insensitive' } }];
+    const [data, total] = await Promise.all([
+      this.prisma.order.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { items: true, client: { select: { id: true, displayName: true } } } }),
+      this.prisma.order.count({ where }),
+    ]);
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(tenantId: string, id: string) {

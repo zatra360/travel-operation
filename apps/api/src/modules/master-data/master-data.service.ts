@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CreateMasterDataCategoryDto, UpdateMasterDataCategoryDto, CreateMasterDataItemDto, UpdateMasterDataItemDto } from './dto/master-data.dto';
 
 export interface EffectiveItem {
   code: string; name: string; displayName: string; color?: string | null;
@@ -18,7 +19,7 @@ export class MasterDataService {
     if (!category) return [];
 
     const items = await this.prisma.masterDataItem.findMany({
-      where: { categoryId: category.id, ...(params.includeInactive ? {} : { isActive: true }) },
+      where: { categoryId: category.id, deletedAt: null, ...(params.includeInactive ? {} : { isActive: true }) },
       orderBy: { sortOrder: 'asc' },
     });
 
@@ -93,16 +94,33 @@ export class MasterDataService {
     return result;
   }
 
-  async getCategories() { return this.prisma.masterDataCategory.findMany({ orderBy: { sortOrder: 'asc' }, include: { _count: { select: { items: true } } } }); }
+  async getCategories() { return this.prisma.masterDataCategory.findMany({ where: { deletedAt: null }, orderBy: { sortOrder: 'asc' }, include: { _count: { select: { items: true } } } }); }
   async getCategory(id: string) { return this.prisma.masterDataCategory.findUnique({ where: { id } }); }
-  async createCategory(data: any) { return this.prisma.masterDataCategory.create({ data }); }
-  async updateCategory(id: string, data: any) { return this.prisma.masterDataCategory.update({ where: { id }, data }); }
+  async createCategory(data: CreateMasterDataCategoryDto) { return this.prisma.masterDataCategory.create({ data }); }
+  async updateCategory(id: string, data: UpdateMasterDataCategoryDto) { return this.prisma.masterDataCategory.update({ where: { id }, data }); }
   async deleteCategory(id: string) { return this.prisma.masterDataCategory.update({ where: { id }, data: { deletedAt: new Date(), isActive: false } }); }
 
-  async getItems(categoryId: string) { return this.prisma.masterDataItem.findMany({ where: { categoryId }, orderBy: { sortOrder: 'asc' } }); }
-  async getItem(id: string) { return this.prisma.masterDataItem.findUnique({ where: { id } }); }
-  async createItem(categoryId: string, data: any) { return this.prisma.masterDataItem.create({ data: { ...data, categoryId } }); }
-  async updateItem(id: string, data: any) { return this.prisma.masterDataItem.update({ where: { id }, data }); }
+  async getItems(categoryId: string, query?: { search?: string; page?: number; limit?: number }) {
+    const page = query?.page ?? 1;
+    const limit = query?.limit ?? 50;
+    const skip = (page - 1) * limit;
+    const where: any = { categoryId, deletedAt: null };
+    if (query?.search) {
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { code: { contains: query.search, mode: 'insensitive' } },
+        { displayName: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+    const [data, total] = await Promise.all([
+      this.prisma.masterDataItem.findMany({ where, orderBy: { sortOrder: 'asc' }, skip, take: limit }),
+      this.prisma.masterDataItem.count({ where }),
+    ]);
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+  async getItem(id: string) { return this.prisma.masterDataItem.findFirst({ where: { id, deletedAt: null } }); }
+  async createItem(categoryId: string, data: CreateMasterDataItemDto) { return this.prisma.masterDataItem.create({ data: { ...data, categoryId } }); }
+  async updateItem(id: string, data: UpdateMasterDataItemDto) { return this.prisma.masterDataItem.update({ where: { id }, data }); }
   async deleteItem(id: string) { return this.prisma.masterDataItem.update({ where: { id }, data: { deletedAt: new Date(), isActive: false } }); }
 
   // Tenant overrides
@@ -147,6 +165,59 @@ export class MasterDataService {
     return this.prisma.tenantMasterDataOverride.update({ where: { id: ov.id }, data: { deletedAt: new Date() } });
   }
 
+  // ── Reference Data Admin CRUD ──
+  async createCountry(data: any) { return this.prisma.country.create({ data }); }
+  async updateCountry(id: string, data: any) { return this.prisma.country.update({ where: { id }, data }); }
+  async deleteCountry(id: string) { return this.prisma.country.update({ where: { id }, data: { isActive: false } }); }
+
+  async createAirline(data: any) { return this.prisma.airline.create({ data }); }
+  async updateAirline(id: string, data: any) { return this.prisma.airline.update({ where: { id }, data }); }
+  async deleteAirline(id: string) { return this.prisma.airline.update({ where: { id }, data: { isActive: false } }); }
+
+  async createAirport(data: any) { return this.prisma.airport.create({ data }); }
+  async updateAirport(id: string, data: any) { return this.prisma.airport.update({ where: { id }, data }); }
+  async deleteAirport(id: string) { return this.prisma.airport.update({ where: { id }, data: { isActive: false } }); }
+
+  async createCurrency(data: any) { return this.prisma.currency.create({ data }); }
+  async updateCurrency(id: string, data: any) { return this.prisma.currency.update({ where: { id }, data }); }
+  async deleteCurrency(id: string) { return this.prisma.currency.update({ where: { id }, data: { isActive: false } }); }
+
+  async createCabinClass(data: any) { return this.prisma.cabinClass.create({ data }); }
+  async updateCabinClass(id: string, data: any) { return this.prisma.cabinClass.update({ where: { id }, data }); }
+  async deleteCabinClass(id: string) { return this.prisma.cabinClass.update({ where: { id }, data: { isActive: false } }); }
+
+  async listNationalities(page = 1, limit = 50, countryId?: string) {
+    const skip = (page - 1) * limit; const where: any = {}; if (countryId) where.countryId = countryId;
+    const [data, total] = await Promise.all([this.prisma.nationality.findMany({ where, orderBy: { name: 'asc' }, skip, take: limit, include: { country: { select: { id: true, name: true, iso2: true } } } }), this.prisma.nationality.count({ where })]);
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+  async createNationality(data: any) { return this.prisma.nationality.create({ data }); }
+  async updateNationality(id: string, data: any) { return this.prisma.nationality.update({ where: { id }, data }); }
+  async deleteNationality(id: string) { return this.prisma.nationality.update({ where: { id }, data: { isActive: false } }); }
+
+  // ── Aviation Reference ──
+  async listAircraftTypes(page = 1, limit = 50, search?: string) {
+    const skip = (page - 1) * limit; const where: any = {}; if (search) where.name = { contains: search, mode: 'insensitive' };
+    const [data, total] = await Promise.all([this.prisma.aircraftType.findMany({ where, orderBy: { name: 'asc' }, skip, take: limit }), this.prisma.aircraftType.count({ where })]);
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+  async listAirlineAlliances(page = 1, limit = 50, search?: string) {
+    const skip = (page - 1) * limit; const where: any = {}; if (search) where.name = { contains: search, mode: 'insensitive' };
+    const [data, total] = await Promise.all([this.prisma.airlineAlliance.findMany({ where, orderBy: { name: 'asc' }, skip, take: limit }), this.prisma.airlineAlliance.count({ where })]);
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+  async listAirportTerminals(page = 1, limit = 50, search?: string) {
+    const skip = (page - 1) * limit; const where: any = {}; if (search) where.name = { contains: search, mode: 'insensitive' };
+    const [data, total] = await Promise.all([this.prisma.airportTerminal.findMany({ where, orderBy: { name: 'asc' }, skip, take: limit, include: { airport: { select: { iataCode: true, name: true } } } }), this.prisma.airportTerminal.count({ where })]);
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async listCabinClasses(page = 1, limit = 50, search?: string) {
+    const skip = (page - 1) * limit; const where: any = {}; if (search) where.name = { contains: search, mode: 'insensitive' };
+    const [data, total] = await Promise.all([this.prisma.cabinClass.findMany({ where, orderBy: { sortOrder: 'asc' }, skip, take: limit }), this.prisma.cabinClass.count({ where })]);
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
   // ── Reference Data ──
   async listCountries(page = 1, limit = 50, search?: string) {
     const skip = (page - 1) * limit; const where: any = {}; if (search) where.name = { contains: search, mode: 'insensitive' };
@@ -154,11 +225,6 @@ export class MasterDataService {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
   async getCountry(id: string) { const c = await this.prisma.country.findUnique({ where: { id } }); if (!c) throw new NotFoundException(); return c; }
-  async listNationalities(page = 1, limit = 50, countryId?: string) {
-    const skip = (page - 1) * limit; const where: any = {}; if (countryId) where.countryId = countryId;
-    const [data, total] = await Promise.all([this.prisma.nationality.findMany({ where, orderBy: { name: 'asc' }, skip, take: limit }), this.prisma.nationality.count({ where })]);
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
-  }
   async listCurrencies(page = 1, limit = 50, search?: string) {
     const skip = (page - 1) * limit; const where: any = {}; if (search) where.OR = [{ code: { contains: search, mode: 'insensitive' } }, { name: { contains: search, mode: 'insensitive' } }];
     const [data, total] = await Promise.all([this.prisma.currency.findMany({ where, orderBy: { code: 'asc' }, skip, take: limit }), this.prisma.currency.count({ where })]);
@@ -166,12 +232,17 @@ export class MasterDataService {
   }
   async listAirlines(page = 1, limit = 50, search?: string) {
     const skip = (page - 1) * limit; const where: any = {}; if (search) where.OR = [{ name: { contains: search, mode: 'insensitive' } }, { iataCode: { contains: search, mode: 'insensitive' } }];
-    const [data, total] = await Promise.all([this.prisma.airline.findMany({ where, orderBy: { name: 'asc' }, skip, take: limit }), this.prisma.airline.count({ where })]);
+    const [data, total] = await Promise.all([this.prisma.airline.findMany({ where, orderBy: { name: 'asc' }, skip, take: limit, include: { country: { select: { id: true, name: true, iso2: true } } } }), this.prisma.airline.count({ where })]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
   async listAirports(page = 1, limit = 50, search?: string) {
     const skip = (page - 1) * limit; const where: any = {}; if (search) where.OR = [{ name: { contains: search, mode: 'insensitive' } }, { iataCode: { contains: search, mode: 'insensitive' } }, { city: { contains: search, mode: 'insensitive' } }];
-    const [data, total] = await Promise.all([this.prisma.airport.findMany({ where, orderBy: { name: 'asc' }, skip, take: limit }), this.prisma.airport.count({ where })]);
+    const [data, total] = await Promise.all([this.prisma.airport.findMany({ where, orderBy: { name: 'asc' }, skip, take: limit, include: { country: { select: { id: true, name: true, iso2: true } } } }), this.prisma.airport.count({ where })]);
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+  async listTimezones(page = 1, limit = 50, search?: string) {
+    const skip = (page - 1) * limit; const where: any = {}; if (search) where.OR = [{ city: { contains: search, mode: 'insensitive' } }, { code: { contains: search, mode: 'insensitive' } }];
+    const [data, total] = await Promise.all([this.prisma.timezone.findMany({ where, orderBy: { utcOffset: 'asc' }, skip, take: limit }), this.prisma.timezone.count({ where })]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 }

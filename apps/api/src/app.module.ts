@@ -51,6 +51,14 @@ import { CommissionModule } from './modules/commission/commission.module';
 import { SalaryRunModule } from './modules/salary-run/salary-run.module';
 import { ReissueModule } from './modules/reissue/reissue.module';
 import { CancellationModule } from './modules/cancellation/cancellation.module';
+import { ProjectModule } from './modules/project/project.module';
+import { VendorModule } from './modules/vendor/vendor.module';
+import { InsuranceModule } from './modules/insurance/insurance.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
+import { BankingModule } from './modules/banking/banking.module';
+import { SearchModule } from './modules/search/search.module';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
+import { AccountingModule } from './modules/accounting/accounting.module';
 import { HealthController } from './health.controller';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -107,6 +115,14 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     SalaryRunModule,
     ReissueModule,
     CancellationModule,
+    ProjectModule,
+    VendorModule,
+    InsuranceModule,
+    FeedbackModule,
+    BankingModule,
+    SearchModule,
+    KnowledgeModule,
+    AccountingModule,
   ],
   controllers: [HealthController],
   providers: [

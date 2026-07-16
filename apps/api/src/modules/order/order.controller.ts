@@ -1,8 +1,17 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrderService } from './order.service';
 import { CreateOrderDto, CreateOrderItemDto, UpdateOrderItemDto } from './dto/order.dto';
 import { JwtAuthGuard, TenantGuard, PermissionsGuard, RequirePermissions, TenantCtx, TenantContext } from '../../common';
+
+@ApiTags('Tenant - Orders')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+@Controller('tenant/orders')
+export class OrderListController {
+  constructor(private readonly service: OrderService) {}
+  @Get() @RequirePermissions('ORDER_READ') async findAll(@TenantCtx() ctx: TenantContext, @Query('page') page?: number, @Query('limit') limit?: number, @Query('search') search?: string) { return this.service.findAll(ctx.tenantId, { page, limit, search }); }
+}
 
 @ApiTags('Tenant - Orders')
 @ApiBearerAuth()

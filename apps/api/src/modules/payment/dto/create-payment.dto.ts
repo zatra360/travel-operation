@@ -50,6 +50,10 @@ export class CreatePaymentDto {
 
   @ApiPropertyOptional()
   @IsOptional() @IsString()
+  bankAccountId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsString()
   notes?: string;
 
   @ApiPropertyOptional()

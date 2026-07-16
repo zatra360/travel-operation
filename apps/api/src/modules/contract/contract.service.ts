@@ -1,11 +1,23 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { CreateContractDto, UpdateContractDto, SignContractDto } from './dto/contract.dto';
 
 @Injectable()
 export class ContractService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly lookup: LookupValidationService) {}
+
+  async findAll(tenantId: string, query?: { page?: number; limit?: number; search?: string }) {
+    const page = query?.page ?? 1; const limit = query?.limit ?? 25; const skip = (page - 1) * limit;
+    const where: any = { tenantId, deletedAt: null };
+    if (query?.search) where.OR = [{ subject: { contains: query.search, mode: 'insensitive' } }, { contractNumber: { contains: query.search, mode: 'insensitive' } }];
+    const [data, total] = await Promise.all([
+      this.prisma.contract.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { client: { select: { id: true, displayName: true } } } }),
+      this.prisma.contract.count({ where }),
+    ]);
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
 
   async create(tenantId: string, clientId: string, actorId: string, dto: CreateContractDto) {
     await this.prisma.client.findFirstOrThrow({ where: { id: clientId, tenantId, deletedAt: null } });
@@ -64,6 +76,9 @@ export class ContractService {
 
   async update(tenantId: string, id: string, dto: UpdateContractDto) {
     await this.findOne(tenantId, id);
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'contract-status', code: dto.status },
+    ].filter((v) => v.code));
     return this.prisma.contract.update({
       where: { id },
       data: {

@@ -5,8 +5,10 @@ import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { RelationshipValidationService } from '../../common/services/relationship-validation.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
+import { NotificationService } from '../notification/notification.service';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
 import { QueryQuotationDto } from './dto/query-quotation.dto';
@@ -22,7 +24,9 @@ export class QuotationService {
     private readonly audit: AuditService,
     private readonly activity: ActivityService,
     private readonly relValidation: RelationshipValidationService,
+    private readonly lookup: LookupValidationService,
     private readonly numberGen: NumberGeneratorService,
+    private readonly notification: NotificationService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateQuotationDto) {
@@ -30,6 +34,9 @@ export class QuotationService {
       tenantId, clientId: dto.clientId, leadId: dto.leadId,
       assignedToId: dto.assignedToId, branchId: dto.branchId,
     });
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'quotation-status', code: dto.status ?? 'DRAFT' },
+    ].filter((v) => v.code));
 
     const quoteNumber = dto.quoteNumber || (await this.numberGen.generateQuoteNumber(tenantId));
 
@@ -75,6 +82,7 @@ export class QuotationService {
     const where: any = { tenantId, deletedAt: null };
     if (query.status) where.status = query.status;
     if (query.clientId) where.clientId = query.clientId;
+    if (query.leadId) where.leadId = query.leadId;
     if (query.assignedToId) where.assignedToId = query.assignedToId;
     if (query.branchId) where.branchId = query.branchId;
     if (query.search) {
@@ -85,7 +93,7 @@ export class QuotationService {
     }
     enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
-      this.prisma.quotation.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      this.prisma.quotation.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { client: { select: { displayName: true } }, lead: { select: { fullName: true } } } }),
       this.prisma.quotation.count({ where }),
     ]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
@@ -130,6 +138,7 @@ export class QuotationService {
 
     const oldStatus = current.status;
     if (dto.status && dto.status !== current.status) {
+      await this.lookup.validate(tenantId, 'quotation-status', dto.status);
       const check = validateStatusTransition('quotation', current.status, dto.status);
       if (!check.valid) {
         throw new BadRequestException(
@@ -431,11 +440,50 @@ export class QuotationService {
       throw new BadRequestException(`Cannot send a quotation in ${quotation.status} status`);
     }
     const hash = quotation.publicHash || this.generateHash();
-    return this.update(tenantId, actorId, id, {
+    const updated = await this.update(tenantId, actorId, id, {
       status: 'SENT',
       publicHash: hash,
       sendStatus: 'SENT',
     });
+
+    if (quotation.clientId) {
+      const client = await this.prisma.client.findFirst({
+        where: { id: quotation.clientId, tenantId },
+        select: { email: true, displayName: true },
+      });
+      if (client?.email) {
+        const webOrigin = process.env.WEB_ORIGIN || 'http://localhost:3901';
+        const link = `${webOrigin}/quote/${hash}`;
+        const grandTotal = Number(quotation.grandTotal).toFixed(2);
+        this.notification.notify({
+          tenantId, userId: actorId,
+          channel: 'EMAIL',
+          title: `Quotation ${quotation.quoteNumber} from Travel Operation`,
+          body: `
+            <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
+              <div style="background:#6366f1;color:#fff;padding:24px;text-align:center">
+                <h1 style="margin:0;font-size:20px">Travel Operation</h1>
+                <p style="margin:4px 0 0;font-size:14px;opacity:0.9">Official Quotation</p>
+              </div>
+              <div style="padding:24px">
+                <p style="font-size:16px;color:#1e293b">Dear ${client.displayName},</p>
+                <p style="font-size:14px;color:#475569;line-height:1.6">
+                  Your quotation <strong>#${quotation.quoteNumber}</strong> for <strong>${grandTotal} ${quotation.currencyCode}</strong> is ready for review.
+                </p>
+                <div style="text-align:center;margin:28px 0">
+                  <a href="${link}" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:600">View Quotation</a>
+                </div>
+                <p style="font-size:13px;color:#94a3b8">Or copy this link: ${link}</p>
+                <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0" />
+                <p style="font-size:12px;color:#94a3b8;text-align:center">This quotation is valid until ${quotation.validUntil ? new Date(quotation.validUntil).toLocaleDateString() : 'expiry date not set'}.</p>
+              </div>
+            </div>`,
+          userEmail: client.email,
+        }).catch(() => {});
+      }
+    }
+
+    return updated;
   }
 
   async regeneratePublicHash(tenantId: string, actorId: string, id: string) {
@@ -502,6 +550,7 @@ export class QuotationService {
   async convertToBooking(tenantId: string, actorId: string, quotationId: string) {
     const quotation = await this.prisma.quotation.findFirst({
       where: { id: quotationId, tenantId, deletedAt: null },
+      include: { lineItems: true, client: { select: { displayName: true } } },
     });
     if (!quotation) throw new NotFoundException('Quotation not found');
     if (quotation.status !== 'ACCEPTED') {
@@ -524,9 +573,39 @@ export class QuotationService {
         leadId: quotation.leadId,
         assignedToId: quotation.assignedToId,
         notes: `Created from quotation ${quotation.quoteNumber}`,
+        travelStart: quotation.validUntil ?? undefined,
         createdById: actorId,
       },
     });
+
+    const flightItems = quotation.lineItems.filter(item => item.airlineId || item.originAirportId || item.destAirportId);
+    for (let i = 0; i < flightItems.length; i++) {
+      const item = flightItems[i];
+      await this.prisma.bookingSegment.create({
+        data: {
+          tenantId, bookingId: booking.id,
+          segmentType: 'FLIGHT',
+          airlineId: item.airlineId ?? undefined,
+          originAirportId: item.originAirportId ?? undefined,
+          destAirportId: item.destAirportId ?? undefined,
+          status: 'CONFIRMED',
+          notes: item.description,
+          sortOrder: i + 1,
+        },
+      });
+    }
+
+    if (quotation.client?.displayName) {
+      await this.prisma.bookingPassenger.create({
+        data: {
+          tenantId, bookingId: booking.id,
+          passengerType: 'ADULT',
+          firstName: quotation.client.displayName.split(' ')[0] || quotation.client.displayName,
+          lastName: quotation.client.displayName.split(' ').slice(1).join(' ') || '',
+          sortOrder: 1,
+        },
+      });
+    }
 
     await this.prisma.bookingStatusLog.create({
       data: { tenantId, bookingId: booking.id, toStatus: 'HELD', actorId, note: 'Created from quotation' },

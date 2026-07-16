@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { ActivityService } from '../activity/activity.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { CreateFollowUpDto } from './dto/create-follow-up.dto';
 import { UpdateFollowUpDto } from './dto/update-follow-up.dto';
 import { QueryFollowUpDto } from './dto/query-follow-up.dto';
@@ -10,9 +12,14 @@ export class FollowUpService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly activity: ActivityService,
+    private readonly lookup: LookupValidationService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateFollowUpDto) {
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'follow-up-channel', code: dto.channel },
+    ].filter((v) => v.code));
     const followUp = await this.prisma.followUp.create({
       data: {
         tenantId,
@@ -41,6 +48,8 @@ export class FollowUpService {
       followUp.branchId ?? undefined,
     );
 
+    await this.activity.log(tenantId, actorId, 'FOLLOW_UP_CREATED', `Follow-up: ${followUp.subject}`, 'FollowUp', followUp.id, followUp.branchId);
+
     return followUp;
   }
 
@@ -55,9 +64,19 @@ export class FollowUpService {
     if (query.leadId) where.leadId = query.leadId;
     if (query.clientId) where.clientId = query.clientId;
     if (query.assignedToId) where.assignedToId = query.assignedToId;
+    if (query.search) {
+      where.OR = [{ subject: { contains: query.search, mode: 'insensitive' } }];
+    }
 
     const [data, total] = await Promise.all([
-      this.prisma.followUp.findMany({ where, orderBy: { scheduledAt: 'asc' }, skip, take: limit }),
+      this.prisma.followUp.findMany({
+        where, orderBy: { scheduledAt: 'asc' }, skip, take: limit,
+        include: {
+          lead: { select: { id: true, fullName: true } },
+          client: { select: { id: true, displayName: true } },
+          assignedTo: { select: { id: true, firstName: true, lastName: true } },
+        },
+      }),
       this.prisma.followUp.count({ where }),
     ]);
 
@@ -74,6 +93,12 @@ export class FollowUpService {
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateFollowUpDto) {
     await this.findById(tenantId, id);
+
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'follow-up-channel', code: dto.channel },
+      { categoryCode: 'follow-up-status', code: dto.status },
+      { categoryCode: 'follow-up-outcome', code: dto.outcome },
+    ].filter((v) => v.code));
 
     const followUp = await this.prisma.followUp.update({
       where: { id },
@@ -113,6 +138,10 @@ export class FollowUpService {
   async complete(tenantId: string, actorId: string, id: string, outcome?: string) {
     await this.findById(tenantId, id);
 
+    if (outcome) {
+      await this.lookup.validate(tenantId, 'follow-up-outcome', outcome);
+    }
+
     const followUp = await this.prisma.followUp.update({
       where: { id },
       data: { status: 'COMPLETED', completedAt: new Date(), outcome: outcome ?? null },
@@ -130,6 +159,8 @@ export class FollowUpService {
       },
       followUp.branchId ?? undefined,
     );
+
+    await this.activity.log(tenantId, actorId, 'FOLLOW_UP_COMPLETED', `Follow-up completed: ${followUp.subject}`, 'FollowUp', followUp.id, followUp.branchId);
 
     return followUp;
   }

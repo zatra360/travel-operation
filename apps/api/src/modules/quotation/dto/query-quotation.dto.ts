@@ -19,6 +19,11 @@ export class QueryQuotationDto extends PaginationDto {
   @IsString()
   clientId?: string;
 
+  @ApiPropertyOptional({ description: 'Filter by lead ID' })
+  @IsOptional()
+  @IsString()
+  leadId?: string;
+
   @ApiPropertyOptional({ description: 'Filter by assigned user ID' })
   @IsOptional()
   @IsString()

@@ -6,6 +6,9 @@ import { ActivityService } from '../activity/activity.service';
 import { RelationshipValidationService } from '../../common/services/relationship-validation.service';
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
+import { ClientScoringService } from '../client/client-scoring.service';
+import { GLPostingService } from '../accounting/gl-posting.service';
 import { CreateRefundDto } from './dto/create-refund.dto';
 import { UpdateRefundDto } from './dto/update-refund.dto';
 import { QueryRefundDto } from './dto/query-refund.dto';
@@ -17,7 +20,10 @@ export class RefundService {
     private readonly audit: AuditService,
     private readonly activity: ActivityService,
     private readonly relValidation: RelationshipValidationService,
+    private readonly lookup: LookupValidationService,
     private readonly numberGen: NumberGeneratorService,
+    private readonly scoring: ClientScoringService,
+    private readonly glPosting: GLPostingService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateRefundDto) {
@@ -29,6 +35,9 @@ export class RefundService {
       clientId: dto.clientId,
       branchId: dto.branchId,
     });
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'refund-reason', code: dto.reason },
+    ].filter((v) => v.code));
 
     const refundNumber = await this.numberGen.generateRefundNumber(tenantId);
 
@@ -53,6 +62,7 @@ export class RefundService {
     await this.audit.logMutation(actorId, tenantId, 'REFUND', 'RefundRequest', refund.id, 'CREATE', { refundNumber });
     await this.activity.log(tenantId, actorId, 'REFUND_REQUESTED', `Refund #${refundNumber} requested`, 'RefundRequest', refund.id, dto.branchId);
 
+    this.scoring.refreshInBackground(tenantId, refund.clientId);
     return refund;
   }
 
@@ -73,7 +83,10 @@ export class RefundService {
 
     enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
-      this.prisma.refundRequest.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      this.prisma.refundRequest.findMany({
+        where, orderBy: { createdAt: 'desc' }, skip, take: limit,
+        include: { ticket: { select: { ticketNumber: true, passengerName: true } }, booking: { select: { bookingRef: true } }, client: { select: { displayName: true } } },
+      }),
       this.prisma.refundRequest.count({ where }),
     ]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
@@ -227,6 +240,15 @@ export class RefundService {
         });
       }
 
+      await this.glPosting.postRefundProcessed(tx, tenantId, actorId, {
+        id: refund.id,
+        refundNumber: refund.refundNumber,
+        branchId: refund.branchId,
+        clientId: refund.clientId,
+        amount: Number(refund.approvedAmount ?? refund.requestedAmount),
+        currencyCode,
+      });
+
       return result;
     });
 
@@ -239,6 +261,7 @@ export class RefundService {
     await this.audit.logMutation(actorId, tenantId, 'REFUND', 'RefundRequest', id, 'PROCESS', { ticketId: refund.ticketId });
     await this.activity.log(tenantId, actorId, 'REFUND_PROCESSED', `Refund #${refund.refundNumber} processed`, 'RefundRequest', id, refund.branchId);
 
+    this.scoring.refreshInBackground(tenantId, refund.clientId);
     return updated;
   }
 
@@ -254,6 +277,7 @@ export class RefundService {
     }
     await this.prisma.refundRequest.delete({ where: { id } });
     await this.audit.logMutation(actorId, tenantId, 'REFUND', 'RefundRequest', id, 'DELETE', { refundNumber: _refund.refundNumber });
+    this.scoring.refreshInBackground(tenantId, _refund.clientId);
     return { id, deleted: true };
   }
 }

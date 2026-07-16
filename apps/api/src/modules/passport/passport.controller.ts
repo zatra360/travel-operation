@@ -1,8 +1,23 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PassportService } from './passport.service';
 import { CreatePassportDto, UpdatePassportDto } from './dto/passport.dto';
 import { JwtAuthGuard, TenantGuard, PermissionsGuard, RequirePermissions, TenantCtx, TenantContext } from '../../common';
+
+@ApiTags('Tenant - Passports')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+@Controller('tenant/passports')
+export class PassportListController {
+  constructor(private readonly service: PassportService) {}
+
+  @Get()
+  @RequirePermissions('CLIENT_READ')
+  @ApiOperation({ summary: 'List all passports for tenant' })
+  async findAll(@TenantCtx() ctx: TenantContext, @Query('page') page?: number, @Query('limit') limit?: number, @Query('search') search?: string) {
+    return this.service.findAll(ctx.tenantId, { page, limit, search });
+  }
+}
 
 @ApiTags('Tenant - Passports')
 @ApiBearerAuth()
