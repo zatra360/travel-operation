@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { SYSTEM_SERVICE_TYPES } from './templates/system-templates';
+import { DEFAULT_INTAKE_FIELDS, IntakeField } from './templates/intake-fields';
 import { ConfigureServiceTypeDto } from './dto/service-type.dto';
 
 @Injectable()
@@ -43,6 +44,7 @@ export class ServiceTypeService {
 
     const merged = types.map((t) => {
       const config = configMap.get(t.id);
+      const configuredIntake = (config?.configuration as { intakeFields?: IntakeField[] } | null)?.intakeFields;
       return {
         id: t.id,
         systemCode: t.systemCode,
@@ -67,6 +69,9 @@ export class ServiceTypeService {
         defaultAssigneeId: config?.defaultAssigneeId ?? null,
         defaultWorkflowTemplateId: config?.defaultWorkflowTemplateId ?? null,
         configuration: config?.configuration ?? t.configuration,
+        intakeFields: Array.isArray(configuredIntake) && configuredIntake.length > 0
+          ? configuredIntake
+          : DEFAULT_INTAKE_FIELDS[t.systemCode] ?? [],
       };
     });
 

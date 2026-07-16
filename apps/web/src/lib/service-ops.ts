@@ -3,6 +3,15 @@ import {
   GraduationCap, Briefcase, Anchor, CircleHelp, type LucideIcon,
 } from 'lucide-react';
 
+export interface IntakeField {
+  key: string;
+  label: string;
+  type: 'text' | 'date' | 'number' | 'select';
+  required?: boolean;
+  options?: string[];
+  placeholder?: string;
+}
+
 export interface ServiceTypeInfo {
   id: string;
   systemCode: string;
@@ -14,6 +23,7 @@ export interface ServiceTypeInfo {
   isEnabled: boolean;
   supportsTicketing: boolean;
   supportsApplication: boolean;
+  intakeFields?: IntakeField[];
 }
 
 export interface ServiceCaseItem {

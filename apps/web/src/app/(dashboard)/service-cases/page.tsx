@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Plus, Eye, LayoutDashboard } from 'lucide-react';
+import { Plus, Eye, LayoutDashboard, GitBranch } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
@@ -125,6 +125,9 @@ export default function ServiceCasesPage() {
         subtitle="Operational cases across all travel services with per-item workflows"
         actions={
           <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" asChild>
+              <Link href="/service-cases/workflows"><GitBranch className="mr-2 h-4 w-4" />Workflows</Link>
+            </Button>
             <Button size="sm" variant="outline" asChild>
               <Link href="/service-cases/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
             </Button>

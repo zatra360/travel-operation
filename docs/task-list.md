@@ -81,4 +81,5 @@ packages/
 3. ~~Phase 4: frontend — Service Selector card grid, /service-cases list + case detail with workflow stepper, blocked-transition explanations~~ — **DONE** (3 routes, production build green)
 4. ~~Phase 5: dedicated templates for remaining 8 services~~ — **DONE** (21 e2e tests; all 12 service types on gated workflows)
 5. ~~Phase 6: service dashboards + SLA/workload reporting; Phase 7: automation scheduler~~ — **DONE** (all 7 phases of the ZATRA360 workflow prompt delivered; 108 e2e tests)
-6. ~~Beyond-prompt: cron wiring for automation scans, Team management UI~~ — **DONE** (116 e2e tests). Still open: tenant workflow-template editor, per-service intake forms
+6. ~~Beyond-prompt: cron wiring for automation scans, Team management UI~~ — **DONE** (116 e2e tests)
+7. ~~Beyond-prompt: tenant workflow-template editor, per-service intake forms~~ — **DONE** (126 e2e tests; service-ops backlog complete)

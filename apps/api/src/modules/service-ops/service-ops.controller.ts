@@ -8,6 +8,7 @@ import { CaseDocumentService } from './case-document.service';
 import { ServiceReportsService } from './service-reports.service';
 import { WorkflowAutomationService } from './workflow-automation.service';
 import { TeamService, TeamDto } from './team.service';
+import { WorkflowTemplateService, StageInput } from './workflow-template.service';
 import { ConfigureServiceTypeDto } from './dto/service-type.dto';
 import {
   CreateServiceCaseDto, AddServiceItemDto, QueryServiceCaseDto, AssignDto, CloseCaseDto, ReopenCaseDto,
@@ -319,6 +320,60 @@ export class TeamController {
   @ApiOperation({ summary: 'Remove a member from the team (leaders must be replaced first)' })
   removeMember(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Param('userId') userId: string) {
     return this.teams.removeMember(ctx.tenantId, ctx.userId, id, userId);
+  }
+}
+
+@ApiTags('Tenant - Workflow Templates')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+@Controller('tenant/workflow-templates')
+export class WorkflowTemplateController {
+  constructor(private readonly templates: WorkflowTemplateService) {}
+
+  @Get()
+  @RequirePermissions('WORKFLOW_READ')
+  @ApiOperation({ summary: 'List system and tenant workflow templates with stages' })
+  list(@TenantCtx() ctx: TenantContext, @Query('serviceTypeCode') serviceTypeCode?: string) {
+    return this.templates.list(ctx.tenantId, serviceTypeCode);
+  }
+
+  @Post(':id/clone')
+  @RequirePermissions('WORKFLOW_CREATE')
+  @ApiOperation({ summary: 'Clone a template into an editable tenant draft' })
+  clone(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() body: { name?: string }) {
+    return this.templates.clone(ctx.tenantId, ctx.userId, id, body?.name);
+  }
+
+  @Put(':id')
+  @RequirePermissions('WORKFLOW_UPDATE')
+  @ApiOperation({ summary: 'Replace name/description/stages of a tenant DRAFT template' })
+  update(
+    @TenantCtx() ctx: TenantContext,
+    @Param('id') id: string,
+    @Body() body: { name?: string; description?: string; stages?: StageInput[] },
+  ) {
+    return this.templates.updateDraft(ctx.tenantId, ctx.userId, id, body);
+  }
+
+  @Post(':id/publish')
+  @RequirePermissions('WORKFLOW_MANAGE')
+  @ApiOperation({ summary: 'Validate and publish a tenant draft (outranks system templates for new cases)' })
+  publish(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.templates.publish(ctx.tenantId, ctx.userId, id);
+  }
+
+  @Post(':id/archive')
+  @RequirePermissions('WORKFLOW_MANAGE')
+  @ApiOperation({ summary: 'Archive a tenant template (running instances stay pinned)' })
+  archive(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.templates.archive(ctx.tenantId, ctx.userId, id);
+  }
+
+  @Post(':id/delete')
+  @RequirePermissions('WORKFLOW_MANAGE')
+  @ApiOperation({ summary: 'Delete a tenant DRAFT template' })
+  remove(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.templates.removeDraft(ctx.tenantId, ctx.userId, id);
   }
 }
 

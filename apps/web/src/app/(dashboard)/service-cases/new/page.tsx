@@ -12,13 +12,14 @@ import { Breadcrumb, PageHeader } from '@/components/ui/page-header';
 import { ServiceSelector } from '@/components/service-selector';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
-import { serviceIcon, ServiceTypeInfo } from '@/lib/service-ops';
+import { serviceIcon, ServiceTypeInfo, IntakeField } from '@/lib/service-ops';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 
 interface ItemDraft {
   serviceAmount: string;
   supplierCost: string;
+  intake: Record<string, string>;
 }
 
 export default function NewServiceCasePage() {
@@ -45,10 +46,21 @@ export default function NewServiceCasePage() {
       .catch(() => setTypes([]));
   }, [activeTenant]);
 
-  const setDraft = (code: string, key: keyof ItemDraft, value: string) => {
+  const setDraft = (code: string, key: 'serviceAmount' | 'supplierCost', value: string) => {
     setDrafts((d) => ({
       ...d,
-      [code]: { serviceAmount: d[code]?.serviceAmount ?? '', supplierCost: d[code]?.supplierCost ?? '', [key]: value },
+      [code]: { serviceAmount: d[code]?.serviceAmount ?? '', supplierCost: d[code]?.supplierCost ?? '', intake: d[code]?.intake ?? {}, [key]: value },
+    }));
+  };
+
+  const setIntake = (code: string, fieldKey: string, value: string) => {
+    setDrafts((d) => ({
+      ...d,
+      [code]: {
+        serviceAmount: d[code]?.serviceAmount ?? '',
+        supplierCost: d[code]?.supplierCost ?? '',
+        intake: { ...(d[code]?.intake ?? {}), [fieldKey]: value },
+      },
     }));
   };
 
@@ -57,6 +69,14 @@ export default function NewServiceCasePage() {
     if (!activeTenant) return;
     if (!title.trim()) { setError('Case title is required'); return; }
     if (selected.length === 0) { setError('Select at least one service'); return; }
+    for (const code of selected) {
+      const fields = types.find((t) => t.systemCode === code)?.intakeFields ?? [];
+      const missing = fields.filter((f) => f.required && !(drafts[code]?.intake?.[f.key] ?? '').trim());
+      if (missing.length > 0) {
+        setError(`${types.find((t) => t.systemCode === code)?.displayName ?? code}: ${missing.map((f) => f.label).join(', ')} required`);
+        return;
+      }
+    }
     setSaving(true);
     setError('');
 
@@ -71,6 +91,9 @@ export default function NewServiceCasePage() {
           serviceAmount: Number(drafts[code]?.serviceAmount || 0),
           supplierCost: Number(drafts[code]?.supplierCost || 0),
           currencyCode,
+          metadata: Object.fromEntries(
+            Object.entries(drafts[code]?.intake ?? {}).filter(([, v]) => v !== ''),
+          ),
         })),
       }, { tenantId: activeTenant.id, branchId: activeBranch?.id });
       toast.success(`Case ${created.caseNumber} created`);
@@ -132,32 +155,49 @@ export default function NewServiceCasePage() {
 
         {selected.length > 0 && (
           <Card>
-            <CardHeader><CardTitle className="text-base">Estimated Amounts</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
+            <CardHeader><CardTitle className="text-base">Service Details</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
               {selected.map((code) => {
                 const type = types.find((t) => t.systemCode === code);
                 const Icon = serviceIcon(type?.icon);
+                const fields = type?.intakeFields ?? [];
                 return (
-                  <div key={code} className="grid grid-cols-1 items-end gap-3 rounded-lg border p-3 sm:grid-cols-3">
+                  <div key={code} className="space-y-3 rounded-lg border p-4">
                     <div className="flex items-center gap-2">
                       <Icon className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">{type?.displayName ?? code}</span>
+                      <span className="text-sm font-semibold">{type?.displayName ?? code}</span>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Selling price</Label>
-                      <Input
-                        type="number" min={0} step="0.01" placeholder="0.00"
-                        value={drafts[code]?.serviceAmount ?? ''}
-                        onChange={(e) => setDraft(code, 'serviceAmount', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Supplier cost</Label>
-                      <Input
-                        type="number" min={0} step="0.01" placeholder="0.00"
-                        value={drafts[code]?.supplierCost ?? ''}
-                        onChange={(e) => setDraft(code, 'supplierCost', e.target.value)}
-                      />
+
+                    {fields.length > 0 && (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {fields.map((field) => (
+                          <IntakeFieldInput
+                            key={field.key}
+                            field={field}
+                            value={drafts[code]?.intake?.[field.key] ?? ''}
+                            onChange={(v) => setIntake(code, field.key, v)}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3 border-t pt-3 sm:max-w-md">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Selling price</Label>
+                        <Input
+                          type="number" min={0} step="0.01" placeholder="0.00"
+                          value={drafts[code]?.serviceAmount ?? ''}
+                          onChange={(e) => setDraft(code, 'serviceAmount', e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Supplier cost</Label>
+                        <Input
+                          type="number" min={0} step="0.01" placeholder="0.00"
+                          value={drafts[code]?.supplierCost ?? ''}
+                          onChange={(e) => setDraft(code, 'supplierCost', e.target.value)}
+                        />
+                      </div>
                     </div>
                   </div>
                 );
@@ -171,6 +211,43 @@ export default function NewServiceCasePage() {
           <Button type="submit" disabled={saving}>{saving ? 'Creating…' : `Create case${selected.length > 1 ? ` (${selected.length} services)` : ''}`}</Button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function IntakeFieldInput({ field, value, onChange }: { field: IntakeField; value: string; onChange: (v: string) => void }) {
+  const label = (
+    <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {field.label} {field.required && <span className="text-destructive">*</span>}
+    </Label>
+  );
+
+  if (field.type === 'select') {
+    return (
+      <div className="space-y-1">
+        {label}
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+          <SelectContent>
+            {(field.options ?? []).map((o) => (
+              <SelectItem key={o} value={o}>{o.replace(/_/g, ' ')}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      {label}
+      <Input
+        type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+        min={field.type === 'number' ? 0 : undefined}
+        value={value}
+        placeholder={field.placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </div>
   );
 }

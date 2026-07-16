@@ -256,4 +256,25 @@ cycles are prevented.
 rejection, outsider rejection, leader protection, cross-tenant team assignment guard, system-actor
 resolution, multi-tenant scan effects, disabled-by-default scheduler.
 
-Remaining ideas beyond the prompt's mandatory scope: tenant workflow-template editor UI, per-service intake forms.
+**Workflow template editor** (`workflow-template.service.ts`, `/tenant/workflow-templates`, web `/service-cases/workflows`):
+System templates stay immutable — cloning creates an editable tenant DRAFT; drafts have a full
+stage editor (reorder, rename, group, SLA hours, payment/approval gates, terminal flag, add/remove);
+publishing validates the stage graph (≥2 stages, unique codes, single initial, ≥1 terminal, valid
+transition targets) and assigns a version above every existing template of the service type so new
+cases route through the customization while running instances stay pinned; published templates are
+immutable (clone again) and archivable — archiving falls new cases back to the system template.
+All mutations audited (`WORKFLOW_*` permissions).
+
+**Per-service intake forms** (`templates/intake-fields.ts`):
+Default intake field definitions for all 12 services (origin/destination/dates/pax for air, visa
+category/country, check-in/out/rooms, treatment area, trade/workers, cabin category, …) exposed via
+the service-types API and overridable per tenant through
+`TenantServiceTypeConfig.configuration.intakeFields`. The new-case form renders the fields
+dynamically per selected service (text/date/number/select with required-field validation) and stores
+answers in `ServiceCaseItem.metadata`.
+
+**Tests** (`apps/api/test/workflow-templates.e2e-spec.ts` — 10 passing): default + tenant-overridden
+intake fields, metadata capture, clone, system immutability, draft validation errors, publish
+version outranking, case routing through the customization, published immutability, archive fallback.
+
+The service-ops backlog is complete: 126 e2e tests across accounting + service operations.
