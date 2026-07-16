@@ -103,19 +103,25 @@ export class GLPostingService {
   }
 
   private async createAndPost(db: Db, params: PostParams): Promise<{ journalEntryId: string; journalNumber: string } | null> {
-    const existing = await db.journalEntryLink.findUnique({
-      where: {
-        tenantId_sourceType_sourceId_purpose: {
-          tenantId: params.tenantId,
-          sourceType: params.sourceType,
-          sourceId: params.sourceId,
-          purpose: 'PRIMARY',
+    // If a PRIMARY link already exists for this source document, use that
+    // journal (e.g. an accrual already posted for this expense; this
+    // settlement call is the second one). Otherwise, claim the PRIMARY slot
+    // inside the posting transaction.
+    if (params.sourceType && params.sourceId) {
+      const existingPrimary = await db.journalEntryLink.findUnique({
+        where: {
+          tenantId_sourceType_sourceId_purpose: {
+            tenantId: params.tenantId,
+            sourceType: params.sourceType,
+            sourceId: params.sourceId,
+            purpose: 'PRIMARY',
+          },
         },
-      },
-      include: { journalEntry: { select: { id: true, journalNumber: true } } },
-    });
-    if (existing) {
-      return { journalEntryId: existing.journalEntry.id, journalNumber: existing.journalEntry.journalNumber ?? '' };
+        include: { journalEntry: { select: { id: true, journalNumber: true } } },
+      });
+      if (existingPrimary) {
+        return { journalEntryId: existingPrimary.journalEntry.id, journalNumber: existingPrimary.journalEntry.journalNumber ?? '' };
+      }
     }
 
     const entry = await db.journalEntry.create({
@@ -244,7 +250,127 @@ export class GLPostingService {
     });
   }
 
-  /** Dr Expense / Cr Cash or Bank */
+  /** Dr Expense / Cr Accounts Payable — accrual on expense approval (two-stage accounting). */
+  async postExpenseAccrual(db: Db | null, tenantId: string, actorId: string, expense: {
+    id: string; expenseNumber: string; branchId?: string | null; category?: string | null;
+    vendorId?: string | null; amount: unknown; currencyCode: string; expenseDate?: Date | null;
+  }) {
+    const client = db ?? this.prisma;
+    if (!(await this.isActivated(client, tenantId))) return null;
+
+    const amount = Number(expense.amount);
+    if (amount <= 0) return null;
+
+    const expenseAccountId = await this.resolveExpense(client, tenantId, expense.category);
+    const apAccountId = await this.resolveControl(client, tenantId, 'ACCOUNTS_PAYABLE');
+
+    return this.createAndPost(client, {
+      tenantId, actorId,
+      branchId: expense.branchId,
+      journalType: 'EXPENSE',
+      entryDate: new Date(),
+      currencyCode: expense.currencyCode,
+      exchangeRate: 1,
+      functionalCurrencyCode: expense.currencyCode,
+      sourceType: 'Expense',
+      sourceId: expense.id,
+      sourceNumber: expense.expenseNumber,
+      description: `Expense ${expense.expenseNumber} approved${expense.category ? ` (${expense.category})` : ''} — accrual`,
+      lines: [
+        { accountId: expenseAccountId, debit: amount, credit: 0, partyType: expense.vendorId ? 'VENDOR' : undefined, partyId: expense.vendorId ?? undefined },
+        { accountId: apAccountId, debit: 0, credit: amount },
+      ],
+    });
+  }
+
+  /** Dr Accounts Payable / Cr Cash or Bank — settlement of an accrued payable. */
+  async postExpenseSettlement(db: Db | null, tenantId: string, actorId: string, expense: {
+    id: string; expenseNumber: string; branchId?: string | null; amount: unknown;
+    currencyCode: string; vendorId?: string | null; paymentMethod?: string | null;
+  }) {
+    const client = db ?? this.prisma;
+    if (!(await this.isActivated(client, tenantId))) return null;
+
+    const amount = Number(expense.amount);
+    if (amount <= 0) return null;
+
+    // Idempotency: one settlement journal per expense.
+    const existingSettlement = await client.journalEntryLink.findUnique({
+      where: {
+        tenantId_sourceType_sourceId_purpose: {
+          tenantId, sourceType: 'Expense', sourceId: expense.id, purpose: 'SETTLEMENT',
+        },
+      },
+      include: { journalEntry: { select: { id: true, journalNumber: true } } },
+    });
+    if (existingSettlement) {
+      return { journalEntryId: existingSettlement.journalEntry.id, journalNumber: existingSettlement.journalEntry.journalNumber ?? '' };
+    }
+
+    const apAccountId = await this.resolveControl(client, tenantId, 'ACCOUNTS_PAYABLE');
+    const settlementAccountId = await this.resolveSettlementAccount(client, tenantId, expense.paymentMethod);
+
+    // Settlements do NOT go through createAndPost (which guarantees
+    // a PRIMARY link).  Instead they build the journal inline so they
+    // can create a SETTLEMENT-purpose link afterwards.
+    const entry = await client.journalEntry.create({
+      data: {
+        tenantId,
+        branchId: expense.branchId ?? null,
+        journalType: 'EXPENSE',
+        entryDate: new Date(),
+        currencyCode: expense.currencyCode,
+        exchangeRate: 1,
+        functionalCurrencyCode: expense.currencyCode,
+        description: `Expense ${expense.expenseNumber} paid — settlement`,
+        createdById: actorId,
+      },
+    });
+
+    let lineNumber = 1;
+    for (const line of [
+      { accountId: apAccountId, debit: amount, credit: 0, partyType: expense.vendorId ? 'VENDOR' : undefined, partyId: expense.vendorId ?? undefined },
+      { accountId: settlementAccountId, debit: 0, credit: amount },
+    ]) {
+      await client.journalItem.create({
+        data: {
+          journalEntryId: entry.id,
+          tenantId,
+          lineNumber: lineNumber++,
+          accountId: line.accountId,
+          partyType: line.partyType,
+          partyId: line.partyId,
+          description: `Settlement of ${expense.expenseNumber}`,
+          debit: round4(line.debit),
+          credit: round4(line.credit),
+          transactionCurrency: expense.currencyCode,
+          transactionAmount: line.debit > 0 ? round4(line.debit) : round4(line.credit),
+          exchangeRate: 1,
+          functionalDebit: round4(line.debit),
+          functionalCredit: round4(line.credit),
+        },
+      });
+    }
+
+    try {
+      const rows = await client.$queryRaw<Array<{ journal_number: string }>>`
+        SELECT fn_post_journal_entry(${entry.id}, ${tenantId}, ${actorId}, true) AS journal_number`;
+
+      await client.journalEntryLink.create({
+        data: { tenantId, journalEntryId: entry.id, sourceType: 'Expense', sourceId: expense.id, purpose: 'SETTLEMENT', createdAt: new Date() },
+      });
+
+      return { journalEntryId: entry.id, journalNumber: rows[0].journal_number };
+    } catch (err) {
+      mapAccountingDbError(err);
+    }
+  }
+
+  /**
+   * @deprecated Used only by direct-paid (single-stage) expenses.
+   * New accrual flows post via postExpenseAccrual →
+   * postExpenseSettlement and bypass this legacy path.
+   */
   async postExpensePaid(db: Db | null, tenantId: string, actorId: string, expense: {
     id: string; expenseNumber: string; branchId?: string | null; category?: string | null;
     vendorId?: string | null; amount: unknown; currencyCode: string; expenseDate?: Date | null;

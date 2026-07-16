@@ -61,6 +61,7 @@ export class ExpenseService {
         throw new BadRequestException(`Cannot transition from ${current.status} to ${dto.status}. Allowed: ${check.allowed.join(', ') || 'none'}`);
       }
     }
+    const becomingApproved = dto.status === 'APPROVED' && current.status !== 'APPROVED';
     const becomingPaid = dto.status === 'PAID' && current.status !== 'PAID';
 
     const expense = await this.prisma.$transaction(async (tx) => {
@@ -79,8 +80,11 @@ export class ExpenseService {
           ...(dto.branchId !== undefined && { branchId: dto.branchId }),
         },
       });
+      if (becomingApproved) {
+        await this.glPosting.postExpenseAccrual(tx, tenantId, actorId, exp);
+      }
       if (becomingPaid) {
-        await this.glPosting.postExpensePaid(tx, tenantId, actorId, exp);
+        await this.glPosting.postExpenseSettlement(tx, tenantId, actorId, exp);
       }
       return exp;
     });

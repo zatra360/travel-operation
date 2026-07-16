@@ -1,4 +1,8 @@
-# Accounting Foundation — Audit-First Phase 1–4 (Implemented)
+# Accounting Foundation — Audit-First Phase 1–5 (Implemented)
+
+Implements the Trust Foundation, operational GL integration, reconciliation/period-close,
+fraud-control, and accounts-payable layers from `docs/prompts/audit-first-erp-prompt.md`
+inside the existing travel-operation monorepo (NestJS + Prisma + PostgreSQL).
 
 Implements the Trust Foundation, operational GL integration, reconciliation/period-close and
 fraud-control layers from `docs/prompts/audit-first-erp-prompt.md` inside the existing
@@ -184,6 +188,25 @@ workflow (note requirements, terminal states, audit event, invalid statuses), ba
 reconciliation match and drift detection.
 
 Run: `pnpm --filter @travelo/api exec jest --config ./test/jest-e2e.json test/risk-alerts.e2e-spec.ts`
+
+## Phase 5 — Accounts Payable Accrual + AP↔GL Reconciliation (Implemented)
+
+**Two-stage AP flow** (`gl-posting.service.ts`):
+- `postExpenseAccrual` — on expense APPROVED: `Dr Expense / Cr Accounts Payable` (claims the PRIMARY source link)
+- `postExpenseSettlement` — on expense PAID: `Dr Accounts Payable / Cr Cash|Bank` (creates a separate SETTLEMENT-purpose journal entry; idempotency via a dedicated SETTLEMENT link lookup so the PRIMARY link isn't required and re-calls are safe)
+- Both stages are wired into `ExpenseService.update` inside the same transaction as the status change
+- Legacy `postExpensePaid` (single-stage Dr Expense / Cr Cash) is preserved as a deprecated fallback for direct-paid expenses not on the accrual model
+
+**AP reconciliation** (`reconciliation.service.ts`):
+`GET /tenant/accounting/reconciliation/ap` — accrued-but-unsettled expenses (sub-ledger) vs
+the AP control-account GL balance; identifies missing PRIMARY accrual journals; reports
+settled totals and a reconciliation verdict.
+
+**Tests** (`apps/api/test/ap-accrual.e2e-spec.ts` — 6 passing): accrual Dr Expense/Cr AP,
+settlement Dr AP/Cr Bank + SETTLEMENT link, idempotency for both, fully-reconciled AP after
+settlement, unaccrued-expense flagging.
+
+**Full stack**: 132 e2e + 100 unit tests, typecheck/lint clean, web build green.
 
 ## Deliberate adaptations vs. the prompt
 

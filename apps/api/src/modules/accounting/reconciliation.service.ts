@@ -206,6 +206,80 @@ export class ReconciliationService {
   }
 
   /**
+   * AP sub-ledger vs. the AP control account:
+   *   sub-ledger truth  = SUM(amount) of approved-but-unsettled expenses
+   *                        minus settled amounts
+   *   general ledger    = AP control account balance from posted journals
+   */
+  async reconcileAP(tenantId: string, asOf?: string) {
+    const to = asOf ? new Date(asOf) : new Date('9999-12-31');
+    const glActive = await this.glActivated(tenantId);
+    const glBalance = glActive ? await this.controlBalance(tenantId, 'ACCOUNTS_PAYABLE', to) : null;
+
+    const approvedAgg = await this.prisma.expense.aggregate({
+      where: { tenantId, deletedAt: null, status: { in: ['APPROVED', 'PAID'] }, updatedAt: { lte: to } },
+      _sum: { amount: true },
+    });
+    const approvedTotal = round4(Number(approvedAgg._sum.amount ?? 0));
+
+    const settledSources = new Set<string>();
+    const settlementLinks = await this.prisma.journalEntryLink.findMany({
+      where: { tenantId, sourceType: 'Expense', purpose: 'SETTLEMENT' },
+      select: { sourceId: true },
+    });
+    for (const l of settlementLinks) settledSources.add(l.sourceId);
+
+    const settledAgg = await this.prisma.expense.aggregate({
+      where: { tenantId, deletedAt: null, status: 'PAID', amount: { gt: 0 }, updatedAt: { lte: to }, id: { in: [...settledSources] } },
+      _sum: { amount: true },
+    });
+    const settledTotal = round4(Number(settledAgg._sum.amount ?? 0));
+
+    const accruedAgg = await this.prisma.expense.aggregate({
+      where: {
+        tenantId, deletedAt: null, amount: { gt: 0 },
+        status: { in: ['APPROVED', 'PAID'] }, updatedAt: { lte: to },
+        NOT: { id: { in: [...settledSources] } },
+      },
+      _sum: { amount: true },
+    });
+    const accruedTotal = round4(Number(accruedAgg._sum.amount ?? 0));
+
+    const approvedWithoutAccrual = glActive
+      ? await Promise.all(
+          (await this.prisma.expense.findMany({
+            where: { tenantId, deletedAt: null, amount: { gt: 0 }, status: { in: ['APPROVED', 'PAID'] }, updatedAt: { lte: to } },
+            select: { id: true },
+          })).map(async (e) => {
+            const link = await this.prisma.journalEntryLink.findUnique({
+              where: {
+                tenantId_sourceType_sourceId_purpose: {
+                  tenantId, sourceType: 'Expense', sourceId: e.id, purpose: 'PRIMARY',
+                },
+              },
+            });
+            return link ? null : e.id;
+          }),
+        )
+      : [];
+    const missingAccrualIds = approvedWithoutAccrual.filter(Boolean) as string[];
+
+    const difference = glActive && glBalance !== null ? round4(glBalance - accruedTotal) : null;
+
+    return {
+      asOf: to,
+      glActivated: glActive,
+      subLedgerBalance: accruedTotal,
+      glBalance,
+      settledTotal,
+      settledCount: settledSources.size,
+      difference,
+      isReconciled: glActive && difference === 0 && missingAccrualIds.length === 0,
+      missingAccrualExpenseIds: missingAccrualIds,
+    };
+  }
+
+  /**
    * Accounts-receivable sub-ledger vs. the AR control account:
    *   sub-ledger truth  = SUM(dueAmount) over issued, non-cancelled invoices
    *   general ledger    = AR control account balance from posted journals

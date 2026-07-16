@@ -230,6 +230,13 @@ export class AccountingReportController {
     return this.reports.cashFlow(ctx.tenantId, dateFrom, dateTo);
   }
 
+  @Get('reconciliation/ap')
+  @RequirePermissions('JOURNAL_READ')
+  @ApiOperation({ summary: 'AP sub-ledger (accrued-but-unsettled expenses) vs GL AP control account' })
+  reconcileAP(@TenantCtx() ctx: TenantContext, @Query('asOf') asOf?: string) {
+    return this.reconciliation.reconcileAP(ctx.tenantId, asOf);
+  }
+
   @Get('reconciliation/ar')
   @RequirePermissions('JOURNAL_READ')
   @ApiOperation({ summary: 'AR sub-ledger vs GL control account reconciliation with discrepancy lists' })
