@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { SYSTEM_WORKFLOW_TEMPLATES, SYSTEM_TEMPLATE_VERSION, GENERIC_STAGES, WorkflowTemplateDefinition } from './templates/system-templates';
+import { EXTENDED_WORKFLOW_TEMPLATES } from './templates/extended-templates';
 
 type Db = PrismaService | Prisma.TransactionClient;
 
@@ -34,11 +35,12 @@ export class WorkflowEngineService {
     const serviceType = await this.prisma.serviceType.findUnique({ where: { systemCode: def.serviceTypeCode } });
     if (!serviceType) throw new NotFoundException(`Service type ${def.serviceTypeCode} missing; seed service types first`);
 
+    const defVersion = def.version ?? SYSTEM_TEMPLATE_VERSION;
     const existing = await this.prisma.workflowTemplate.findFirst({
       where: { code: def.code, isSystem: true, tenantId: null },
       orderBy: { version: 'desc' },
     });
-    if (existing && existing.version >= SYSTEM_TEMPLATE_VERSION) return existing.id;
+    if (existing && existing.version >= defVersion) return existing.id;
 
     const template = await this.prisma.workflowTemplate.create({
       data: {
@@ -47,7 +49,7 @@ export class WorkflowEngineService {
         code: def.code,
         name: def.name,
         description: def.description,
-        version: SYSTEM_TEMPLATE_VERSION,
+        version: defVersion,
         status: 'PUBLISHED',
         isSystem: true,
         publishedAt: new Date(),
@@ -78,7 +80,7 @@ export class WorkflowEngineService {
   }
 
   async ensureAllSystemTemplates() {
-    for (const def of SYSTEM_WORKFLOW_TEMPLATES) {
+    for (const def of [...SYSTEM_WORKFLOW_TEMPLATES, ...EXTENDED_WORKFLOW_TEMPLATES]) {
       await this.ensureSystemTemplate(def);
     }
   }

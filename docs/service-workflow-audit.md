@@ -186,4 +186,30 @@ No workflow engine of any kind. Transitions are hard-coded per document in `stat
 
 **Verification**: web typecheck clean, lint at pre-existing baseline (no new issues), production build passes with the 3 new routes.
 
-**Remaining (Phase 5–7)**: dedicated templates for the 8 remaining services, service dashboards/reports, automation scheduler (TTL/SLA/escalation scans), team model UI.
+---
+
+## Phase 5 — Extended Service Workflows (IMPLEMENTED)
+
+Dedicated system templates for the remaining eight services (`templates/extended-templates.ts`,
+version 4 so they outrank the v3 generic fallbacks; running generic instances stay pinned):
+
+| Template | Stages | Notable gates |
+|---|---|---|
+| `INSURANCE_STANDARD` | 16 | exclusions-explained + declarations + name-verification checklists, payment gate; amendment & claim-assistance side loops off Policy Delivered |
+| `TRANSFER_STANDARD` | 20 | driver-details checklist (name/phone/registration), payment gate, full dispatch→pickup→completion chain |
+| `UMRAH_STANDARD` | 26 | pilgrim-profiles checklist, PASSPORT+PHOTO document gate, deposit + final-payment gates, room-allocation & docs-pack checklists |
+| `HAJJ_STANDARD` | 31 | eligibility/agreement/government-payments checklists, quota approval gate, PASSPORT+PHOTO gate, deposit + final-payment gates, Mashair operations |
+| `MEDICAL_TOURISM_STANDARD` | 24 | **consent-recorded checklist before any medical data handling**, secure-share checklist, MEDICAL_REPORT document gate, deposit gate, secure closure |
+| `STUDENT_VISA_STANDARD` | 32 | agreement + shortlist-approval + financials-reviewed checklists, TRANSCRIPT+PASSPORT gate, tuition payment gate, QA approval gate |
+| `MANPOWER_STANDARD` | 32 | employer-verification + job-order + contract-signed + handover checklists, regulatory approval gate, PASSPORT gate, final-payment gate |
+| `CRUISE_STANDARD` | 26 | name-verification + **hold-expiry-recorded** + online-check-in checklists, deposit + final-payment gates |
+
+**Tests** (`apps/api/test/service-templates.e2e-spec.ts` — 21 passing): all 8 templates seed with
+exact stage counts and single initial/terminal stages; new cases per service use the dedicated
+template (v4) instead of the generic; earlier generic instances stay pinned; cruise hold-expiry
+checklist gate; medical consent-before-documents gate + MEDICAL_REPORT verification gate with
+sensitive access logging; Umrah deposit payment-approval gate with SoD.
+
+All 12 acceptance-criteria service types now run structured, gated workflows on the shared engine.
+
+**Remaining (Phase 6–7)**: service dashboards/reports, automation scheduler (TTL/SLA/escalation scans), team model UI.

@@ -27,6 +27,8 @@ export interface WorkflowTemplateDefinition {
   code: string;
   name: string;
   description: string;
+  /** Defaults to SYSTEM_TEMPLATE_VERSION; dedicated templates that must outrank an earlier generic use a higher number. */
+  version?: number;
   stages: StageDefinition[];
 }
 

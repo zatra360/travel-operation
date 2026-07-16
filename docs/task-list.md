@@ -79,4 +79,5 @@ packages/
 1. ~~Phase 2: ServiceType master + Team + ServiceCase/ServiceCaseItem + workflow engine + document lifecycle + permissions + Air Ticket/Visa/Hotel/Tour system templates~~ — **DONE** (19 e2e tests, `apps/api/src/modules/service-ops/`)
 2. ~~Phase 3: integrate leads (convert-to-case), quotations, bookings, payments, suppliers + serviceTypeId backfill migration~~ — **DONE** (10 e2e tests; FLIGHT→AIR_TICKET backfill verified 14/14; generic fallback workflow for the remaining 8 types)
 3. ~~Phase 4: frontend — Service Selector card grid, /service-cases list + case detail with workflow stepper, blocked-transition explanations~~ — **DONE** (3 routes, production build green)
-4. Phase 5: dedicated templates for remaining 8 services; Phase 6 dashboards; Phase 7 automation scheduler (TTL/SLA/escalation scans); wire Air Ticket ticket issuance to workflow gates
+4. ~~Phase 5: dedicated templates for remaining 8 services~~ — **DONE** (21 e2e tests; all 12 service types on gated workflows)
+5. Phase 6: service dashboards + SLA/workload reporting; Phase 7: automation scheduler (TTL/SLA/escalation scans, following RiskAlertService pattern)
