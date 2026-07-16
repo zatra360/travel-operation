@@ -10,7 +10,7 @@ import {
   CalendarClock, UserCog, Undo2, RefreshCw, XCircle, CreditCard, DollarSign,
   Calculator, Bell, Activity, Package, Percent, Coins, FileCheck, Globe,
   ShoppingCart, MessageSquare, FolderKanban, CheckSquare, Layers,
-  LogIn, Database, Landmark, BookOpen, ChevronDown, Target,
+  LogIn, Database, Landmark, BookOpen, ChevronDown, Target, Workflow,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -39,6 +39,7 @@ const navGroups = [
   {
     label: 'Operations',
     items: [
+      { label: 'Service Cases', href: '/service-cases', icon: Workflow, perm: 'SERVICE_CASE_READ' },
       { label: 'Bookings', href: '/bookings', icon: Plane, perm: 'BOOKING_READ' },
       { label: 'Tickets', href: '/tickets', icon: Ticket, perm: 'TICKET_READ' },
       { label: 'Insurance', href: '/insurances', icon: Shield, perm: 'INSURANCE_READ' },

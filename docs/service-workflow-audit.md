@@ -164,3 +164,26 @@ No workflow engine of any kind. Transitions are hard-coded per document in `stat
 - Generic shared-lifecycle fallback template auto-provisioned for the 8 service types without dedicated workflows yet (Phase 5 replaces them; running instances stay pinned)
 
 **Tests** (`apps/api/test/service-ops-integration.e2e-spec.ts` — 10 passing): normalization mapping, lead conversion + double-conversion guard + unrecognizable-type guard, quotation link with per-service financial sync, booking link with TTL capture, settlement roll-up, cross-tenant quotation/supplier rejection, resolver legacy-alias behavior.
+
+---
+
+## Phase 4 — Frontend (IMPLEMENTED)
+
+**New components**:
+- `src/components/service-selector.tsx` — reusable card-grid Service Selector: search, lucide icons per service, selected state with check badge, keyboard navigation (Enter/Space), category badges, tenant-enabled filtering (only enabled types returned by the API), single/multi-select
+- `src/components/workflow-stepper.tsx` — vertical stepper distinguishing completed (green check), current (blue clock), current-overdue (red pulse + SLA), and upcoming stages, with stage groups and SLA due dates
+
+**New routes** (sidebar → Operations → Service Cases, `SERVICE_CASE_READ`):
+- `/service-cases` — list with All/My-cases scope toggle, status filter, search, service badges with per-item stage tooltips, SLA overdue indicators, mobile card rendering
+- `/service-cases/new` — case creation: title/client(combobox)/priority/currency + multi-select ServiceSelector + per-service selling price & supplier cost
+- `/service-cases/[id]` — case detail with tab bar (Overview / Workflow / Documents / Finance / Activity):
+  - **Overview**: item cards with stage, SLA state, amounts; case details panel
+  - **Workflow**: per-item sub-tabs → template stepper (with version), *Next Step* panel showing available transitions and **explicit blocker explanations** (amber panel: missing documents, open checklist items, pending approvals), stage checklist completion, approval request + approve/reject (note required to reject)
+  - **Documents**: request documents per item (sensitive types auto-classified), lifecycle action buttons driven by the allowed-transition map (received → review → verify/correction/reject with mandatory reasons), version + classification badges
+  - **Finance**: per-service revenue/cost/profit + settlement (invoiced/paid/due)
+  - **Activity**: combined case+item timeline
+- Close (force+reason) / reopen actions with audit-backed confirmation
+
+**Verification**: web typecheck clean, lint at pre-existing baseline (no new issues), production build passes with the 3 new routes.
+
+**Remaining (Phase 5–7)**: dedicated templates for the 8 remaining services, service dashboards/reports, automation scheduler (TTL/SLA/escalation scans), team model UI.
