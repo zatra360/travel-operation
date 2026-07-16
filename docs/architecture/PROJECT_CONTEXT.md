@@ -104,9 +104,12 @@ stores/auth-store.ts   zustand auth + activeTenant
 - M4 Finance — DONE: invoices, receipts, payments, expenses, ledger (API + UI).
 - M5 HRM — DONE: employees, leaves, attendance, performance reviews (API + UI).
 - M6 Automation — DONE: notifications, master data, activity stream, profile, settings (API + UI).
-- M7 Schema Hardening — PLANNED: Prisma relations, migrations, status guards, server-side number generation, integration tests.
+- M7 Schema Hardening — DONE: CI (lint+typecheck+tests), status guards, number generator, 57 tests.
+- M8 Production Hardening — DONE: rate limiting, login history UI, user unlock, token rotation.
+- M9 Master Data & Reporting — DONE: master data UI, real reports, email delivery (Resend).
+- M10 Completeness — DONE: vendors/suppliers, insurance, tour itinerary, TTL alerts, feedback model.
 
-## Modules built (27)
+## Modules built (37)
 
 **Platform:** Tenant, User, Permission, Auth
 **Tenant core:** Branch, Role, Settings, Dashboard, Audit, Notification, Activity
