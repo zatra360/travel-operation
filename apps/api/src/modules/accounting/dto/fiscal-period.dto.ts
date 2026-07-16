@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsIn, IsDateString, MaxLength, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsBoolean, IsDateString, MaxLength, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateFiscalYearDto {
@@ -30,6 +30,11 @@ export class ClosePeriodDto {
   @IsOptional()
   @IsString()
   reason?: string;
+
+  @ApiPropertyOptional({ description: 'Close despite checklist blockers (requires reason; blockers are recorded in the audit ledger)' })
+  @IsOptional()
+  @IsBoolean()
+  force?: boolean;
 }
 
 export class ReopenPeriodDto {

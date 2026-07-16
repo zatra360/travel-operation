@@ -1,8 +1,8 @@
-# Accounting Foundation — Audit-First Phase 1 + 2 (Implemented)
+# Accounting Foundation — Audit-First Phase 1–4 (Implemented)
 
-Implements the Trust Foundation and operational GL integration from
-`docs/prompts/audit-first-erp-prompt.md` inside the existing travel-operation monorepo
-(NestJS + Prisma + PostgreSQL).
+Implements the Trust Foundation, operational GL integration, reconciliation/period-close and
+fraud-control layers from `docs/prompts/audit-first-erp-prompt.md` inside the existing
+travel-operation monorepo (NestJS + Prisma + PostgreSQL).
 
 ## What was built
 
@@ -111,6 +111,80 @@ statement + balance sheet arithmetic (assets = liabilities + equity), general-le
 
 Run: `pnpm --filter @travelo/api exec jest --config ./test/jest-e2e.json test/gl-posting.e2e-spec.ts`
 
+## Phase 3 — Reconciliation & Period Close (Implemented)
+
+### Reconciliation engine (`reconciliation.service.ts`)
+
+| Endpoint | Behavior |
+|---|---|
+| `GET /tenant/accounting/reconciliation/ar` | AR sub-ledger (Σ dueAmount of issued invoices) vs AR control-account GL balance; reports difference, `isReconciled`, plus discrepancy lists |
+
+Discrepancy detection:
+- **Unposted documents** — issued invoices / RECEIVED payments / PAID expenses / PROCESSED refunds
+  that have no PRIMARY journal link (legacy pre-GL documents or broken flows)
+- **Orphan journals** — posted journals whose operational source document was hard-deleted
+
+### Period-close checklist (`fiscal-period.service.ts`)
+
+| Endpoint | Behavior |
+|---|---|
+| `GET /tenant/accounting/periods/:id/close-checklist` | Lists blockers: unposted journals dated in the period; unposted operational documents in the period (when GL is active) |
+| `POST /tenant/accounting/periods/:id/close` | `CLOSE`/`LOCK` now run the checklist and **fail closed** (`PERIOD_CLOSE_BLOCKED`); `force=true` + mandatory reason overrides, and the overridden blockers are recorded in the immutable audit event. `SOFT_CLOSE` skips checks. |
+
+### Cash flow statement (`financial-reports.service.ts`)
+
+`GET /tenant/accounting/reports/cash-flow` — direct-method statement from CASH/BANK/PETTY_CASH
+control-account movements, categorized by journal type (receipts from customers, refunds paid,
+operating expenses paid, payroll, suppliers, manual), with opening cash, net change, closing cash.
+
+### Tests (`apps/api/test/reconciliation.e2e-spec.ts` — 8 passing)
+
+Full lifecycle: unposted invoice detected → close blocked → journal posted → reconciled →
+settling payment keeps books reconciled; draft-journal close blocker; clean close writes
+PeriodCloseLog; force-close records blockers in audit ledger; cash flow inflow arithmetic;
+orphan-journal detection after source hard-delete.
+
+Run: `pnpm --filter @travelo/api exec jest --config ./test/jest-e2e.json test/reconciliation.e2e-spec.ts`
+
+## Phase 4 — Fraud Controls & Bank Reconciliation (Implemented)
+
+### Risk alert engine (`risk-alert.service.ts` + `FinancialRiskAlert` table)
+
+Alerts never imply guilt — they open an auditable human review workflow
+(OPEN → IN_REVIEW → RESOLVED | DISMISSED, note required to close, every action audited).
+Deduplicated via unique `(tenantId, dedupeKey)`; re-scans are idempotent.
+
+| Detector | Severity | Signal |
+|---|---|---|
+| `SIMILAR_INVOICES` | HIGH | Same client + amount + day under different invoice numbers (double billing) |
+| `DUPLICATE_PAYMENT_REFERENCE` | HIGH | Same external reference on multiple payments |
+| `DUPLICATE_EXPENSE` | HIGH | Same vendor + amount + day expenses |
+| `ROUND_NUMBER_MANUAL_JOURNAL` | MEDIUM | Posted MANUAL/GENERAL journals ≥ 1000 in round hundreds |
+| `UNUSUAL_HOUR_POSTING` | LOW | Manual journals posted 23:00–05:59 |
+| `BACKDATED_POSTING` | MEDIUM | Posted > 30 days after the accounting date |
+| `RAPID_CREATE_POST` | HIGH | Large manual journals created and posted within 2 minutes |
+| `PAYMENT_WITHOUT_JOURNAL` | HIGH | Received money with no ledger posting (GL-active tenants) |
+
+Endpoints: `GET /tenant/accounting/risk-alerts` (AUDIT_LOG_READ),
+`POST /risk-alerts/scan`, `POST /risk-alerts/:id/review` (AUDIT_LOG_MANAGE).
+
+Note: exact duplicate invoice numbers are structurally impossible — `Invoice` enforces
+UNIQUE (tenantId, invoiceNumber); the detectors target the residual risks instead.
+
+### Bank reconciliation (`reconciliation.service.ts`)
+
+`GET /tenant/accounting/reconciliation/bank` — Σ active `BankAccount.currentBalance` vs the
+BANK control-account GL balance, with per-account detail, unposted received payments as the
+primary difference explanation, and an `isReconciled` verdict.
+
+### Tests (`apps/api/test/risk-alerts.e2e-spec.ts` — 8 passing)
+
+Detector coverage, scan idempotence, alert cleared after posting the missing journal, review
+workflow (note requirements, terminal states, audit event, invalid statuses), bank
+reconciliation match and drift detection.
+
+Run: `pnpm --filter @travelo/api exec jest --config ./test/jest-e2e.json test/risk-alerts.e2e-spec.ts`
+
 ## Deliberate adaptations vs. the prompt
 
 | Prompt | Implementation | Why |
@@ -120,12 +194,14 @@ Run: `pnpm --filter @travelo/api exec jest --config ./test/jest-e2e.json test/gl
 | Separate DB roles (runtime cannot touch ledger tables) | GUC-guarded triggers enforce the same invariants under the single dev role | Dev database uses one user; production hardening should still split migration/runtime/read-only roles and REVOKE direct DML |
 | TIMESTAMPTZ | `TIMESTAMP(3)` (Prisma default) | Consistency with all existing tables; app treats timestamps as UTC |
 
-## What Phase 3+ should add
+## What Phase 5+ should add
 
 - Inventory sub-ledger + FIFO/weighted-average costing (Sections 19–21 of the prompt) — deferred:
   this travel business sells services; add when physical stock (e.g. merchandise) is introduced.
-- Vendor bills / AP settlement flows posting Dr Expense / Cr AP then Dr AP / Cr Bank.
-- AR/AP ↔ GL reconciliation reports (sub-ledger vs. control account) and bank reconciliation.
-- Cash flow statement; period-close checklist (block close while unposted SENT invoices exist).
+- Vendor bills / AP settlement flows posting Dr Expense / Cr AP then Dr AP / Cr Bank, plus
+  AP ↔ GL reconciliation mirroring the AR engine.
+- Statement-import bank reconciliation (match imported bank lines to payments/journals).
+- Scheduled risk scans (cron) + alert notifications; vendor bank-account change alerts once
+  vendor banking details exist.
 - Approval workflow tables (`approval_policies/steps/requests`) beyond the single approver field.
 - Production role separation + RLS policies.

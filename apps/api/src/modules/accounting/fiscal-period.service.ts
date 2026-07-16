@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AccountingAuditService } from './accounting-audit.service';
+import { ReconciliationService } from './reconciliation.service';
 import { CreateFiscalYearDto, ClosePeriodDto, ReopenPeriodDto } from './dto/fiscal-period.dto';
 
 const CLOSE_TRANSITIONS: Record<string, string[]> = {
@@ -20,6 +21,7 @@ export class FiscalPeriodService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AccountingAuditService,
+    private readonly reconciliation: ReconciliationService,
   ) {}
 
   async findAll(tenantId: string) {
@@ -81,6 +83,54 @@ export class FiscalPeriodService {
     return fiscalYear;
   }
 
+  async closeChecklist(tenantId: string, periodId: string) {
+    const period = await this.prisma.accountingPeriod.findFirst({ where: { id: periodId, tenantId } });
+    if (!period) throw new NotFoundException('Accounting period not found');
+
+    const blockers: Array<{ type: string; detail: string; count: number }> = [];
+
+    const unpostedJournals = await this.prisma.journalEntry.findMany({
+      where: {
+        tenantId,
+        status: { in: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED'] },
+        entryDate: { gte: period.startDate, lte: period.endDate },
+      },
+      select: { id: true, description: true, status: true },
+    });
+    if (unpostedJournals.length > 0) {
+      blockers.push({
+        type: 'UNPOSTED_JOURNALS',
+        detail: `${unpostedJournals.length} journal entr${unpostedJournals.length === 1 ? 'y' : 'ies'} dated in this period are not posted`,
+        count: unpostedJournals.length,
+      });
+    }
+
+    const unpostedDocuments = await this.reconciliation.findUnpostedDocuments(tenantId, period.startDate, period.endDate);
+    const glActive = (await this.prisma.gLAccount.count({ where: { tenantId } })) > 0;
+    if (glActive && unpostedDocuments.length > 0) {
+      const byType = unpostedDocuments.reduce<Record<string, number>>((acc, d) => {
+        acc[d.documentType] = (acc[d.documentType] ?? 0) + 1;
+        return acc;
+      }, {});
+      for (const [type, count] of Object.entries(byType)) {
+        blockers.push({
+          type: `UNPOSTED_${type.toUpperCase()}S`,
+          detail: `${count} ${type.toLowerCase()} document(s) in this period have no posted journal entry`,
+          count,
+        });
+      }
+    }
+
+    return {
+      period: { id: period.id, code: period.code, status: period.status, startDate: period.startDate, endDate: period.endDate },
+      glActivated: glActive,
+      canClose: blockers.length === 0,
+      blockers,
+      unpostedJournals,
+      unpostedDocuments: glActive ? unpostedDocuments : [],
+    };
+  }
+
   async closePeriod(tenantId: string, actorId: string, periodId: string, dto: ClosePeriodDto) {
     const period = await this.prisma.accountingPeriod.findFirst({ where: { id: periodId, tenantId } });
     if (!period) throw new NotFoundException('Accounting period not found');
@@ -91,6 +141,22 @@ export class FiscalPeriodService {
     }
     if (dto.action === 'LOCK' && !dto.reason) {
       throw new BadRequestException('Locking a period permanently requires a reason');
+    }
+
+    let overriddenBlockers: Array<{ type: string; detail: string; count: number }> = [];
+    if (dto.action === 'CLOSE' || dto.action === 'LOCK') {
+      const checklist = await this.closeChecklist(tenantId, periodId);
+      if (!checklist.canClose) {
+        if (!dto.force) {
+          throw new BadRequestException(
+            `PERIOD_CLOSE_BLOCKED: ${checklist.blockers.map((b) => b.detail).join('; ')}. Resolve the items or pass force=true with a reason.`,
+          );
+        }
+        if (!dto.reason) {
+          throw new BadRequestException('Force-closing a period with open items requires a reason');
+        }
+        overriddenBlockers = checklist.blockers;
+      }
     }
 
     const target = CLOSE_TARGET[dto.action];
@@ -110,7 +176,10 @@ export class FiscalPeriodService {
       tenantId, userId: actorId, action: `PERIOD_${dto.action}`, actionCategory: 'ACCOUNTING',
       tableName: 'AccountingPeriod', recordId: periodId,
       beforeState: { status: period.status },
-      afterState: { status: target, code: period.code },
+      afterState: {
+        status: target, code: period.code,
+        ...(overriddenBlockers.length > 0 && { forcedWithBlockers: overriddenBlockers }),
+      },
       reason: dto.reason,
     });
 

@@ -126,6 +126,81 @@ export class FinancialReportsService {
     };
   }
 
+  async cashFlow(tenantId: string, dateFrom?: string, dateTo?: string) {
+    const from = dateFrom ? new Date(dateFrom) : new Date('1900-01-01');
+    const to = dateTo ? new Date(dateTo) : new Date('9999-12-31');
+
+    const cashAccounts = await this.prisma.gLAccount.findMany({
+      where: { tenantId, controlAccountType: { in: ['CASH', 'BANK', 'PETTY_CASH'] } },
+      select: { id: true },
+    });
+    const cashAccountIds = cashAccounts.map((a) => a.id);
+    if (cashAccountIds.length === 0) {
+      return { period: { from, to }, glActivated: false, openingCash: 0, inflows: [], outflows: [], netChange: 0, closingCash: 0 };
+    }
+
+    const openingRows = await this.prisma.$queryRaw<Array<{ debit: unknown; credit: unknown }>>`
+      SELECT COALESCE(SUM(ji."functionalDebit"), 0) AS debit,
+             COALESCE(SUM(ji."functionalCredit"), 0) AS credit
+        FROM "JournalItem" ji
+        JOIN "JournalEntry" je ON je."id" = ji."journalEntryId"
+       WHERE ji."accountId" = ANY(${cashAccountIds})
+         AND je."status" IN ('POSTED', 'REVERSED')
+         AND je."entryDate" < ${from}`;
+    const openingCash = round4(Number(openingRows[0].debit) - Number(openingRows[0].credit));
+
+    const movementRows = await this.prisma.$queryRaw<Array<{ journalType: string; debit: unknown; credit: unknown }>>`
+      SELECT je."journalType" AS "journalType",
+             COALESCE(SUM(ji."functionalDebit"), 0) AS debit,
+             COALESCE(SUM(ji."functionalCredit"), 0) AS credit
+        FROM "JournalItem" ji
+        JOIN "JournalEntry" je ON je."id" = ji."journalEntryId"
+       WHERE ji."accountId" = ANY(${cashAccountIds})
+         AND je."status" IN ('POSTED', 'REVERSED')
+         AND je."entryDate" >= ${from}
+         AND je."entryDate" <= ${to}
+       GROUP BY je."journalType"
+       ORDER BY je."journalType"`;
+
+    const CATEGORY_LABELS: Record<string, string> = {
+      RECEIPT: 'Receipts from customers',
+      REFUND: 'Refunds paid to customers',
+      EXPENSE: 'Operating expenses paid',
+      PAYROLL: 'Payroll paid',
+      PURCHASE: 'Payments to suppliers',
+      SALES: 'Sales settled in cash',
+      MANUAL: 'Manual journal movements',
+      GENERAL: 'Other movements',
+      REVERSAL: 'Reversals',
+      OPENING: 'Opening balances',
+    };
+
+    const inflows: Array<{ category: string; label: string; amount: number }> = [];
+    const outflows: Array<{ category: string; label: string; amount: number }> = [];
+    let netChange = 0;
+
+    for (const row of movementRows) {
+      const inflow = round4(Number(row.debit));
+      const outflow = round4(Number(row.credit));
+      const label = CATEGORY_LABELS[row.journalType] ?? row.journalType;
+      if (inflow > 0) inflows.push({ category: row.journalType, label, amount: inflow });
+      if (outflow > 0) outflows.push({ category: row.journalType, label, amount: outflow });
+      netChange = round4(netChange + inflow - outflow);
+    }
+
+    return {
+      period: { from, to },
+      glActivated: true,
+      openingCash,
+      inflows,
+      totalInflows: round4(inflows.reduce((s, i) => s + i.amount, 0)),
+      outflows,
+      totalOutflows: round4(outflows.reduce((s, o) => s + o.amount, 0)),
+      netChange,
+      closingCash: round4(openingCash + netChange),
+    };
+  }
+
   async generalLedger(tenantId: string, accountId: string, dateFrom?: string, dateTo?: string) {
     const account = await this.prisma.gLAccount.findFirst({ where: { id: accountId, tenantId } });
     if (!account) throw new NotFoundException('GL account not found');
