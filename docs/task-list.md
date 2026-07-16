@@ -69,6 +69,13 @@ packages/
 |---------|------|
 | Audit-First ERP (Buy/Sell/Expense/Inventory, immutable ledger, gapless numbering, PostgreSQL) | `docs/prompts/audit-first-erp-prompt.md` |
 | ZATRA360 Data-Driven Workplace, Activity Intelligence & Responsible ML | `docs/prompts/zatra360-workplace-intelligence-prompt.md` |
+| **ZATRA360 Multi-Service Travel Workflow Engine** (12 service types, ServiceCase/ServiceCaseItem, configurable workflow engine, document/checklist engine, SLA/automation — audit-first repo review then phased implementation) | `docs/prompts/zatra360-service-workflow-prompt.md` |
 | Audit sample analysis (Tripnow Limited financials + UK GB Accounts templates) | `docs/audit-sample-notes.md` |
 | Raw audit samples (external) | `C:\Dev\Projects\Travel Operation\Audit Sample` |
-| **Phase 1 accounting foundation — IMPLEMENTED** (hash-chained audit ledger, double-entry journal, posting/reversal DB functions, gapless numbering, idempotency, fiscal periods, COA, API + 24 passing tests) | `docs/accounting-foundation.md` |
+| **Phase 1–4 accounting foundation — IMPLEMENTED** (hash-chained audit ledger, double-entry journal, posting/reversal DB functions, gapless numbering, idempotency, fiscal periods, COA, GL posting bridge, financial statements, AR/bank reconciliation, period-close checklist, risk alerts — 51 e2e tests) | `docs/accounting-foundation.md` |
+
+## Next Major Initiative (per zatra360-service-workflow-prompt)
+1. Phase 1: read-only repo audit → architecture/migration/UI plan (do NOT rewrite; reuse lead/client/quotation/booking/ticket/document/activity/audit modules)
+2. Phase 2: ServiceType master (12 immutable system codes) + ServiceCase/ServiceCaseItem + workflow engine (templates, instances, transitions, checklists, approvals, SLA)
+3. Phase 3: integrate leads/quotations/documents/payments/suppliers
+4. Phase 4: Air Ticket, Visa, Hotel, Tour workflows first — validate architecture before the remaining 8
