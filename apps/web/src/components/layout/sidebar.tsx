@@ -11,6 +11,7 @@ import {
   Calculator, Bell, Activity, Package, Percent, Coins, FileCheck, Globe,
   ShoppingCart, MessageSquare, FolderKanban, CheckSquare, Layers,
   LogIn, Database, Landmark, BookOpen, ChevronDown, Target, Workflow,
+  BookOpenCheck, NotebookText, CalendarFold, Scale,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -61,9 +62,14 @@ const navGroups = [
       { label: 'Receipts', href: '/receipts', icon: Receipt, perm: 'RECEIPT_READ' },
       { label: 'Payments', href: '/payments', icon: CreditCard, perm: 'PAYMENT_READ' },
       { label: 'Expenses', href: '/expenses', icon: DollarSign, perm: 'EXPENSE_READ' },
-      { label: 'Ledger', href: '/ledger', icon: ScrollText, perm: 'LEDGER_READ' },
+      { label: 'Ledger', href: '/journals', icon: ScrollText, perm: 'JOURNAL_READ' },
       { label: 'Bank & Cash', href: '/banking', icon: Landmark, perm: 'SETTINGS_READ' },
       { label: 'Gateway Logs', href: '/transaction-logs', icon: Activity, perm: 'PAYMENT_READ' },
+      { label: 'Chart of Accounts', href: '/chart-of-accounts', icon: BookOpenCheck, perm: 'GL_ACCOUNT_READ' },
+      { label: 'Fiscal Years', href: '/fiscal-years', icon: CalendarFold, perm: 'ACCOUNTING_PERIOD_READ' },
+      { label: 'Trial Balance', href: '/trial-balance', icon: Scale, perm: 'JOURNAL_READ' },
+      { label: 'Balance Sheet', href: '/balance-sheet', icon: Scale, perm: 'JOURNAL_READ' },
+      { label: 'Income Statement', href: '/income-statement', icon: BarChart3, perm: 'JOURNAL_READ' },
     ],
   },
   {

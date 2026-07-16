@@ -208,6 +208,21 @@ settlement, unaccrued-expense flagging.
 
 **Full stack**: 132 e2e + 100 unit tests, typecheck/lint clean, web build green.
 
+## Phase 6 — ERP Frontend (Implemented)
+
+6 new accounting pages at the existing DataTable/KPI-card UX level:
+
+| Route | Page | Actions |
+|---|---|---|
+| `/chart-of-accounts` | GL account list (code, name, type badge, control type, manual/control label) | Add/edit dialog, seed defaults, filter by type, search |
+| `/journals` | Journal entry register (data-table, status filter) | Draft journal form (multi-line, account combobox), detail dialog with line items |
+| `/fiscal-years` | Expandable fiscal year cards with periods | Create FY, close/reopen periods with reason + confirm dialogs |
+| `/trial-balance` | Account-level debit/credit/balance table with totals row | Date range filter; squared/imbalanced indicator banner |
+| `/balance-sheet` | Assets / Liabilities / Equity sections with current-period earnings | As-of date filter; balance-sheet-square indicator |
+| `/income-statement` | Revenue → COS → Gross Profit → Expenses → Operating Profit → Net Profit (Tripnow audit structure) | Period range filter |
+
+Sidebar: Finance group updated — old `/ledger` points to `/journals`; Chart of Accounts, Fiscal Years, Trial Balance, Balance Sheet, and Income Statement added with appropriate permissions (`JOURNAL_READ`, `GL_ACCOUNT_READ`, `ACCOUNTING_PERIOD_READ`).
+
 ## Deliberate adaptations vs. the prompt
 
 | Prompt | Implementation | Why |
