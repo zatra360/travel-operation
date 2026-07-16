@@ -53,6 +53,8 @@ async function main() {
     'COMMISSION', 'SALARY_RUN',
     'DOCUMENT', 'SETTINGS', 'AUDIT_LOG', 'REPORT', 'DASHBOARD',
     'NOTIFICATION', 'MASTER_DATA',
+    'PROJECT', 'TASK', 'VENDOR', 'INSURANCE', 'FEEDBACK',
+    'JOURNAL', 'GL_ACCOUNT', 'ACCOUNTING_PERIOD',
   ];
   const actions = ['CREATE', 'READ', 'UPDATE', 'DELETE', 'MANAGE'] as const;
 
@@ -117,20 +119,17 @@ async function main() {
   console.log('  ✓ 3 subscription packages created');
 
   // ─── Demo Tenant ──────────────────────────────────────────
-  const demoSlug = process.env.DEMO_TENANT_SLUG || 'demo-travel';
+  const demoSlug = process.env.DEMO_TENANT_SLUG || 'tripnow-limited';
   let tenant = await prisma.tenant.findUnique({ where: { slug: demoSlug } });
 
   if (!tenant) {
     tenant = await prisma.tenant.create({
       data: {
-        name: 'Demo Travel Agency',
+        name: 'Tripnow Limited',
         slug: demoSlug,
         status: 'ACTIVE',
-        settings: {
-          defaultCurrency: 'USD',
-          dateFormat: 'MM/DD/YYYY',
-          timezone: 'UTC',
-        },
+        trialEndsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        settings: { defaultCurrency: 'USD', dateFormat: 'DD/MM/YYYY', timezone: 'Asia/Dhaka' },
       },
     });
     console.log(`  ✓ Tenant created: ${tenant.name}`);
@@ -148,43 +147,20 @@ async function main() {
 
 // ─── Demo Branch ──────────────────────────────────────────
   let branch = await prisma.branch.findFirst({
-    where: { tenantId: tenant.id, code: 'HQ' },
+    where: { tenantId: tenant.id, code: 'DHK' },
   });
 
   if (!branch) {
     branch = await prisma.branch.create({
       data: {
         tenantId: tenant.id,
-        name: 'Head Office',
-        code: 'HQ',
+        name: 'Dhaka Office',
+        code: 'DHK',
         status: 'ACTIVE',
       },
     });
     console.log(`  ✓ Branch created: ${branch.name}`);
   }
-
-  // ─── Tenant Owner Membership ──────────────────────────────
-  await prisma.userTenantMembership.upsert({
-    where: { userId_tenantId: { userId: superAdmin.id, tenantId: tenant.id } },
-    update: {},
-    create: {
-      userId: superAdmin.id,
-      tenantId: tenant.id,
-      role: 'OWNER',
-    },
-  });
-
-  // ─── Branch Membership ────────────────────────────────────
-  await prisma.userBranchMembership.upsert({
-    where: { userId_branchId: { userId: superAdmin.id, branchId: branch.id } },
-    update: {},
-    create: {
-      userId: superAdmin.id,
-      branchId: branch.id,
-      tenantId: tenant.id,
-      isDefault: true,
-    },
-  });
 
   // ─── System Roles ─────────────────────────────────────────
   const roleDefinitions = [
@@ -209,7 +185,7 @@ async function main() {
     'Sales Executive': ['LEAD_READ', 'LEAD_CREATE', 'LEAD_UPDATE', 'CLIENT_READ', 'CLIENT_CREATE', 'CLIENT_UPDATE', 'QUOTATION_READ', 'QUOTATION_CREATE', 'QUOTATION_UPDATE', 'FOLLOW_UP_READ', 'FOLLOW_UP_CREATE', 'FOLLOW_UP_UPDATE', 'DASHBOARD_READ'],
     'Ticketing Officer': ['BOOKING_READ', 'BOOKING_CREATE', 'BOOKING_UPDATE', 'TICKET_READ', 'TICKET_CREATE', 'TICKET_UPDATE', 'PAYMENT_READ', 'PAYMENT_CREATE', 'CLIENT_READ', 'DASHBOARD_READ'],
     'Visa Officer': ['LEAD_READ', 'LEAD_CREATE', 'LEAD_UPDATE', 'CLIENT_READ', 'CLIENT_CREATE', 'CLIENT_UPDATE', 'DOCUMENT_CREATE', 'DOCUMENT_READ', 'FOLLOW_UP_READ', 'FOLLOW_UP_CREATE', 'DASHBOARD_READ'],
-    'Finance Officer': ['INVOICE_READ', 'INVOICE_CREATE', 'INVOICE_UPDATE', 'RECEIPT_READ', 'RECEIPT_CREATE', 'PAYMENT_READ', 'PAYMENT_CREATE', 'PAYMENT_UPDATE', 'EXPENSE_READ', 'EXPENSE_CREATE', 'LEDGER_READ', 'LEDGER_CREATE', 'CLIENT_READ', 'REPORT_READ', 'DASHBOARD_READ'],
+    'Finance Officer': ['INVOICE_READ', 'INVOICE_CREATE', 'INVOICE_UPDATE', 'RECEIPT_READ', 'RECEIPT_CREATE', 'PAYMENT_READ', 'PAYMENT_CREATE', 'PAYMENT_UPDATE', 'EXPENSE_READ', 'EXPENSE_CREATE', 'LEDGER_READ', 'LEDGER_CREATE', 'CLIENT_READ', 'REPORT_READ', 'DASHBOARD_READ', 'JOURNAL_CREATE', 'JOURNAL_READ', 'JOURNAL_UPDATE', 'JOURNAL_MANAGE', 'GL_ACCOUNT_READ', 'GL_ACCOUNT_CREATE', 'GL_ACCOUNT_UPDATE', 'ACCOUNTING_PERIOD_READ'],
     'HR Manager': ['EMPLOYEE_READ', 'EMPLOYEE_CREATE', 'EMPLOYEE_UPDATE', 'LEAVE_READ', 'LEAVE_CREATE', 'LEAVE_UPDATE', 'ATTENDANCE_READ', 'ATTENDANCE_CREATE', 'PERFORMANCE_READ', 'PERFORMANCE_CREATE', 'DASHBOARD_READ'],
     'Team Lead': ['LEAD_READ', 'LEAD_CREATE', 'LEAD_UPDATE', 'CLIENT_READ', 'CLIENT_CREATE', 'CLIENT_UPDATE', 'QUOTATION_READ', 'QUOTATION_CREATE', 'FOLLOW_UP_READ', 'FOLLOW_UP_CREATE', 'BOOKING_READ', 'BOOKING_CREATE', 'DASHBOARD_READ', 'REPORT_READ'],
     'Viewer': modules.flatMap((m) => [`${m}_READ`]).filter((p) => permissionMap.has(p)),
@@ -246,36 +222,9 @@ async function main() {
     console.log(`  ✓ Role "${roleDef.name}": ${perms.length} permissions`);
   }
 
-  // ─── Assign role to super admin ────────────────────────────
-  const tenantOwnerRole = await prisma.role.findFirst({
-    where: { tenantId: tenant.id, name: 'Tenant Owner' },
-  });
-
-  if (tenantOwnerRole) {
-    await prisma.userRoleAssignment.upsert({
-      where: {
-        userId_roleId_branchId: {
-          userId: superAdmin.id,
-          roleId: tenantOwnerRole.id,
-          branchId: branch.id,
-        },
-      },
-      update: {},
-      create: {
-        userId: superAdmin.id,
-        roleId: tenantOwnerRole.id,
-        tenantId: tenant.id,
-        branchId: branch.id,
-      },
-    });
-  }
-
   // ─── Demo Users ───────────────────────────────────────────
   const demoUsers = [
-    { email: 'manager@travelo.com', firstName: 'Branch', lastName: 'Manager', role: 'Branch Manager' },
-    { email: 'sales@travelo.com', firstName: 'Sarah', lastName: 'Johnson', role: 'Sales Executive' },
-    { email: 'ticketing@travelo.com', firstName: 'Mike', lastName: 'Chen', role: 'Ticketing Officer' },
-    { email: 'finance@travelo.com', firstName: 'Lisa', lastName: 'Wong', role: 'Finance Officer' },
+    { email: 'tripnowlimited@gmail.com', firstName: 'Rajib', lastName: 'Debnath', role: 'Tenant Owner' },
   ];
 
   for (const u of demoUsers) {
@@ -294,8 +243,8 @@ async function main() {
 
     await prisma.userTenantMembership.upsert({
       where: { userId_tenantId: { userId: user.id, tenantId: tenant.id } },
-      update: {},
-      create: { userId: user.id, tenantId: tenant.id, role: 'MEMBER' },
+      update: { role: u.role === 'Tenant Owner' ? 'OWNER' : u.role === 'Tenant Admin' ? 'ADMIN' : 'MEMBER' },
+      create: { userId: user.id, tenantId: tenant.id, role: u.role === 'Tenant Owner' ? 'OWNER' : u.role === 'Tenant Admin' ? 'ADMIN' : 'MEMBER' },
     });
 
     await prisma.userBranchMembership.upsert({
@@ -431,14 +380,61 @@ async function main() {
     console.log('  ✓ Demo client: Abdur Rahim (VIP)');
   }
 
+  // ─── Demo Booking / Invoice / Payment ─────────────────────
+  const demoClient = await prisma.client.findFirst({ where: { tenantId: tenant.id, email: 'rahim@example.com' } });
+  const ownerUser = await prisma.user.findFirst({ where: { email: 'tripnowlimited@gmail.com' } });
+
+  if (demoClient && ownerUser) {
+    const existingBooking = await prisma.booking.findFirst({ where: { tenantId: tenant.id, bookingRef: 'BKG-DEMO-001' } });
+    if (!existingBooking) {
+      const booking = await prisma.booking.create({
+        data: {
+          tenantId: tenant.id, branchId: branch.id,
+          bookingRef: 'BKG-DEMO-001', status: 'CONFIRMED',
+          clientId: demoClient.id, assignedToId: ownerUser.id,
+          travelStart: new Date('2026-08-15'), travelEnd: new Date('2026-08-30'),
+          notes: 'Demo booking for dashboard',
+        },
+      });
+      await prisma.bookingStatusLog.create({
+        data: { tenantId: tenant.id, bookingId: booking.id, toStatus: 'CONFIRMED', note: 'Booking confirmed' },
+      });
+
+      const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: tenant.id, branchId: branch.id,
+          invoiceNumber: 'INV-DEMO-001', clientId: demoClient.id,
+          bookingId: booking.id, subtotal: 4500, taxAmount: 450,
+          totalAmount: 4950, paidAmount: 3000, dueAmount: 1950,
+          currencyCode: 'USD', status: 'PARTIALLY_PAID',
+          issuedAt: new Date(), dueAt: new Date('2026-08-10'),
+        },
+      });
+      await prisma.invoiceLine.create({
+        data: { tenantId: tenant.id, invoiceId: invoice.id, serviceType: 'FLIGHT', description: 'Round-trip Dhaka-Dubai (Economy)', quantity: 1, unitPrice: 3200, lineTotal: 3200 },
+      });
+      await prisma.invoiceLine.create({
+        data: { tenantId: tenant.id, invoiceId: invoice.id, serviceType: 'VISA', description: 'UAE Tourist Visa Processing', quantity: 1, unitPrice: 1300, lineTotal: 1300 },
+      });
+
+      await prisma.payment.create({
+        data: {
+          tenantId: tenant.id, branchId: branch.id,
+          invoiceId: invoice.id, bookingId: booking.id,
+          clientId: demoClient.id, amount: 3000, currencyCode: 'USD',
+          paymentMethod: 'BANK_TRANSFER', status: 'RECEIVED',
+          reference: 'TXN-DEMO-001', receivedAt: new Date(),
+        },
+      });
+      console.log('  ✓ Demo booking + invoice + payment created');
+    }
+  }
+
   console.log('');
   console.log('✅ Seed completed successfully!');
   console.log('');
   console.log('   Super Admin: admin@travelo.com / Admin@123');
-  console.log('   Demo Users:  manager@travelo.com / Demo@123');
-  console.log('                sales@travelo.com / Demo@123');
-  console.log('                ticketing@travelo.com / Demo@123');
-  console.log('                finance@travelo.com / Demo@123');
+  console.log('   Tenant Owner: tripnowlimited@gmail.com / Demo@123');
 
   // ─── Platform Master Data ────────────────────────────────
   let catCount = 0; let itemCount = 0;
@@ -456,6 +452,87 @@ async function main() {
     }
   }
   console.log(`  ✓ ${catCount} master data categories, ${itemCount} items seeded`);
+
+  // ─── Demo Vendors ─────────────────────────────────────────
+  const demoVendors = [
+    { vendorType: 'AIRLINE', name: 'Emirates', code: 'EMIRATES', contactEmail: 'sales@emirates.com', country: 'UAE', commissionPct: 5 },
+    { vendorType: 'AIRLINE', name: 'Turkish Airlines', code: 'TURKISH', contactEmail: 'sales@thy.com', country: 'Turkey', commissionPct: 7 },
+    { vendorType: 'AIRLINE', name: 'Qatar Airways', code: 'QATAR', contactEmail: 'sales@qr.com', country: 'Qatar', commissionPct: 5 },
+    { vendorType: 'HOTEL', name: 'Marriott International', code: 'MARRIOTT', contactEmail: 'groups@marriott.com', country: 'USA', commissionPct: 10 },
+    { vendorType: 'HOTEL', name: 'Accor Hotels', code: 'ACCOR', contactEmail: 'b2b@accor.com', country: 'France', commissionPct: 12 },
+    { vendorType: 'VISA_PROCESSOR', name: 'VFS Global', code: 'VFS', contactEmail: 'agents@vfsglobal.com', country: 'UAE', commissionPct: 15 },
+    { vendorType: 'TOUR_OPERATOR', name: 'TUI Group', code: 'TUI', contactEmail: 'trade@tui.com', country: 'Germany', commissionPct: 8 },
+    { vendorType: 'INSURANCE', name: 'Allianz Travel', code: 'ALLIANZ', contactEmail: 'travel@allianz.com', country: 'Germany', commissionPct: 20 },
+    { vendorType: 'TRANSPORT', name: 'Careem/Uber for Business', code: 'CAREEM', contactEmail: 'business@careem.com', country: 'UAE' },
+    { vendorType: 'GDS', name: 'Amadeus', code: 'AMADEUS', contactEmail: 'support@amadeus.com', country: 'Spain', gdsProvider: 'AMADEUS' },
+  ];
+  for (const v of demoVendors) {
+    await prisma.vendor.upsert({
+      where: { tenantId_code: { tenantId: tenant.id, code: v.code } },
+      update: {},
+      create: { tenantId: tenant.id, ...v },
+    });
+  }
+  console.log(`  ✓ ${demoVendors.length} vendors seeded`);
+
+  // ─── Demo Insurance ──────────────────────────────────────
+  const emiratesVendor = await prisma.vendor.findFirst({ where: { tenantId: tenant.id, code: 'EMIRATES' } });
+  const allianzVendor = await prisma.vendor.findFirst({ where: { tenantId: tenant.id, code: 'ALLIANZ' } });
+  await prisma.insurance.upsert({
+    where: { tenantId_policyNumber: { tenantId: tenant.id, policyNumber: 'INS-2026-001' } },
+    update: {},
+    create: {
+      tenantId: tenant.id, policyNumber: 'INS-2026-001', providerId: allianzVendor?.id,
+      insuranceType: 'TRAVEL', premium: 150, currencyCode: 'USD', sumInsured: 50000,
+      coverage: 'Trip cancellation, medical expenses, baggage loss',
+      startDate: new Date('2026-07-01'), endDate: new Date('2026-12-31'),
+      status: 'ACTIVE',
+    },
+  });
+  await prisma.insurance.upsert({
+    where: { tenantId_policyNumber: { tenantId: tenant.id, policyNumber: 'INS-2026-002' } },
+    update: {},
+    create: {
+      tenantId: tenant.id, policyNumber: 'INS-2026-002', providerId: allianzVendor?.id,
+      insuranceType: 'MEDICAL', premium: 89, currencyCode: 'USD', sumInsured: 100000,
+      coverage: 'Emergency medical coverage worldwide',
+      startDate: new Date('2026-06-15'), endDate: new Date('2027-06-14'),
+      status: 'ACTIVE',
+    },
+  });
+  console.log('  ✓ 2 demo insurance policies seeded');
+
+  // ─── Demo Feedback ──────────────────────────────────────
+  await prisma.feedback.upsert({
+    where: { id: 'feedback-demo-1' },
+    update: {},
+    create: {
+      id: 'feedback-demo-1', tenantId: tenant.id,
+      rating: 5, npsScore: 10, category: 'SERVICE',
+      comment: 'Excellent service! Very professional team.',
+      isPublic: true,
+    },
+  });
+  await prisma.feedback.upsert({
+    where: { id: 'feedback-demo-2' },
+    update: {},
+    create: {
+      id: 'feedback-demo-2', tenantId: tenant.id,
+      rating: 4, npsScore: 8, category: 'TICKETING',
+      comment: 'Quick ticket issuance, good prices.',
+      isPublic: true,
+    },
+  });
+  await prisma.feedback.upsert({
+    where: { id: 'feedback-demo-3' },
+    update: {},
+    create: {
+      id: 'feedback-demo-3', tenantId: tenant.id,
+      rating: 3, npsScore: 6, category: 'BOOKING',
+      comment: 'Booking process was okay but took longer than expected.',
+    },
+  });
+  console.log('  ✓ 3 demo feedback entries seeded');
 }
 
 main()
