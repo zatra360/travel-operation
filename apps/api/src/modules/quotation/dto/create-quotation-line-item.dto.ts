@@ -1,7 +1,13 @@
 import { IsString, IsOptional, IsInt, IsNumber, Min, MaxLength, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export const SERVICE_TYPES = ['FLIGHT', 'HOTEL', 'VISA', 'INSURANCE', 'TRANSFER', 'TOUR', 'PACKAGE', 'OTHER'] as const;
+// System service-type codes plus legacy aliases still accepted on input.
+// Values are normalized to system codes on write (see service-ops/service-type-map).
+export const SERVICE_TYPES = [
+  'AIR_TICKET', 'VISA', 'HOTEL', 'TOUR', 'INSURANCE', 'TRANSFER',
+  'UMRAH', 'HAJJ', 'MEDICAL_TOURISM', 'STUDENT_VISA', 'MANPOWER', 'CRUISE',
+  'FLIGHT', 'PACKAGE', 'OTHER',
+] as const;
 
 export class CreateQuotationLineItemDto {
   @ApiPropertyOptional({ enum: SERVICE_TYPES, default: 'OTHER' })

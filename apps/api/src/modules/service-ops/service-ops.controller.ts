@@ -51,6 +51,13 @@ export class ServiceCaseController {
     return this.cases.create(ctx.tenantId, ctx.userId, ctx.branchId, dto);
   }
 
+  @Post('from-lead/:leadId')
+  @RequirePermissions('SERVICE_CASE_CREATE')
+  @ApiOperation({ summary: 'Convert a lead into an operational case (service item seeded from the lead service type)' })
+  createFromLead(@TenantCtx() ctx: TenantContext, @Param('leadId') leadId: string) {
+    return this.cases.createFromLead(ctx.tenantId, ctx.userId, ctx.branchId, leadId);
+  }
+
   @Get()
   @RequirePermissions('SERVICE_CASE_READ')
   @ApiOperation({ summary: 'List service cases' })
@@ -179,6 +186,25 @@ export class ServiceCaseItemController {
   @ApiOperation({ summary: 'Cancel a service item (reason required; cancels its workflow)' })
   cancel(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: CancelItemDto) {
     return this.cases.cancelItem(ctx.tenantId, ctx.userId, id, dto.reason);
+  }
+
+  @Post(':id/link-quotation/:quotationId')
+  @RequirePermissions('SERVICE_ITEM_UPDATE')
+  @ApiOperation({ summary: 'Link a quotation to the item; optionally sync financials from matching lines' })
+  linkQuotation(
+    @TenantCtx() ctx: TenantContext,
+    @Param('id') id: string,
+    @Param('quotationId') quotationId: string,
+    @Query('syncFinancials') syncFinancials?: string,
+  ) {
+    return this.cases.linkQuotation(ctx.tenantId, ctx.userId, id, quotationId, syncFinancials === 'true');
+  }
+
+  @Post(':id/link-booking/:bookingId')
+  @RequirePermissions('SERVICE_ITEM_UPDATE')
+  @ApiOperation({ summary: 'Link a booking to the item (captures booking ref and hold expiry/TTL)' })
+  linkBooking(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Param('bookingId') bookingId: string) {
+    return this.cases.linkBooking(ctx.tenantId, ctx.userId, id, bookingId);
   }
 
   @Get(':id/documents')

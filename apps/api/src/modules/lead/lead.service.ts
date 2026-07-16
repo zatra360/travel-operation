@@ -8,6 +8,7 @@ import { SlaService } from '../../common/services/sla.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
 import { SearchService } from '../../common/services/search.service';
 import { FollowUpService } from '../follow-up/follow-up.service';
+import { resolveServiceTypeRef } from '../service-ops/service-type-map';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { QueryLeadDto } from './dto/query-lead.dto';
@@ -95,6 +96,10 @@ export class LeadService {
     const data = this.mapDateFields(dto);
     const status = dto.status ?? 'NEW';
     const slaDueAt = this.sla.isTerminal(status) ? null : this.sla.calculateDueAt(status);
+    if (dto.serviceType !== undefined) {
+      const ref = await resolveServiceTypeRef(this.prisma, dto.serviceType);
+      data.serviceTypeId = ref.id;
+    }
 
     const lead = await this.prisma.lead.create({
       data: { tenantId, status, slaDueAt, priority: dto.priority ?? 'MEDIUM', ...data },
@@ -163,6 +168,10 @@ export class LeadService {
     const slaDueAt = this.sla.isTerminal(newStatus) ? null : (newStatus !== current.status ? this.sla.calculateDueAt(newStatus) : current.slaDueAt);
 
     const data = this.mapDateFields(dto);
+    if (dto.serviceType !== undefined) {
+      const ref = await resolveServiceTypeRef(this.prisma, dto.serviceType);
+      data.serviceTypeId = ref.id;
+    }
     const lead = await this.prisma.lead.update({ where: { id }, data: { ...data, slaDueAt } });
     await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'UPDATE', { changes: dto }, lead.branchId ?? undefined);
     await this.activity.log(tenantId, actorId, 'LEAD_UPDATED', `Lead updated: ${lead.fullName}`, 'Lead', lead.id, lead.branchId);

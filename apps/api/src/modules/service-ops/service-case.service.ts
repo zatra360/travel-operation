@@ -5,7 +5,7 @@ import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { ServiceTypeService } from './service-type.service';
 import { WorkflowEngineService } from './workflow-engine.service';
-import { SYSTEM_WORKFLOW_TEMPLATES } from './templates/system-templates';
+import { normalizeServiceTypeCode, isSystemServiceTypeCode } from './service-type-map';
 import { CreateServiceCaseDto, AddServiceItemDto, QueryServiceCaseDto, CloseCaseDto, ReopenCaseDto, AssignDto } from './dto/service-case.dto';
 
 const round4 = (n: number) => Math.round(n * 10000) / 10000;
@@ -58,17 +58,22 @@ export class ServiceCaseService {
 
     const resolvedItems: Array<{ typeId: string; systemCode: string; templateId: string; dto: AddServiceItemDto }> = [];
     for (const item of dto.items) {
-      const { type, config } = await this.serviceTypes.resolveEnabledType(tenantId, item.serviceTypeCode);
-      const template = await this.engine.resolveTemplate(tenantId, type.id, config?.defaultWorkflowTemplateId);
-      if (!template) {
-        const hasSystemDef = SYSTEM_WORKFLOW_TEMPLATES.some((t) => t.serviceTypeCode === item.serviceTypeCode);
-        if (!hasSystemDef) {
-          throw new BadRequestException(
-            `No published workflow template exists for service type ${item.serviceTypeCode}; create and publish one first`,
-          );
-        }
+      if (item.supplierId) {
+        const vendor = await this.prisma.vendor.findFirst({ where: { id: item.supplierId, tenantId, deletedAt: null } });
+        if (!vendor) throw new BadRequestException('Supplier does not belong to this tenant');
       }
-      resolvedItems.push({ typeId: type.id, systemCode: type.systemCode, templateId: template!.id, dto: item });
+      const { type, config } = await this.serviceTypes.resolveEnabledType(tenantId, item.serviceTypeCode);
+      let template = await this.engine.resolveTemplate(tenantId, type.id, config?.defaultWorkflowTemplateId);
+      if (!template) {
+        await this.engine.ensureGenericTemplate(type);
+        template = await this.engine.resolveTemplate(tenantId, type.id);
+      }
+      if (!template) {
+        throw new BadRequestException(
+          `No published workflow template exists for service type ${item.serviceTypeCode}; create and publish one first`,
+        );
+      }
+      resolvedItems.push({ typeId: type.id, systemCode: type.systemCode, templateId: template.id, dto: item });
     }
 
     const serviceCase = await this.prisma.$transaction(async (tx) => {
@@ -172,7 +177,15 @@ export class ServiceCaseService {
     }
     await this.ensureFoundation();
     const { type, config } = await this.serviceTypes.resolveEnabledType(tenantId, dto.serviceTypeCode);
-    const template = await this.engine.resolveTemplate(tenantId, type.id, config?.defaultWorkflowTemplateId);
+    if (dto.supplierId) {
+      const vendor = await this.prisma.vendor.findFirst({ where: { id: dto.supplierId, tenantId, deletedAt: null } });
+      if (!vendor) throw new BadRequestException('Supplier does not belong to this tenant');
+    }
+    let template = await this.engine.resolveTemplate(tenantId, type.id, config?.defaultWorkflowTemplateId);
+    if (!template) {
+      await this.engine.ensureGenericTemplate(type);
+      template = await this.engine.resolveTemplate(tenantId, type.id);
+    }
     if (!template) throw new BadRequestException(`No published workflow template for ${dto.serviceTypeCode}`);
 
     const item = await this.prisma.$transaction((tx) =>
@@ -275,12 +288,141 @@ export class ServiceCaseService {
     return item;
   }
 
+  /**
+   * Converts a qualified lead into an operational case. The lead's
+   * serviceType (normalized) seeds the first service item; the lead and
+   * client links are preserved on the case.
+   */
+  async createFromLead(tenantId: string, actorId: string, branchId: string | undefined, leadId: string, overrides?: Partial<CreateServiceCaseDto>) {
+    const lead = await this.prisma.lead.findFirst({ where: { id: leadId, tenantId, deletedAt: null } });
+    if (!lead) throw new NotFoundException('Lead not found');
+
+    const existing = await this.prisma.serviceCase.findFirst({
+      where: { tenantId, leadId, deletedAt: null, status: { notIn: ['CLOSED', 'CANCELLED'] } },
+      select: { id: true, caseNumber: true },
+    });
+    if (existing) {
+      throw new BadRequestException(`LEAD_ALREADY_CONVERTED: lead already has open case ${existing.caseNumber}`);
+    }
+
+    const normalized = normalizeServiceTypeCode(lead.serviceType);
+    if (!normalized || !isSystemServiceTypeCode(normalized)) {
+      throw new BadRequestException(
+        `Lead has no recognizable service type (${lead.serviceType ?? 'none'}); set a valid service type on the lead or create the case manually`,
+      );
+    }
+
+    const created = await this.create(tenantId, actorId, branchId ?? lead.branchId ?? undefined, {
+      title: overrides?.title ?? `${lead.fullName} — ${normalized.replace(/_/g, ' ')}`,
+      clientId: overrides?.clientId ?? lead.clientId ?? undefined,
+      leadId: lead.id,
+      priority: overrides?.priority ?? (lead.priority === 'URGENT' || lead.priority === 'HIGH' ? 'HIGH' : 'MEDIUM'),
+      assignedToId: overrides?.assignedToId ?? lead.assignedToId ?? actorId,
+      source: overrides?.source ?? lead.source ?? 'LEAD',
+      currencyCode: overrides?.currencyCode ?? lead.currencyCode ?? 'USD',
+      metadata: { convertedFromLeadId: lead.id },
+      items: overrides?.items ?? [
+        {
+          serviceTypeCode: normalized,
+          serviceAmount: lead.potentialRevenue ? Number(lead.potentialRevenue) : 0,
+          metadata: {
+            departureCity: lead.departureCity,
+            destinationCity: lead.destinationCity,
+            preferredTravelDate: lead.preferredTravelDate,
+            numAdults: lead.numAdults,
+            numChildren: lead.numChildren,
+            numInfants: lead.numInfants,
+            visaCountryId: lead.visaCountryId,
+          },
+        },
+      ],
+    });
+
+    await this.activity.log(tenantId, actorId, 'LEAD_CONVERTED_TO_CASE', `Lead ${lead.fullName} converted to case ${created.caseNumber}`, 'Lead', lead.id, lead.branchId ?? undefined);
+    return created;
+  }
+
+  /**
+   * Links a quotation to a service item. Optionally syncs financials:
+   * serviceAmount/taxAmount are recomputed from the quotation's line items
+   * that match the item's service type (all lines when nothing matches).
+   */
+  async linkQuotation(tenantId: string, actorId: string, itemId: string, quotationId: string, syncFinancials = false) {
+    const item = await this.getItem(tenantId, itemId);
+    const quotation = await this.prisma.quotation.findFirst({
+      where: { id: quotationId, tenantId, deletedAt: null },
+      include: { lineItems: true },
+    });
+    if (!quotation) throw new NotFoundException('Quotation not found');
+
+    let financials: { serviceAmount?: number; taxAmount?: number; discountAmount?: number } = {};
+    if (syncFinancials) {
+      const systemCode = item.serviceType.systemCode;
+      const matching = quotation.lineItems.filter(
+        (l) => normalizeServiceTypeCode(l.serviceType) === systemCode,
+      );
+      const lines = matching.length > 0 ? matching : quotation.lineItems;
+      financials = {
+        serviceAmount: round4(lines.reduce((s, l) => s + Number(l.lineTotal), 0)),
+        taxAmount: round4(lines.reduce((s, l) => s + Number(l.taxAmount ?? 0), 0)),
+        discountAmount: round4(lines.reduce((s, l) => s + Number(l.discountAmount ?? 0), 0)),
+      };
+    }
+
+    const updated = await this.prisma.serviceCaseItem.update({
+      where: { id: itemId },
+      data: {
+        quotationId,
+        updatedById: actorId,
+        ...(financials.serviceAmount !== undefined && {
+          serviceAmount: financials.serviceAmount,
+          taxAmount: financials.taxAmount,
+          discountAmount: financials.discountAmount,
+          grossProfit: round4(financials.serviceAmount - Number(item.supplierCost)),
+        }),
+      },
+    });
+    await this.recalculateExpectedRevenue(tenantId, item.serviceCaseId);
+    await this.audit.logMutation(actorId, tenantId, 'SERVICE_ITEM', 'ServiceCaseItem', itemId, 'UPDATE', {
+      referenceNumber: item.referenceNumber, linkedQuotation: quotation.quoteNumber, syncFinancials,
+    });
+    await this.activity.log(tenantId, actorId, 'SERVICE_ITEM_QUOTATION_LINKED', `${item.referenceNumber} linked to quotation ${quotation.quoteNumber}`, 'ServiceCaseItem', itemId, item.branchId ?? undefined);
+    return updated;
+  }
+
+  async linkBooking(tenantId: string, actorId: string, itemId: string, bookingId: string) {
+    const item = await this.getItem(tenantId, itemId);
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, tenantId, deletedAt: null },
+      select: { id: true, bookingRef: true, holdExpiresAt: true },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    const updated = await this.prisma.serviceCaseItem.update({
+      where: { id: itemId },
+      data: {
+        bookingId,
+        updatedById: actorId,
+        metadata: {
+          ...((item.metadata as Record<string, unknown>) ?? {}),
+          bookingRef: booking.bookingRef,
+          ...(booking.holdExpiresAt && { ticketingTimeLimit: booking.holdExpiresAt.toISOString() }),
+        } as any,
+      },
+    });
+    await this.audit.logMutation(actorId, tenantId, 'SERVICE_ITEM', 'ServiceCaseItem', itemId, 'UPDATE', {
+      referenceNumber: item.referenceNumber, linkedBooking: booking.bookingRef,
+    });
+    await this.activity.log(tenantId, actorId, 'SERVICE_ITEM_BOOKING_LINKED', `${item.referenceNumber} linked to booking ${booking.bookingRef}`, 'ServiceCaseItem', itemId, item.branchId ?? undefined);
+    return updated;
+  }
+
   async financialSummary(tenantId: string, caseId: string) {
     await this.findById(tenantId, caseId);
     const items = await this.prisma.serviceCaseItem.findMany({
       where: { tenantId, serviceCaseId: caseId, deletedAt: null },
       select: {
-        referenceNumber: true, status: true, currencyCode: true,
+        referenceNumber: true, status: true, currencyCode: true, quotationId: true, bookingId: true,
         serviceAmount: true, supplierCost: true, taxAmount: true, discountAmount: true, grossProfit: true,
         serviceType: { select: { systemCode: true, displayName: true } },
       },
@@ -295,7 +437,32 @@ export class ServiceCaseService {
       }),
       { serviceAmount: 0, supplierCost: 0, taxAmount: 0, discountAmount: 0, grossProfit: 0 },
     );
-    return { items, totals };
+
+    const quotationIds = [...new Set(items.map((i) => i.quotationId).filter(Boolean))] as string[];
+    const bookingIds = [...new Set(items.map((i) => i.bookingId).filter(Boolean))] as string[];
+    let settlement = { invoiced: 0, paid: 0, due: 0, invoiceCount: 0 };
+    if (quotationIds.length > 0 || bookingIds.length > 0) {
+      const invoices = await this.prisma.invoice.findMany({
+        where: {
+          tenantId,
+          deletedAt: null,
+          status: { not: 'CANCELLED' },
+          OR: [
+            ...(quotationIds.length > 0 ? [{ quotationId: { in: quotationIds } }] : []),
+            ...(bookingIds.length > 0 ? [{ bookingId: { in: bookingIds } }] : []),
+          ],
+        },
+        select: { totalAmount: true, paidAmount: true, dueAmount: true },
+      });
+      settlement = {
+        invoiced: round4(invoices.reduce((s, i) => s + Number(i.totalAmount), 0)),
+        paid: round4(invoices.reduce((s, i) => s + Number(i.paidAmount), 0)),
+        due: round4(invoices.reduce((s, i) => s + Number(i.dueAmount), 0)),
+        invoiceCount: invoices.length,
+      };
+    }
+
+    return { items, totals, settlement };
   }
 
   async getCaseTimeline(tenantId: string, caseId: string) {

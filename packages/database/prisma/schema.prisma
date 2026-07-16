@@ -814,6 +814,7 @@ model Lead {
 
   // Travel requirement
   serviceType          String?
+  serviceTypeId        String?
   travelCategory       String?
   isDomestic           Boolean  @default(false)
   tripType             String?
@@ -949,6 +950,7 @@ model Lead {
   @@index([assignedToId])
   @@index([status])
   @@index([tenantId, status])
+  @@index([serviceTypeId])
 }
 
 model Client {
@@ -1286,6 +1288,7 @@ model QuotationLineItem {
   tenantId    String
   quotationId String
   serviceType String?
+  serviceTypeId String?
   title       String?
   description String?
   quantity    Int      @default(1)
@@ -1309,6 +1312,7 @@ model QuotationLineItem {
 
   @@index([tenantId])
   @@index([quotationId])
+  @@index([serviceTypeId])
 }
 
 model QuotationRevision {
@@ -1422,6 +1426,7 @@ model ServiceItem {
   code            String?
   description     String?
   serviceType     String?
+  serviceTypeId   String?
   basePrice       Decimal  @db.Decimal(19, 4) @default(0)
   currencyCode    String   @default("USD")
   isActive        Boolean  @default(true)
@@ -1620,6 +1625,7 @@ model OrderItem {
   tenantId    String
   orderId     String
   serviceType String?
+  serviceTypeId String?
   title       String
   description String?
   quantity    Int      @default(1)
@@ -2175,6 +2181,7 @@ model InvoiceLine {
   tenantId    String
   invoiceId   String
   serviceType String?
+  serviceTypeId String?
   description String?
   quantity    Int      @default(1)
   unitPrice   Decimal @db.Decimal(19, 4)  @default(0)
@@ -2187,6 +2194,7 @@ model InvoiceLine {
 
   @@index([tenantId])
   @@index([invoiceId])
+  @@index([serviceTypeId])
 }
 
 // ─── Ticket Status Log ────────────────────────────────────────

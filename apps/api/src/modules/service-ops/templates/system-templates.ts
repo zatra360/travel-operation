@@ -154,6 +154,23 @@ export const SYSTEM_WORKFLOW_TEMPLATES: WorkflowTemplateDefinition[] = [
   TOUR_TEMPLATE,
 ];
 
+/**
+ * Shared-lifecycle fallback for service types without a dedicated
+ * template yet (Phase 5 replaces these with service-specific versions;
+ * running instances stay pinned to the generic version they started with).
+ */
+export const GENERIC_STAGES: StageDefinition[] = [
+  { code: 'ENQUIRY_RECEIVED', name: 'Enquiry Received', group: 'INTAKE', slaHours: 4, isInitial: true },
+  { code: 'REQUIREMENTS_COLLECTED', name: 'Requirements Collected', group: 'INTAKE' },
+  { code: 'QUOTATION_SENT', name: 'Quotation Sent', group: 'QUOTATION', slaHours: 24 },
+  { code: 'CUSTOMER_APPROVED', name: 'Customer Approval', group: 'QUOTATION' },
+  { code: 'PAYMENT_APPROVED', name: 'Payment or Credit Approved', group: 'PAYMENT', requiresPayment: true },
+  { code: 'PROCESSING', name: 'Service Processing', group: 'PROCESSING' },
+  { code: 'SERVICE_DELIVERED', name: 'Service Delivered', group: 'DELIVERY' },
+  { code: 'AFTER_SALES', name: 'After-Sales & Reconciliation', group: 'AFTER_SALES' },
+  { code: 'CASE_CLOSED', name: 'Case Closed', group: 'CLOSURE', isTerminal: true },
+];
+
 export const SYSTEM_SERVICE_TYPES: Array<{
   systemCode: string; displayName: string; slug: string; icon: string; category: string;
   displayOrder: number; supportsTicketing?: boolean; supportsApplication?: boolean;

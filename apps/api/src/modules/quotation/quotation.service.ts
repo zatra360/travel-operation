@@ -14,6 +14,7 @@ import { UpdateQuotationDto } from './dto/update-quotation.dto';
 import { QueryQuotationDto } from './dto/query-quotation.dto';
 import { CreateQuotationLineItemDto } from './dto/create-quotation-line-item.dto';
 import { UpdateQuotationLineItemDto } from './dto/update-quotation-line-item.dto';
+import { resolveServiceTypeRef } from '../service-ops/service-type-map';
 
 const TERMINAL_STATUSES = ['BOOKING_CREATED', 'CANCELLED'];
 
@@ -228,12 +229,14 @@ export class QuotationService {
   async addLineItem(tenantId: string, actorId: string, quotationId: string, dto: CreateQuotationLineItemDto) {
     const quotation = await this.findById(tenantId, quotationId);
     this.assertLineItemEditable(quotation);
+    const serviceTypeRef = await resolveServiceTypeRef(this.prisma, dto.serviceType);
 
     const item = await this.prisma.$transaction(async (tx) => {
       const newItem = await tx.quotationLineItem.create({
         data: {
           tenantId, quotationId,
-          serviceType: dto.serviceType ?? null,
+          serviceType: serviceTypeRef.code ?? null,
+          serviceTypeId: serviceTypeRef.id,
           title: dto.title,
           description: dto.description ?? null,
           quantity: dto.quantity ?? 1,
@@ -279,12 +282,13 @@ export class QuotationService {
     const discountAmount = dto.discountAmount ?? Number(existing.discountAmount ?? 0);
 
     const before = { quantity: existing.quantity, unitPrice: Number(existing.unitPrice), title: existing.title };
+    const serviceTypeRef = dto.serviceType !== undefined ? await resolveServiceTypeRef(this.prisma, dto.serviceType) : null;
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.quotationLineItem.update({
         where: { id: lineItemId },
         data: {
-          ...(dto.serviceType !== undefined && { serviceType: dto.serviceType }),
+          ...(serviceTypeRef !== null && { serviceType: serviceTypeRef.code, serviceTypeId: serviceTypeRef.id }),
           ...(dto.title !== undefined && { title: dto.title }),
           ...(dto.description !== undefined && { description: dto.description }),
           ...(dto.quantity !== undefined && { quantity: dto.quantity }),
@@ -647,6 +651,7 @@ export class QuotationService {
       await this.prisma.invoiceLine.create({
         data: {
           tenantId, invoiceId: invoice.id, serviceType: item.serviceType,
+          serviceTypeId: item.serviceTypeId,
           description: item.description, quantity: item.quantity,
           unitPrice: item.unitPrice, lineTotal: item.lineTotal,
           metadata: item.metadata ?? undefined, sortOrder: item.sortOrder,

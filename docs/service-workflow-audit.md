@@ -140,3 +140,27 @@ No workflow engine of any kind. Transitions are hard-coded per document in `stat
 **Tests** (`apps/api/test/service-workflow.e2e-spec.ts` — 19 passing): system-type seeding, tenant rename/disable (system code stable), template stage counts, multi-service case with gapless numbers + auto-started workflows + audit/activity rows, tenant isolation, stage skipping rejected, checklist/document/approval blocking with structured blocker messages, SoD on approvals, correction-loop document lifecycle with version increment, sensitive-document access logging, force-close + reopen, item cancellation cancelling its workflow, financial roll-up.
 
 **Known limitations (planned for Phase 3+)**: lead→case conversion, quotation/booking/payment linkage, serviceTypeId backfill on legacy string columns, WorkflowTask automation (model exists, no scheduler), team-scoped visibility rules, frontend UI.
+
+---
+
+## Phase 3 — Integration (IMPLEMENTED)
+
+**Migration `20260716160000_service_type_backfill`** (non-destructive):
+- Added nullable `serviceTypeId` to `Lead`, `QuotationLineItem`, `InvoiceLine`, `OrderItem`, `ServiceItem` (+ indexes on the reporting-heavy three); string columns untouched
+- Inserted the 12 system `ServiceType` rows idempotently; `fn_normalize_service_type_code` maps legacy aliases (`FLIGHT/AIR/TICKET → AIR_TICKET`)
+- **Backfill verified in dev**: Lead 8/8, QuotationLineItem 2/2, InvoiceLine 4/4 mapped (incl. the legacy `FLIGHT` row); zero unmapped values; `PACKAGE` stays string-only by design
+
+**Write paths normalized** (`service-ops/service-type-map.ts` — `normalizeServiceTypeCode`, `resolveServiceTypeRef`):
+- Lead create/update resolves `serviceTypeId`
+- Quotation line add/update accepts legacy + system codes (DTO union), stores the normalized code + `serviceTypeId`; conversion to invoice propagates both
+- Invoice `addLine` normalizes and resolves
+
+**New integration capabilities**:
+- `POST /tenant/service-cases/from-lead/:leadId` — converts a lead (normalized service type seeds the item, financials from `potentialRevenue`, travel metadata carried over); double-conversion blocked while a case is open
+- `POST /tenant/service-case-items/:id/link-quotation/:quotationId?syncFinancials=true` — links + recomputes item financials from the quotation's matching service lines
+- `POST /tenant/service-case-items/:id/link-booking/:bookingId` — links and captures `bookingRef` + `holdExpiresAt` as the item's ticketing time limit (TTL)
+- Case `financials` endpoint now includes a settlement block (invoiced/paid/due) rolled up from invoices of linked quotations/bookings
+- Supplier (`Vendor`) tenant validation on item creation
+- Generic shared-lifecycle fallback template auto-provisioned for the 8 service types without dedicated workflows yet (Phase 5 replaces them; running instances stay pinned)
+
+**Tests** (`apps/api/test/service-ops-integration.e2e-spec.ts` — 10 passing): normalization mapping, lead conversion + double-conversion guard + unrecognizable-type guard, quotation link with per-service financial sync, booking link with TTL capture, settlement roll-up, cross-tenant quotation/supplier rejection, resolver legacy-alias behavior.

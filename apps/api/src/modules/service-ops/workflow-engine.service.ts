@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
-import { SYSTEM_WORKFLOW_TEMPLATES, SYSTEM_TEMPLATE_VERSION, WorkflowTemplateDefinition } from './templates/system-templates';
+import { SYSTEM_WORKFLOW_TEMPLATES, SYSTEM_TEMPLATE_VERSION, GENERIC_STAGES, WorkflowTemplateDefinition } from './templates/system-templates';
 
 type Db = PrismaService | Prisma.TransactionClient;
 
@@ -81,6 +81,20 @@ export class WorkflowEngineService {
     for (const def of SYSTEM_WORKFLOW_TEMPLATES) {
       await this.ensureSystemTemplate(def);
     }
+  }
+
+  /**
+   * Falls back to the shared-lifecycle generic template for service types
+   * without a dedicated system template yet.
+   */
+  async ensureGenericTemplate(serviceType: { id: string; systemCode: string }): Promise<string> {
+    return this.ensureSystemTemplate({
+      serviceTypeCode: serviceType.systemCode,
+      code: `${serviceType.systemCode}_GENERIC`,
+      name: `${serviceType.systemCode.replace(/_/g, ' ')} — Generic`,
+      description: 'Shared-lifecycle fallback workflow (replace with a service-specific template)',
+      stages: GENERIC_STAGES,
+    });
   }
 
   /** Latest published template for a service type: tenant custom first, then system. */

@@ -8,6 +8,7 @@ import { LookupValidationService } from '../master-data/lookup-validation.servic
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
 import { GLPostingService } from '../accounting/gl-posting.service';
+import { resolveServiceTypeRef } from '../service-ops/service-type-map';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { QueryInvoiceDto } from './dto/query-invoice.dto';
@@ -169,10 +170,11 @@ export class InvoiceService {
   async addLine(tenantId: string, actorId: string, invoiceId: string, dto: any) {
     const invoice = await this.findById(tenantId, invoiceId);
     if (invoice.status !== 'DRAFT') throw new BadRequestException('Can only add lines to draft invoices');
+    const serviceTypeRef = await resolveServiceTypeRef(this.prisma, dto.serviceType);
 
     const line = await this.prisma.invoiceLine.create({
       data: {
-        tenantId, invoiceId, serviceType: dto.serviceType, description: dto.description,
+        tenantId, invoiceId, serviceType: serviceTypeRef.code ?? dto.serviceType, serviceTypeId: serviceTypeRef.id, description: dto.description,
         quantity: dto.quantity ?? 1, unitPrice: dto.unitPrice ?? 0,
         lineTotal: (dto.quantity ?? 1) * (dto.unitPrice ?? 0),
         sortOrder: dto.sortOrder ?? 0,
