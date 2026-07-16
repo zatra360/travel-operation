@@ -1,70 +1,76 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FileCheck, AlertTriangle } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { TableToolbar } from '@/components/ui/table-toolbar';
+import { Pagination } from '@/components/ui/pagination';
+import { FileCheck, AlertTriangle, Plus, Pencil, Trash2, User, Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+
+const PAGE_SIZE = 25;
 
 export default function PassportsPage() {
   const { activeTenant } = useAuthStore();
-  const [clients, setClients] = useState<any[]>([]);
+  const [data, setData] = useState<any[]>([]);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!activeTenant) return;
-    api.get('/api/v1/tenant/clients?limit=100', { tenantId: activeTenant.id }).then(async (res: any) => {
-      const all: any[] = [];
-      for (const client of res.data) {
-        try {
-          const passports: any[] = await api.get(`/api/v1/tenant/clients/${client.id}/passports`, { tenantId: activeTenant.id });
-          all.push(...passports.map((p: any) => ({ ...p, client })));
-        } catch {}
-      }
-      setClients(all);
-      setLoading(false);
-    });
-  }, [activeTenant]);
+    setLoading(true);
+    const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+    if (search) params.set('search', search);
+    api.get<any>(`/api/v1/tenant/passports?${params.toString()}`, { tenantId: activeTenant.id })
+      .then(res => { setData(res.data); setMeta({ page: res.page, totalPages: res.totalPages, total: res.total }); })
+      .catch(() => toast.error('Failed to load passports'))
+      .finally(() => setLoading(false));
+  }, [activeTenant, search, page]);
 
-  const isExpiringSoon = (date: string) => {
-    const d = new Date(date);
-    const now = new Date();
-    const months = (d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
-    return months < 3;
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setPage(1); }, [search]);
+
+  const isExpiringSoon = (date: string) => new Date(date).getTime() - Date.now() < 90 * 24 * 60 * 60 * 1000;
+  const isExpired = (date: string) => new Date(date).getTime() < Date.now();
+
+  const getStatusBadge = (p: any) => {
+    if (isExpired(p.expiryDate)) return <Badge variant="destructive" className="text-[10px] flex items-center gap-1"><AlertTriangle className="h-2.5 w-2.5" />Expired</Badge>;
+    if (isExpiringSoon(p.expiryDate)) return <Badge variant="warning" className="text-[10px] flex items-center gap-1">Expiring</Badge>;
+    return <Badge variant={p.isVerified ? 'success' : 'secondary'} className="text-[10px]">{p.isVerified ? 'Verified' : 'Active'}</Badge>;
   };
 
-  if (loading) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-64" /></div>;
+  const columns: DataTableColumn<any>[] = [
+    {
+      key: 'fullName', header: 'Passenger',
+      cell: (p) => <div><span className="font-medium">{p.fullName}</span>{p.relation && <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1 py-0.5 rounded">{p.relation}</span>}</div>,
+    },
+    { key: 'passportNumber', header: 'Passport #', cell: (p) => <span className="font-mono text-xs">{p.passportNumber}</span> },
+    {
+      key: 'client', header: 'Client', hideOnMobile: true,
+      cell: (p) => p.client ? <Link href={`/clients/${p.client.id}`} className="text-sm text-primary hover:underline">{p.client.displayName}</Link> : <span className="text-muted-foreground text-sm">—</span>,
+    },
+    { key: 'nationality', header: 'Nationality', hideOnMobile: true, cell: (p) => <span className="text-muted-foreground text-xs">{p.nationality || p.countryCode || '—'}</span> },
+    { key: 'expiry', header: 'Expiry', cell: (p) => <span className={cn('text-sm', isExpired(p.expiryDate) ? 'text-destructive font-semibold' : isExpiringSoon(p.expiryDate) ? 'text-warning font-medium' : 'text-muted-foreground')}>{formatDate(p.expiryDate)}</span> },
+    { key: 'status', header: 'Status', cell: (p) => getStatusBadge(p) },
+  ];
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Passports" subtitle={`${clients.length} passports across all clients`} />
-      <div className="grid gap-2">
-        {clients.map((p: any) => (
-          <Card key={p.id}>
-            <CardContent className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-4">
-                <FileCheck className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">{p.fullName}</p>
-                  <p className="text-sm text-muted-foreground">#{p.passportNumber} · {p.client?.displayName}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {isExpiringSoon(p.expiryDate) && <AlertTriangle className="h-4 w-4 text-warning" />}
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Expires</p>
-                  <p className={`text-sm font-medium ${isExpiringSoon(p.expiryDate) ? 'text-warning' : ''}`}>{formatDate(p.expiryDate)}</p>
-                </div>
-                <Badge variant={p.isVerified ? 'default' : 'secondary'} className="text-xs">{p.isVerified ? 'Verified' : 'Pending'}</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {clients.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">No passports on file.</p>}
-      </div>
+    <div className="space-y-5">
+      <PageHeader title="Passports" subtitle={`${meta.total} passports · Track expiry and verification`} />
+      <TableToolbar search={search} onSearchChange={v => setSearch(v)} searchPlaceholder="Search by name or passport number..." hasActiveFilters={search !== ''} onReset={() => setSearch('')} />
+      <DataTable columns={columns} data={data} rowKey={p => p.id} loading={loading} emptyTitle="No passports" emptyDescription={search ? 'Try adjusting your search.' : 'Passports from client profiles will appear here.'} mobileCard={(p) => (<div className="space-y-1"><div className="flex items-center justify-between"><span className="font-medium">{p.fullName}</span>{getStatusBadge(p)}</div><p className="text-sm text-muted-foreground">#{p.passportNumber} · {p.client?.displayName}</p><p className="text-xs text-muted-foreground">Expires {formatDate(p.expiryDate)}</p></div>)} />
+      {!loading && data.length > 0 && <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total} limit={PAGE_SIZE} onPageChange={setPage} />}
     </div>
   );
 }

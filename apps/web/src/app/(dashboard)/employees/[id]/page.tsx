@@ -137,6 +137,23 @@ export default function EmployeeDetailPage() {
             </CardContent>
           </Card>
         )}
+
+        {commissions.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign className="h-4 w-4" />Commissions</CardTitle></CardHeader>
+            <CardContent>
+              <ul className="space-y-2">{commissions.map((c: any) => (
+                <li key={c.id} className="flex items-center justify-between border-b pb-2 last:border-0 text-sm">
+                  <div><p className="font-medium">{c.sourceType} {c.sourceId?.slice(0, 8)}</p><p className="text-xs text-muted-foreground">{c.notes}</p></div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">${Number(c.amount).toFixed(2)}</span>
+                    <Badge variant={c.status === 'PAID' ? 'success' : c.status === 'APPROVED' ? 'default' : 'warning'}>{c.status}</Badge>
+                  </div>
+                </li>
+              ))}</ul>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <Separator />

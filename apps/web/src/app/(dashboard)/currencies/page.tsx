@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -44,14 +45,30 @@ export default function CurrenciesPage() {
     <div className="space-y-6">
       <PageHeader title="Currencies" subtitle="Manage currencies and exchange rates" />
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><Coins className="h-4 w-4" />Add Currency</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Coins className="h-4 w-4" />Add Currency</CardTitle></CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
-            <Input placeholder="Code" value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} className="w-20" />
-            <Input placeholder="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-36" />
-            <Input placeholder="Symbol" value={form.symbol} onChange={e => setForm({ ...form, symbol: e.target.value })} className="w-16" />
-            <Input placeholder="Rate" type="number" step="0.0001" value={form.exchangeRate || ''} onChange={e => setForm({ ...form, exchangeRate: Number(e.target.value) })} className="w-24" />
-            <Button size="sm" onClick={add}><Plus className="h-4 w-4 mr-1" />Add</Button>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6 items-end">
+            <div className="space-y-2">
+              <Label htmlFor="cur-code" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Code <span className="text-destructive">*</span></Label>
+              <Input id="cur-code" placeholder="USD" maxLength={3} value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cur-name" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name <span className="text-destructive">*</span></Label>
+              <Input id="cur-name" placeholder="US Dollar" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cur-symbol" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Symbol</Label>
+              <Input id="cur-symbol" placeholder="$" value={form.symbol} onChange={e => setForm({ ...form, symbol: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cur-rate" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Exchange Rate</Label>
+              <Input id="cur-rate" placeholder="1.0000" type="number" step="0.0001" min={0} value={form.exchangeRate || ''} onChange={e => setForm({ ...form, exchangeRate: Number(e.target.value) })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cur-decimals" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Decimals</Label>
+              <Input id="cur-decimals" type="number" min={0} max={6} value={form.decimalPlaces} onChange={e => setForm({ ...form, decimalPlaces: Number(e.target.value) })} />
+            </div>
+            <Button size="sm" onClick={add} className="w-fit"><Plus className="h-4 w-4 mr-1" />Add Currency</Button>
           </div>
         </CardContent>
       </Card>

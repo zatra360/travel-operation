@@ -47,10 +47,27 @@ export function ImportExportButtons({ type, onImported }: Props) {
     } catch (e: any) { toast.error('Export failed'); }
   };
 
+  const downloadTemplate = () => {
+    const headers = type === 'leads'
+      ? 'fullName,email,primaryMobile,status,priority,source,serviceType,departureCity,destinationCity,numAdults,notes'
+      : 'displayName,email,phone,type,nationalityLabel,city,country,notes';
+    const sample = type === 'leads'
+      ? 'John Smith,john@example.com,+1234567890,NEW,MEDIUM,WEBSITE,FLIGHT,New York,London,1,Sample import'
+      : 'Acme Corp,acme@example.com,+1234567890,COMPANY,,New York,US,Sample client';
+    const blob = new Blob([`${headers}\n${sample}`], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${type}-template.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex items-center gap-2">
       <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-2" />Export</Button>
       <Button variant="outline" size="sm" onClick={() => { setImportOpen(true); setResult(null); }}><Upload className="h-4 w-4 mr-2" />Import</Button>
+      <Button variant="ghost" size="sm" onClick={downloadTemplate}><FileText className="h-4 w-4 mr-2" />Template</Button>
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Import {type}</DialogTitle><DialogDescription>Upload a CSV file with a header row.</DialogDescription></DialogHeader>

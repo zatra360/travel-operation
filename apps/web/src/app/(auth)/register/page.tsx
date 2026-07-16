@@ -32,6 +32,7 @@ export default function RegisterPage() {
       setAuth(
         { id: res.user.id, email: res.user.email, firstName: res.user.firstName, lastName: res.user.lastName, isPlatformSuperAdmin: false },
         res.accessToken,
+        res.refreshToken,
         [{ id: res.tenant.id, name: res.tenant.name, slug: res.tenant.slug, role: 'OWNER' }],
       );
       toast.success('Welcome! Your 14-day trial is ready.');

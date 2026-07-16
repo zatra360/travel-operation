@@ -73,10 +73,11 @@ export default function CancellationsPage() {
   }, [search, status]);
 
   const columns: DataTableColumn<CancelRow>[] = [
-    { key: 'number', header: 'Cancel #', cell: (c) => <span className="font-medium">{c.cancellationNumber || c.id}</span> },
+    { key: 'number', header: 'Cancel #', cell: (c: any) => <span className="font-medium">{c.cancellationNumber || c.id}</span> },
+    { key: 'ticket', header: 'Ticket', cell: (c: any) => <span className="text-muted-foreground">{c.ticket?.ticketNumber || '—'}</span> },
+    { key: 'booking', header: 'Booking', hideOnMobile: true, cell: (c: any) => <span className="text-muted-foreground">{c.booking?.bookingRef || '—'}</span> },
+    { key: 'client', header: 'Client', hideOnMobile: true, cell: (c: any) => <span className="text-muted-foreground">{c.client?.displayName || '—'}</span> },
     { key: 'charge', header: 'Charge', align: 'right', cell: (c) => <Money amount={c.cancellationCharge} currency={c.currencyCode || 'USD'} /> },
-    { key: 'refundable', header: 'Refundable', align: 'right', hideOnMobile: true, cell: (c) => <Money amount={c.refundableAmount} currency={c.currencyCode || 'USD'} /> },
-    { key: 'reason', header: 'Reason', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{c.reason || '—'}</span> },
     { key: 'status', header: 'Status', cell: (c) => <StatusBadge status={c.status} /> },
     { key: 'created', header: 'Created', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{formatDate(c.createdAt)}</span> },
   ];

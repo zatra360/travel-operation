@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { toast } from 'sonner';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -29,6 +31,7 @@ export default function LeavesPage() {
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
@@ -40,6 +43,7 @@ export default function LeavesPage() {
     setLoading(true);
     setError('');
     const params = new URLSearchParams();
+    if (search) params.set('search', search);
     if (status) params.set('status', status);
     params.set('page', String(page));
     params.set('limit', String(PAGE_SIZE));
@@ -54,7 +58,7 @@ export default function LeavesPage() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [activeTenant, activeBranch, status, page]);
+  }, [activeTenant, activeBranch, search, status, page]);
 
   useEffect(() => {
     load();
@@ -67,6 +71,10 @@ export default function LeavesPage() {
     setEditing(null);
     setFormOpen(true);
   };
+  const openEdit = (l: Leave) => { setEditing(l); setFormOpen(true); };
+  const [deleting, setDeleting] = useState<Leave | null>(null);
+  const handleDelete = async () => { if (!activeTenant || !deleting) return; try { await api.delete(`/api/v1/tenant/leaves/${deleting.id}`, { tenantId: activeTenant.id }); toast.success('Deleted'); setDeleting(null); load(); } catch (err: any) { toast.error(err.message); } };
+  const hasFilters = search !== '' || status !== '';
 
   const columns: DataTableColumn<Leave>[] = [
     { key: 'employee', header: 'Employee', cell: (l) => <span className="font-medium">{l.employee?.firstName} {l.employee?.lastName}</span> },
@@ -74,6 +82,7 @@ export default function LeavesPage() {
     { key: 'dates', header: 'Dates', hideOnMobile: true, cell: (l) => <span className="text-muted-foreground">{formatDate(l.startDate)} – {formatDate(l.endDate)}</span> },
     { key: 'status', header: 'Status', cell: (l) => <StatusBadge status={l.status} /> },
     { key: 'reason', header: 'Reason', hideOnMobile: true, cell: (l) => <span className="text-muted-foreground">{l.reason || '—'}</span> },
+    { key: 'actions', header: '', align: 'right', cell: (l) => (<div className="flex items-center justify-end gap-1"><Button variant="ghost" size="icon" onClick={() => openEdit(l)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => setDeleting(l)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>) },
   ];
 
   return (
@@ -90,8 +99,9 @@ export default function LeavesPage() {
       />
 
       <TableToolbar
-        hasActiveFilters={status !== ''}
-        onReset={() => setStatus('')}
+        search={search} onSearchChange={setSearch} searchPlaceholder="Search leaves…"
+        hasActiveFilters={hasFilters}
+        onReset={() => { setSearch(''); setStatus(''); }}
         filters={
           <Select value={status || ALL} onValueChange={(v) => setStatus(v === ALL ? '' : v)}>
             <SelectTrigger className="h-9 w-40" aria-label="Filter by status">
@@ -149,6 +159,7 @@ export default function LeavesPage() {
       )}
 
       <LeaveFormDialog open={formOpen} onOpenChange={setFormOpen} leave={editing} onSaved={load} />
+      <ConfirmDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} title="Delete leave?" description={`Remove this leave request?`} confirmLabel="Delete" onConfirm={handleDelete} />
     </div>
   );
 }

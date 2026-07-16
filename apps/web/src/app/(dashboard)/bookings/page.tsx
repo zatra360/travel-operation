@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   Select,
@@ -96,20 +97,44 @@ export default function BookingsPage() {
 
   const hasFilters = search !== '' || status !== '';
 
+  const getHoldTtl = (b: Booking): { label: string; variant: 'destructive' | 'warning' | 'default' | 'secondary' } | null => {
+    if (!b.holdExpiresAt || b.status !== 'HELD') return null;
+    const now = Date.now(); const exp = new Date(b.holdExpiresAt).getTime();
+    const hours = (exp - now) / 3600000;
+    if (now > exp) return { label: 'Expired', variant: 'destructive' };
+    if (hours < 2) return { label: `${Math.round(hours * 60)}m left`, variant: 'destructive' };
+    if (hours < 6) return { label: `${Math.round(hours)}h left`, variant: 'warning' };
+    return { label: `${Math.round(hours)}h`, variant: 'default' };
+  };
+
   const columns: DataTableColumn<Booking>[] = [
     {
-      key: 'ref',
-      header: 'Booking Ref',
+      key: 'bookingRef',
+      header: 'Booking',
       cell: (b) => (
-        <Link href={`/bookings/${b.id}`} className="font-medium text-primary hover:underline">
-          {b.bookingRef}
-        </Link>
+        <div>
+          <Link href={`/bookings/${b.id}`} className="font-medium hover:underline">{b.bookingRef}</Link>
+          {b.pnrLocator && <span className="ml-2 font-mono text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{b.pnrLocator}</span>}
+        </div>
       ),
     },
-    { key: 'pnr', header: 'PNR', cell: (b) => <span className="font-mono text-muted-foreground">{b.pnrLocator || '—'}</span> },
+    {
+      key: 'contact', header: 'Lead / Client', hideOnMobile: true,
+      cell: (b) => b.lead ? <Link href={`/leads/${b.leadId}`} className="text-sm text-primary hover:underline">{b.lead.fullName}</Link>
+        : b.client ? <Link href={`/clients/${b.clientId}`} className="text-sm text-primary hover:underline">{b.client.displayName}</Link>
+        : <span className="text-muted-foreground text-sm">—</span>,
+    },
     { key: 'status', header: 'Status', cell: (b) => <StatusBadge status={b.status} /> },
-    { key: 'travel', header: 'Travel Dates', hideOnMobile: true, cell: (b) => <span className="text-muted-foreground">{travelDates(b)}</span> },
-    { key: 'created', header: 'Created', hideOnMobile: true, cell: (b) => <span className="text-muted-foreground">{formatDate(b.createdAt)}</span> },
+    {
+      key: 'hold', header: 'Hold', hideOnMobile: true,
+      cell: (b) => {
+        const ttl = getHoldTtl(b);
+        if (!ttl) return <span className="text-muted-foreground text-xs">—</span>;
+        return <Badge variant={ttl.variant} className="text-[10px] flex items-center gap-1">{ttl.variant === 'destructive' && <AlertTriangle className="h-2.5 w-2.5" />}{ttl.label}</Badge>;
+      },
+    },
+    { key: 'travel', header: 'Travel', hideOnMobile: true, cell: (b) => <span className="text-muted-foreground text-xs">{travelDates(b)}</span> },
+    { key: 'created', header: 'Created', hideOnMobile: true, cell: (b) => <span className="text-muted-foreground text-sm">{formatDate(b.createdAt)}</span> },
     {
       key: 'actions',
       header: '',

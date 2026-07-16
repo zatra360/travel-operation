@@ -32,27 +32,27 @@ const ZENITH = {
   bg: '#f8fafc',
 };
 
-const trendData = [
-  { name: 'Jan', revenue: 28500, expenses: 12000 },
-  { name: 'Feb', revenue: 32400, expenses: 14800 },
-  { name: 'Mar', revenue: 29800, expenses: 13500 },
-  { name: 'Apr', revenue: 41000, expenses: 18200 },
-  { name: 'May', revenue: 38500, expenses: 16500 },
-  { name: 'Jun', revenue: 45000, expenses: 19500 },
+const FALLBACK_TREND = [
+  { name: 'Jan', revenue: 0, count: 0 },
+  { name: 'Feb', revenue: 0, count: 0 },
+  { name: 'Mar', revenue: 0, count: 0 },
+  { name: 'Apr', revenue: 0, count: 0 },
+  { name: 'May', revenue: 0, count: 0 },
+  { name: 'Jun', revenue: 0, count: 0 },
 ];
 
 const pipelineData = [
-  { name: 'Leads', value: 45, color: ZENITH.info },
-  { name: 'Quotations', value: 28, color: ZENITH.warning },
-  { name: 'Bookings', value: 18, color: ZENITH.primary },
-  { name: 'Invoices', value: 12, color: ZENITH.success },
+  { name: 'Leads', value: 0, color: ZENITH.info },
+  { name: 'Quotations', value: 0, color: ZENITH.warning },
+  { name: 'Bookings', value: 0, color: ZENITH.primary },
+  { name: 'Invoices', value: 0, color: ZENITH.success },
 ];
 
 const statusData = [
-  { name: 'Active', value: 35, color: ZENITH.success },
-  { name: 'Pending', value: 20, color: ZENITH.warning },
-  { name: 'Completed', value: 25, color: ZENITH.primary },
-  { name: 'Cancelled', value: 8, color: ZENITH.destructive },
+  { name: 'Active', value: 0, color: ZENITH.success },
+  { name: 'Pending', value: 0, color: ZENITH.warning },
+  { name: 'Completed', value: 0, color: ZENITH.primary },
+  { name: 'Cancelled', value: 0, color: ZENITH.destructive },
 ];
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
@@ -60,6 +60,7 @@ const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardOverview | null>(null);
+  const [perf, setPerf] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [noTenant, setNoTenant] = useState(false);
   const { activeTenant, activeBranch } = useAuthStore();
@@ -67,8 +68,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!activeTenant) { setNoTenant(true); setLoading(false); return; }
     setNoTenant(false); setLoading(true);
-    api.get<DashboardOverview>('/api/v1/tenant/dashboard/stats', { tenantId: activeTenant.id, branchId: activeBranch?.id })
-      .then(setStats).catch(console.error).finally(() => setLoading(false));
+    Promise.all([
+      api.get<DashboardOverview>('/api/v1/tenant/dashboard/stats', { tenantId: activeTenant.id, branchId: activeBranch?.id }),
+      api.get<any[]>('/api/v1/tenant/dashboard/performance', { tenantId: activeTenant.id }).catch(() => []),
+    ])
+      .then(([s, p]) => { setStats(s); setPerf(p); })
+      .catch(console.error).finally(() => setLoading(false));
   }, [activeTenant, activeBranch]);
 
   if (noTenant) return <EmptyState title="No company assigned" description="Select a company from the switcher, or contact your administrator." />;
@@ -85,7 +90,8 @@ export default function DashboardPage() {
 
   const cards: { label: string; value: number; hint?: string; icon: any; href: string; tone: any }[] = [
     { label: 'Leads', value: stats?.leads.total ?? 0, hint: stats?.leads.new ? `${stats.leads.new} new` : undefined, icon: Users, href: '/leads', tone: 'info' },
-    { label: 'Clients', value: stats?.clients.total ?? 0, hint: stats?.clients.active ? `${stats.clients.active} active` : undefined, icon: TrendingUp, href: '/clients', tone: 'success' },
+    { label: 'Lead Pipeline', value: stats?.leads.total ?? 0, hint: stats?.leads.won ? `${stats.leads.won} won` : undefined, icon: TrendingUp, href: '/leads', tone: 'default' },
+    { label: 'Clients', value: stats?.clients.total ?? 0, hint: stats?.clients.active ? `${stats.clients.active} active` : undefined, icon: UserCheck, href: '/clients', tone: 'success' },
     { label: 'Quotations', value: stats?.quotations?.total ?? 0, hint: stats?.quotations?.pending ? `${stats.quotations.pending} pending` : undefined, icon: FileText, href: '/quotations', tone: 'warning' },
     { label: 'Bookings', value: stats?.bookings.total ?? 0, hint: stats?.bookings.ticketed ? `${stats.bookings.ticketed} ticketed` : undefined, icon: Plane, href: '/bookings', tone: 'default' },
     { label: 'Tickets', value: stats?.tickets?.total ?? 0, hint: stats?.tickets?.pending ? `${stats.tickets.pending} pending` : undefined, icon: Ticket, href: '/tickets', tone: 'info' },
@@ -94,12 +100,27 @@ export default function DashboardPage() {
     { label: 'Employees', value: stats?.employees?.total ?? 0, hint: stats?.employees?.active ? `${stats.employees.active} active` : undefined, icon: UserCheck, href: '/employees', tone: 'success' },
   ];
 
-  const alerts: { label: string; value: number; tone: 'warning' | 'destructive'; href: string }[] = [];
-  if (stats?.bookings.held) alerts.push({ label: 'Bookings on hold', value: stats.bookings.held, tone: 'warning', href: '/bookings' });
-  if (stats?.invoices.overdue) alerts.push({ label: 'Overdue invoices', value: stats.invoices.overdue, tone: 'destructive', href: '/invoices' });
-  if (stats?.refunds?.pending) alerts.push({ label: 'Pending refunds', value: stats.refunds.pending, tone: 'warning', href: '/refunds' });
+  const isNewTenant = stats && stats.leads.total === 0 && stats.clients.total === 0 && stats.bookings.total === 0;
 
-  const totalRevenue = trendData.reduce((s, m) => s + m.revenue, 0);
+  const alerts: { label: string; value: number; tone: 'warning' | 'destructive'; href: string }[] = [];
+  if ((stats?.leads.slaBreached ?? 0) > 0) alerts.push({ label: 'SLA breached leads', value: stats!.leads.slaBreached, tone: 'destructive', href: '/leads' });
+  if ((stats?.bookings.held ?? 0) > 0) alerts.push({ label: 'Bookings on hold', value: stats!.bookings.held, tone: 'warning', href: '/bookings' });
+  if ((stats?.invoices.overdue ?? 0) > 0) alerts.push({ label: 'Overdue invoices', value: stats!.invoices.overdue, tone: 'destructive', href: '/invoices' });
+  if ((stats?.refunds?.pending ?? 0) > 0) alerts.push({ label: 'Pending refunds', value: stats!.refunds!.pending, tone: 'warning', href: '/refunds' });
+
+  const trendData = stats?.revenue?.monthly?.length ? stats.revenue.monthly : FALLBACK_TREND;
+  const totalRevenue = stats?.revenue?.totalRevenue ?? 0;
+  const pipeline = (stats?.leadPipeline || []).map((p) => ({
+    name: p.stage.replace(/_/g, ' '),
+    value: p.count,
+    color: p.stage === 'WON' ? ZENITH.success : p.stage === 'LOST' ? ZENITH.destructive : p.stage === 'NEW' ? ZENITH.info : p.stage === 'NEGOTIATION' ? ZENITH.warning : ZENITH.primary,
+  }));
+  const breakdown = [
+    { name: 'Active', value: (stats?.clients?.active ?? 0) + (stats?.employees?.active ?? 0), color: ZENITH.success },
+    { name: 'Pending', value: (stats?.quotations?.pending ?? 0) + (stats?.tickets?.pending ?? 0) + (stats?.refunds?.pending ?? 0), color: ZENITH.warning },
+    { name: 'Completed', value: (stats?.bookings?.ticketed ?? 0), color: ZENITH.primary },
+    { name: 'Overdue/Held', value: (stats?.invoices?.overdue ?? 0) + (stats?.bookings?.held ?? 0), color: ZENITH.destructive },
+  ];
 
   return (
     <motion.div className="space-y-6" variants={container} initial="hidden" animate="show">
@@ -107,6 +128,28 @@ export default function DashboardPage() {
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
         <p className="text-sm text-muted-foreground">{activeTenant?.name}{activeBranch ? ` · ${activeBranch.name}` : ''}</p>
       </motion.div>
+
+      {isNewTenant && (
+        <motion.div variants={item}>
+          <Card className="border-primary/20 bg-primary/5 rounded-xl">
+            <CardContent className="py-6">
+              <h3 className="text-base font-semibold mb-4">🚀 Getting Started</h3>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { step: '1', title: 'Add your first lead', desc: 'Capture a travel inquiry', href: '/leads/new', icon: Users },
+                  { step: '2', title: 'Create a quotation', desc: 'Build multi-option quotes', href: '/quotations/new', icon: FileText },
+                  { step: '3', title: 'Manage bookings', desc: 'Track PNRs and issue tickets', href: '/bookings', icon: Plane },
+                ].map((s) => (
+                  <Link key={s.step} href={s.href} className="flex items-start gap-3 rounded-lg border bg-card p-4 hover:shadow-sm transition-shadow">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">{s.step}</div>
+                    <div><p className="text-sm font-semibold">{s.title}</p><p className="text-xs text-muted-foreground">{s.desc}</p></div>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {alerts.length > 0 && (
         <motion.div variants={item} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -152,7 +195,6 @@ export default function DashboardPage() {
                 <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} formatter={(v: any) => formatMoney(Number(v), 'USD')} />
                 <Area type="monotone" dataKey="revenue" stroke={ZENITH.primary} strokeWidth={2.5} fill="url(#rev)" dot={false} activeDot={{ r: 5, fill: ZENITH.primary }} />
-                <Area type="monotone" dataKey="expenses" stroke={ZENITH.muted} strokeWidth={2} strokeDasharray="5 5" fill="none" dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
@@ -160,17 +202,17 @@ export default function DashboardPage() {
 
         <MotionCard className="rounded-xl">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold flex items-center gap-2"><Activity className="h-4 w-4 text-primary" />Sales Pipeline</CardTitle>
+            <CardTitle className="text-base font-semibold flex items-center gap-2"><Activity className="h-4 w-4 text-primary" />Lead Pipeline</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={pipelineData} barSize={48}>
+              <BarChart data={pipeline} barSize={48}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.5} vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} cursor={{ fill: '#f1f5f9' }} />
                 <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                  {pipelineData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  {pipeline.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -208,8 +250,8 @@ export default function DashboardPage() {
           <CardContent>
             <ResponsiveContainer width="100%" height={240}>
               <PieChart>
-                <Pie data={statusData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
-                  {statusData.map((entry, i) => <Cell key={i} fill={entry.color} stroke="none" />)}
+                <Pie data={breakdown} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
+                  {breakdown.map((entry, i) => <Cell key={i} fill={entry.color} stroke="none" />)}
                 </Pie>
                 <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
@@ -218,6 +260,45 @@ export default function DashboardPage() {
           </CardContent>
         </MotionCard>
       </motion.div>
+
+      {perf && perf.length > 0 && (
+        <motion.div variants={item}>
+          <MotionCard className="rounded-xl">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2"><Users className="h-4 w-4 text-primary" />Team Performance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-xs text-muted-foreground">
+                      <th className="pb-2 font-medium">Employee</th>
+                      <th className="pb-2 font-medium text-right">Bookings</th>
+                      <th className="pb-2 font-medium text-right">Leads Won</th>
+                      <th className="pb-2 font-medium text-right">Quotes</th>
+                      <th className="pb-2 font-medium text-right">Commission</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {perf.slice(0, 8).map((e: any) => (
+                      <tr key={e.id} className="border-b last:border-0">
+                        <td className="py-2">
+                          <p className="font-medium">{e.firstName} {e.lastName}</p>
+                          <p className="text-xs text-muted-foreground">{e.position || '—'}</p>
+                        </td>
+                        <td className="py-2 text-right">{e.bookings || 0}</td>
+                        <td className="py-2 text-right">{e.leadsWon || 0}</td>
+                        <td className="py-2 text-right">{e.quotesAccepted || 0}</td>
+                        <td className="py-2 text-right font-medium text-success">{formatMoney(e.commissionTotal || 0, 'USD')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </MotionCard>
+        </motion.div>
+      )}
     </motion.div>
   );
 }

@@ -1,71 +1,53 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
-import { Skeleton } from '@/components/ui/skeleton';
-import { FileText, PenTool } from 'lucide-react';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { TableToolbar } from '@/components/ui/table-toolbar';
+import { Pagination } from '@/components/ui/pagination';
+import { FileText } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate, formatMoney } from '@/lib/utils';
+import { toast } from 'sonner';
 
-const STATUS_COLORS: Record<string, any> = {
-  DRAFT: 'secondary', SENT: 'default', SIGNED: 'success', ACTIVE: 'success', EXPIRED: 'warning', TERMINATED: 'destructive',
-};
+const STATUS_V: Record<string, any> = { DRAFT: 'secondary', SENT: 'default', SIGNED: 'info', ACTIVE: 'success', EXPIRED: 'destructive' };
+const PAGE_SIZE = 25;
 
 export default function ContractsPage() {
   const { activeTenant } = useAuthStore();
-  const [contracts, setContracts] = useState<any[]>([]);
+  const [data, setData] = useState<any[]>([]);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    if (!activeTenant) return;
-    api.get('/api/v1/tenant/clients?limit=100', { tenantId: activeTenant.id }).then(async (res: any) => {
-      const all: any[] = [];
-      for (const client of res.data) {
-        try {
-          const c: any[] = await api.get(`/api/v1/tenant/clients/${client.id}/contracts`, { tenantId: activeTenant.id });
-          all.push(...c.map((contract: any) => ({ ...contract, client })));
-        } catch {}
-      }
-      setContracts(all.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      setLoading(false);
-    });
-  }, [activeTenant]);
+  const load = useCallback(() => {
+    if (!activeTenant) return; setLoading(true);
+    const p = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+    if (search) p.set('search', search);
+    api.get<any>(`/api/v1/tenant/contracts?${p.toString()}`, { tenantId: activeTenant.id })
+      .then(r => { setData(r.data || []); setMeta({ page: r.page || 1, totalPages: r.totalPages || 1, total: r.total || 0 }); })
+      .catch(() => toast.error('Failed')).finally(() => setLoading(false));
+  }, [activeTenant, search, page]);
 
-  if (loading) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-64" /></div>;
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setPage(1); }, [search]);
 
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Contracts" subtitle={`${contracts.length} contracts`} />
-      <div className="grid gap-2">
-        {contracts.map((c: any) => (
-          <Card key={c.id}>
-            <CardContent className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-4 min-w-0">
-                <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{c.subject}</p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {c.contractNumber} · {c.client?.displayName}
-                    {c.quotation && ` · ${c.quotation.quoteNumber}`}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <div className="text-right hidden sm:block">
-                  <p className="text-sm font-medium tabular-nums">{formatMoney(c.amount, c.currencyCode)}</p>
-                  <p className="text-xs text-muted-foreground">{c.contractType?.replace(/_/g, ' ')}</p>
-                </div>
-                {c.signedAt && <PenTool className="h-4 w-4 text-success" />}
-                {c.endDate && <span className="text-xs text-muted-foreground">{formatDate(c.endDate)}</span>}
-                <Badge variant={STATUS_COLORS[c.status] || 'secondary'} className="text-xs">{c.status}</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {contracts.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">No contracts yet.</p>}
-      </div>
-    </div>
-  );
+  const cols: DataTableColumn<any>[] = [
+    { key: 'contractNumber', header: 'Contract #', cell: (c) => <span className="font-mono text-xs font-medium">{c.contractNumber}</span> },
+    { key: 'subject', header: 'Subject', cell: (c) => <span className="font-medium text-sm">{c.subject || '—'}</span> },
+    { key: 'client', header: 'Client', hideOnMobile: true, cell: (c) => c.client ? <Link href={`/clients/${c.client.id}`} className="text-sm text-primary hover:underline">{c.client.displayName}</Link> : <span className="text-muted-foreground">—</span> },
+    { key: 'status', header: 'Status', cell: (c) => <Badge variant={STATUS_V[c.status] || 'secondary'} className="text-[10px]">{c.status}</Badge> },
+    { key: 'amount', header: 'Amount', align: 'right', hideOnMobile: true, cell: (c) => <span className="text-sm font-medium">{formatMoney(c.amount, c.currencyCode)}</span> },
+    { key: 'created', header: 'Created', hideOnMobile: true, cell: (c) => <span className="text-xs text-muted-foreground">{formatDate(c.createdAt)}</span> },
+  ];
+
+  return (<div className="space-y-5">
+    <PageHeader title="Contracts" subtitle={`${meta.total} contracts`} />
+    <TableToolbar search={search} onSearchChange={v => setSearch(v)} searchPlaceholder="Search..." hasActiveFilters={search !== ''} onReset={() => setSearch('')} />
+    <DataTable columns={cols} data={data} rowKey={c => c.id} loading={loading} emptyTitle="No contracts" emptyDescription={search ? 'Try adjusting.' : 'Contracts appear here.'} />
+    {!loading && data.length > 0 && <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total} limit={PAGE_SIZE} onPageChange={setPage} />}
+  </div>);
 }

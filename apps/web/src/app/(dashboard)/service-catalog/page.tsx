@@ -4,8 +4,16 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Pencil, Trash2, Package, Layers } from 'lucide-react';
@@ -67,12 +75,18 @@ export default function ServiceCatalogPage() {
       <PageHeader title="Service Catalog" subtitle="Manage your travel service offerings and pricing" />
 
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><Layers className="h-4 w-4" />Categories</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Layers className="h-4 w-4" />Categories</CardTitle></CardHeader>
         <CardContent>
-          <div className="flex gap-2 mb-4">
-            <Input placeholder="Name" value={newCat.name} onChange={e => setNewCat({ ...newCat, name: e.target.value })} className="w-40" />
-            <Input placeholder="Code" value={newCat.code} onChange={e => setNewCat({ ...newCat, code: e.target.value.toUpperCase() })} className="w-32" />
-            <Button size="sm" onClick={addCategory}><Plus className="h-4 w-4 mr-1" />Add</Button>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 items-end mb-4">
+            <div className="space-y-2">
+              <Label htmlFor="cat-name" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name <span className="text-destructive">*</span></Label>
+              <Input id="cat-name" placeholder="Air Tickets" value={newCat.name} onChange={e => setNewCat({ ...newCat, name: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cat-code" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Code <span className="text-destructive">*</span></Label>
+              <Input id="cat-code" placeholder="AIR" value={newCat.code} onChange={e => setNewCat({ ...newCat, code: e.target.value.toUpperCase() })} />
+            </div>
+            <Button size="sm" onClick={addCategory} className="w-fit"><Plus className="h-4 w-4 mr-1" />Add Category</Button>
           </div>
           <div className="flex flex-wrap gap-2">
             {categories.map((c: any) => (
@@ -83,17 +97,34 @@ export default function ServiceCatalogPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><Package className="h-4 w-4" />Service Items</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Package className="h-4 w-4" />Service Items</CardTitle></CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <Input placeholder="Name" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} className="w-48" />
-            <Input placeholder="Code" value={newItem.code} onChange={e => setNewItem({ ...newItem, code: e.target.value.toUpperCase() })} className="w-24" />
-            <Input placeholder="Price" type="number" value={newItem.basePrice || ''} onChange={e => setNewItem({ ...newItem, basePrice: Number(e.target.value) })} className="w-24" />
-            <select className="border rounded-md px-2 text-sm bg-background" value={newItem.categoryId} onChange={e => setNewItem({ ...newItem, categoryId: e.target.value })}>
-              <option value="">No category</option>
-              {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <Button size="sm" onClick={addItem}><Plus className="h-4 w-4 mr-1" />Add</Button>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 items-end mb-4">
+            <div className="space-y-2">
+              <Label htmlFor="item-name" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name <span className="text-destructive">*</span></Label>
+              <Input id="item-name" placeholder="Economy Ticket" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="item-code" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Code</Label>
+              <Input id="item-code" placeholder="ECO" value={newItem.code} onChange={e => setNewItem({ ...newItem, code: e.target.value.toUpperCase() })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="item-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Base Price</Label>
+              <Input id="item-price" placeholder="0.00" type="number" min={0} value={newItem.basePrice || ''} onChange={e => setNewItem({ ...newItem, basePrice: Number(e.target.value) })} />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Category</Label>
+              <Select value={newItem.categoryId || '__none__'} onValueChange={v => setNewItem({ ...newItem, categoryId: v === '__none__' ? '' : v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="No category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No category</SelectItem>
+                  {categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button size="sm" onClick={addItem} className="w-fit"><Plus className="h-4 w-4 mr-1" />Add Item</Button>
           </div>
 
           {categories.map((cat: any) => (

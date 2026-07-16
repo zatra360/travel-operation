@@ -72,9 +72,11 @@ export default function RefundsPage() {
   }, [search, status]);
 
   const columns: DataTableColumn<RefundRow>[] = [
-    { key: 'number', header: 'Refund #', cell: (r) => <span className="font-medium">{r.refundNumber || r.id}</span> },
+    { key: 'number', header: 'Refund #', cell: (r: any) => <span className="font-medium">{r.refundNumber || r.id}</span> },
+    { key: 'ticket', header: 'Ticket', cell: (r: any) => <span className="text-muted-foreground">{r.ticket?.ticketNumber || '—'}</span> },
+    { key: 'booking', header: 'Booking', hideOnMobile: true, cell: (r: any) => <span className="text-muted-foreground">{r.booking?.bookingRef || '—'}</span> },
+    { key: 'client', header: 'Client', hideOnMobile: true, cell: (r: any) => <span className="text-muted-foreground">{r.client?.displayName || '—'}</span> },
     { key: 'amount', header: 'Amount', align: 'right', cell: (r) => <Money amount={r.requestedAmount} currency={r.currencyCode || 'USD'} className="font-medium" /> },
-    { key: 'reason', header: 'Reason', hideOnMobile: true, cell: (r) => <span className="text-muted-foreground">{r.reason || '—'}</span> },
     { key: 'status', header: 'Status', cell: (r) => <StatusBadge status={r.status} /> },
     { key: 'created', header: 'Created', hideOnMobile: true, cell: (r) => <span className="text-muted-foreground">{formatDate(r.createdAt)}</span> },
   ];

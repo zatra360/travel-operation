@@ -164,7 +164,7 @@ export function TicketFormDialog({ open, onOpenChange, ticket, onSaved }: Props)
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</Label>
               <Select value={form.status} onValueChange={(v) => set('status', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>

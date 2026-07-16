@@ -73,9 +73,10 @@ export default function ReissuesPage() {
   }, [search, status]);
 
   const columns: DataTableColumn<ReissueRow>[] = [
-    { key: 'number', header: 'Reissue #', cell: (r) => <span className="font-medium">{r.reissueNumber || r.id}</span> },
-    { key: 'fareDiff', header: 'Fare Diff', align: 'right', cell: (r) => <Money amount={r.fareDifference} currency={r.currencyCode || 'USD'} /> },
-    { key: 'serviceCharge', header: 'Service', align: 'right', hideOnMobile: true, cell: (r) => <Money amount={r.serviceCharge} currency={r.currencyCode || 'USD'} /> },
+    { key: 'number', header: 'Reissue #', cell: (r: any) => <span className="font-medium">{r.reissueNumber || r.id}</span> },
+    { key: 'oldTicket', header: 'Old Ticket', cell: (r: any) => <span className="text-muted-foreground">{r.oldTicket?.ticketNumber || '—'}</span> },
+    { key: 'newTicket', header: 'New Ticket', cell: (r: any) => <span className="text-muted-foreground">{r.newTicket?.ticketNumber || '—'}</span> },
+    { key: 'booking', header: 'Booking', hideOnMobile: true, cell: (r: any) => <span className="text-muted-foreground">{r.booking?.bookingRef || '—'}</span> },
     { key: 'total', header: 'Total', align: 'right', cell: (r) => <Money amount={r.totalCharge} currency={r.currencyCode || 'USD'} className="font-medium" /> },
     { key: 'status', header: 'Status', cell: (r) => <StatusBadge status={r.status} /> },
     { key: 'created', header: 'Created', hideOnMobile: true, cell: (r) => <span className="text-muted-foreground">{formatDate(r.createdAt)}</span> },

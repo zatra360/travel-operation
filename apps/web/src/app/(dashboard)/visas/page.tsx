@@ -1,76 +1,53 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
-import { Skeleton } from '@/components/ui/skeleton';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { TableToolbar } from '@/components/ui/table-toolbar';
+import { Pagination } from '@/components/ui/pagination';
 import { Globe, AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
-const VISA_STATUS_COLORS: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
-  PENDING: 'warning', APPLIED: 'default', UNDER_REVIEW: 'default', APPROVED: 'success', REJECTED: 'destructive', EXPIRED: 'destructive',
-} as any;
+const VISA_BADGE: Record<string, any> = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'destructive', EXPIRED: 'destructive' };
+const PAGE_SIZE = 25;
 
 export default function VisasPage() {
   const { activeTenant } = useAuthStore();
-  const [visas, setVisas] = useState<any[]>([]);
+  const [data, setData] = useState<any[]>([]);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    if (!activeTenant) return;
-    api.get('/api/v1/tenant/clients?limit=100', { tenantId: activeTenant.id }).then(async (res: any) => {
-      const all: any[] = [];
-      for (const client of res.data) {
-        try {
-          const v: any[] = await api.get(`/api/v1/tenant/clients/${client.id}/visas`, { tenantId: activeTenant.id });
-          all.push(...v.map((visa: any) => ({ ...visa, client })));
-        } catch {}
-      }
-      setVisas(all);
-      setLoading(false);
-    });
-  }, [activeTenant]);
+  const load = useCallback(() => {
+    if (!activeTenant) return; setLoading(true);
+    const p = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+    if (search) p.set('search', search);
+    api.get<any>(`/api/v1/tenant/visas?${p.toString()}`, { tenantId: activeTenant.id })
+      .then(r => { setData(r.data); setMeta({ page: r.page, totalPages: r.totalPages, total: r.total }); })
+      .catch(() => toast.error('Failed'))
+      .finally(() => setLoading(false));
+  }, [activeTenant, search, page]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setPage(1); }, [search]);
 
-  const isExpiringSoon = (date?: string) => {
-    if (!date) return false;
-    const months = (new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30);
-    return months < 3;
-  };
+  const cols: DataTableColumn<any>[] = [
+    { key: 'visaType', header: 'Type', cell: (v) => <span className="font-medium">{v.visaType}</span> },
+    { key: 'country', header: 'Country', cell: (v) => <span className="text-muted-foreground text-sm">{v.country?.name || '—'}</span> },
+    { key: 'client', header: 'Client', hideOnMobile: true, cell: (v) => v.client ? <Link href={`/clients/${v.client.id}`} className="text-sm text-primary hover:underline">{v.client.displayName}</Link> : <span className="text-muted-foreground">—</span> },
+    { key: 'status', header: 'Status', cell: (v) => <Badge variant={VISA_BADGE[v.status] || 'secondary'} className="text-[10px]">{v.status}</Badge> },
+    { key: 'expiry', header: 'Expiry', cell: (v) => <span className={cn('text-sm', new Date(v.expiryDate).getTime() < Date.now() ? 'text-destructive font-semibold' : 'text-muted-foreground')}>{v.expiryDate ? formatDate(v.expiryDate) : '—'}</span> },
+  ];
 
-  if (loading) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-64" /></div>;
-
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Visas" subtitle={`${visas.length} visa records`} />
-      <div className="grid gap-2">
-        {visas.map((v: any) => (
-          <Card key={v.id}>
-            <CardContent className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-4">
-                <Globe className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">{v.visaType || 'Visa'} {v.country ? `- ${v.country.name}` : ''}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {v.visaNumber ? `#${v.visaNumber} · ` : ''}{v.client?.displayName}
-                    {v.passport && ` · Passport: ${v.passport.passportNumber}`}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {isExpiringSoon(v.expiryDate) && <AlertTriangle className="h-4 w-4 text-warning" />}
-                {v.expiryDate && <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Expires</p>
-                  <p className="text-sm font-medium">{formatDate(v.expiryDate)}</p>
-                </div>}
-                <Badge variant={VISA_STATUS_COLORS[v.status] || 'secondary'} className="text-xs">{v.status}</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {visas.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">No visas on file.</p>}
-      </div>
-    </div>
-  );
+  return (<div className="space-y-5">
+    <PageHeader title="Visas" subtitle={`${meta.total} visas · Track status and expiry`} />
+    <TableToolbar search={search} onSearchChange={v => setSearch(v)} searchPlaceholder="Search..." hasActiveFilters={search !== ''} onReset={() => setSearch('')} />
+    <DataTable columns={cols} data={data} rowKey={v => v.id} loading={loading} emptyTitle="No visas" emptyDescription={search ? 'Try adjusting.' : 'Visas from client profiles appear here.'} />
+    {!loading && data.length > 0 && <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total} limit={PAGE_SIZE} onPageChange={setPage} />}
+  </div>);
 }

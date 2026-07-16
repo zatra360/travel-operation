@@ -23,7 +23,6 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
 import { Quotation, Paginated, QUOTATION_STATUSES } from '@/lib/crm';
-import { QuotationFormDialog } from './quotation-form-dialog';
 
 const ALL = '__all__';
 const PAGE_SIZE = 25;
@@ -36,8 +35,6 @@ export default function QuotationsPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Quotation | null>(null);
   const [deleting, setDeleting] = useState<Quotation | null>(null);
   const { activeTenant, activeBranch } = useAuthStore();
 
@@ -70,14 +67,6 @@ export default function QuotationsPage() {
     setPage(1);
   }, [search, status]);
 
-  const openCreate = () => {
-    setEditing(null);
-    setFormOpen(true);
-  };
-  const openEdit = (q: Quotation) => {
-    setEditing(q);
-    setFormOpen(true);
-  };
   const handleDelete = async () => {
     if (!activeTenant || !deleting) return;
     try {
@@ -101,7 +90,13 @@ export default function QuotationsPage() {
         </Link>
       ),
     },
-    { key: 'title', header: 'Title', hideOnMobile: true, cell: (q) => <span className="text-muted-foreground">{q.title || '—'}</span> },
+    { key: 'title', header: 'Title', hideOnMobile: true, cell: (q) => <span className="text-muted-foreground text-sm">{q.title || '—'}</span> },
+    {
+      key: 'contact', header: 'Lead / Client', hideOnMobile: true,
+      cell: (q) => q.lead ? <Link href={`/leads/${q.leadId}`} className="text-sm text-primary hover:underline">{q.lead.fullName}</Link>
+        : q.client ? <Link href={`/clients/${q.clientId}`} className="text-sm text-primary hover:underline">{q.client.displayName}</Link>
+        : <span className="text-muted-foreground text-sm">—</span>,
+    },
     { key: 'status', header: 'Status', cell: (q) => <StatusBadge status={q.status} /> },
     { key: 'total', header: 'Total', align: 'right', cell: (q) => <Money amount={q.grandTotal} currency={q.currencyCode} className="font-medium" /> },
     { key: 'validUntil', header: 'Valid until', hideOnMobile: true, cell: (q) => <span className="text-muted-foreground">{q.validUntil ? formatDate(q.validUntil) : '—'}</span> },
@@ -112,8 +107,8 @@ export default function QuotationsPage() {
       align: 'right',
       cell: (q) => (
         <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(q)}>
-            <Pencil className="h-4 w-4" />
+          <Button asChild variant="ghost" size="icon" title="Edit">
+            <Link href={`/quotations/${q.id}/edit`}><Pencil className="h-3 w-3" /></Link>
           </Button>
           <Button variant="ghost" size="icon" title="Delete" onClick={() => setDeleting(q)}>
             <Trash2 className="h-4 w-4 text-destructive" />
@@ -129,9 +124,11 @@ export default function QuotationsPage() {
         title="Quotations"
         subtitle="Prepare, send and track customer quotations"
         actions={
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Quotation
+          <Button size="sm" asChild>
+            <Link href="/quotations/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Quotation
+            </Link>
           </Button>
         }
       />
@@ -175,9 +172,11 @@ export default function QuotationsPage() {
             emptyDescription={hasFilters ? 'Try adjusting your filters.' : 'Create your first quotation to get started.'}
             emptyAction={
               !hasFilters ? (
-                <Button size="sm" variant="outline" onClick={openCreate}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create your first quotation
+                <Button size="sm" variant="outline" asChild>
+                  <Link href="/quotations/new">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create your first quotation
+                  </Link>
                 </Button>
               ) : undefined
             }
@@ -202,7 +201,6 @@ export default function QuotationsPage() {
         </>
       )}
 
-      <QuotationFormDialog open={formOpen} onOpenChange={setFormOpen} quotation={editing} onSaved={load} />
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}

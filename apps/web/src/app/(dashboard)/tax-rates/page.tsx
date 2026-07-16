@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -44,14 +45,26 @@ export default function TaxRatesPage() {
     <div className="space-y-6">
       <PageHeader title="Tax Rates" subtitle="Configure tax rates for your operations" />
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><Percent className="h-4 w-4" />Add Rate</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Percent className="h-4 w-4" />Add Rate</CardTitle></CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
-            <Input placeholder="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-36" />
-            <Input placeholder="Code" value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} className="w-28" />
-            <Input placeholder="Rate %" type="number" step="0.01" value={form.rate || ''} onChange={e => setForm({ ...form, rate: Number(e.target.value) })} className="w-20" />
-            <Input placeholder="Country" value={form.countryCode} onChange={e => setForm({ ...form, countryCode: e.target.value.toUpperCase() })} className="w-20" />
-            <Button size="sm" onClick={add}><Plus className="h-4 w-4 mr-1" />Add</Button>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5 items-end">
+            <div className="space-y-2">
+              <Label htmlFor="tax-name" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name <span className="text-destructive">*</span></Label>
+              <Input id="tax-name" placeholder="VAT" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tax-code" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Code <span className="text-destructive">*</span></Label>
+              <Input id="tax-code" placeholder="VAT15" value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tax-rate" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rate % <span className="text-destructive">*</span></Label>
+              <Input id="tax-rate" placeholder="15" type="number" step="0.01" min={0} value={form.rate || ''} onChange={e => setForm({ ...form, rate: Number(e.target.value) })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tax-country" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Country</Label>
+              <Input id="tax-country" placeholder="BD" maxLength={3} value={form.countryCode} onChange={e => setForm({ ...form, countryCode: e.target.value.toUpperCase() })} />
+            </div>
+            <Button size="sm" onClick={add} className="w-fit"><Plus className="h-4 w-4 mr-1" />Add Rate</Button>
           </div>
         </CardContent>
       </Card>

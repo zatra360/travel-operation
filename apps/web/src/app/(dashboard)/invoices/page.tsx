@@ -101,6 +101,11 @@ export default function InvoicesPage() {
         </Link>
       ),
     },
+    {
+      key: 'client', header: 'Client', hideOnMobile: true,
+      cell: (i) => i.client ? <Link href={`/clients/${i.clientId}`} className="text-sm text-primary hover:underline">{i.client.displayName}</Link>
+        : <span className="text-muted-foreground text-sm">—</span>,
+    },
     { key: 'status', header: 'Status', cell: (i) => <StatusBadge status={i.status} /> },
     { key: 'total', header: 'Total', align: 'right', cell: (i) => <Money amount={i.totalAmount} currency={i.currencyCode} className="font-medium" /> },
     { key: 'paid', header: 'Paid', align: 'right', hideOnMobile: true, cell: (i) => <Money amount={i.paidAmount} currency={i.currencyCode} /> },

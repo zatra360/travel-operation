@@ -137,7 +137,7 @@ export function DocumentUploadDialog({ open, onOpenChange, onUploaded, entity, e
           )}
 
           <div className="space-y-2">
-            <Label>Category</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Category</Label>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger>
                 <SelectValue />

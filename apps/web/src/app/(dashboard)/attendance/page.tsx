@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { toast } from 'sonner';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -72,12 +74,19 @@ export default function AttendancePage() {
     setEditing(null);
     setFormOpen(true);
   };
+  const openEdit = (a: Attendance) => { setEditing(a); setFormOpen(true); };
+  const [deleting, setDeleting] = useState<Attendance | null>(null);
+  const handleDelete = async () => {
+    if (!activeTenant || !deleting) return;
+    try { await api.delete(`/api/v1/tenant/attendance/${deleting.id}`, { tenantId: activeTenant.id }); toast.success('Deleted'); setDeleting(null); load(); } catch (err: any) { toast.error(err.message); }
+  };
 
   const columns: DataTableColumn<Attendance>[] = [
     { key: 'employee', header: 'Employee', cell: (a) => <span className="font-medium">{a.employee?.firstName} {a.employee?.lastName}</span> },
     { key: 'date', header: 'Date', cell: (a) => <span className="text-muted-foreground">{formatDate(a.date)}</span> },
     { key: 'status', header: 'Status', cell: (a) => <StatusBadge status={a.status} /> },
     { key: 'clock', header: 'Clock in/out', hideOnMobile: true, cell: (a) => <span className="text-muted-foreground">{clockRange(a)}</span> },
+    { key: 'actions', header: '', align: 'right', cell: (a) => (<div className="flex items-center justify-end gap-1"><Button variant="ghost" size="icon" onClick={() => openEdit(a)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => setDeleting(a)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>) },
   ];
 
   return (
@@ -153,6 +162,7 @@ export default function AttendancePage() {
       )}
 
       <AttendanceFormDialog open={formOpen} onOpenChange={setFormOpen} attendance={editing} onSaved={load} />
+      <ConfirmDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} title="Delete record?" description="Remove this attendance record? This cannot be undone." confirmLabel="Delete" onConfirm={handleDelete} />
     </div>
   );
 }

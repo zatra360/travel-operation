@@ -32,7 +32,7 @@ export default function CasesPage() {
   const load = () => {
     if (!activeTenant) return;
     setLoading(true);
-    api.get('/api/v1/tenant/cases', { tenantId: activeTenant.id }).then(setCases).finally(() => setLoading(false));
+    api.get<any[]>('/api/v1/tenant/cases', { tenantId: activeTenant.id }).then(setCases).finally(() => setLoading(false));
   };
   const loadRefs = () => {
     if (!activeTenant) return;

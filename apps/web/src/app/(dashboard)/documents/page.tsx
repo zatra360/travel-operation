@@ -121,6 +121,12 @@ export default function DocumentsPage() {
     },
     { key: 'size', header: 'Size', hideOnMobile: true, cell: (doc) => <span className="text-muted-foreground">{formatFileSize(doc.sizeBytes)}</span> },
     {
+      key: 'entity',
+      header: 'Linked to',
+      hideOnMobile: true,
+      cell: (doc: any) => <span className="text-muted-foreground text-xs">{doc.entity ? `${doc.entity} #${doc.entityId?.slice(0, 8)}` : '—'}</span>,
+    },
+    {
       key: 'uploadedBy',
       header: 'Uploaded by',
       hideOnMobile: true,

@@ -27,8 +27,8 @@ export default function LoginPage() {
 
     try {
       const response = await api.post<any>('/api/v1/auth/login', { email, password });
-      const { accessToken, user, tenants } = response;
-      setAuth(user, accessToken, tenants);
+      const { accessToken, refreshToken, user, tenants } = response;
+      setAuth(user, accessToken, refreshToken, tenants);
 
       if (user.isPlatformSuperAdmin) {
         router.push('/platform');

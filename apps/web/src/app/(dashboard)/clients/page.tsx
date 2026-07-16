@@ -19,11 +19,11 @@ import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { TableToolbar } from '@/components/ui/table-toolbar';
 import { Pagination } from '@/components/ui/pagination';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { Badge } from '@/components/ui/badge';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
 import { Client, Paginated } from '@/lib/crm';
-import { ClientFormDialog } from './client-form-dialog';
 
 const ALL = '__all__';
 const PAGE_SIZE = 25;
@@ -35,9 +35,8 @@ export default function ClientsPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');
+  const [sortBy, setSortBy] = useState('');
   const [page, setPage] = useState(1);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Client | null>(null);
   const [deleting, setDeleting] = useState<Client | null>(null);
   const { activeTenant, activeBranch } = useAuthStore();
 
@@ -48,6 +47,7 @@ export default function ClientsPage() {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (type) params.set('type', type);
+    if (sortBy) params.set('sortBy', sortBy);
     params.set('page', String(page));
     params.set('limit', String(PAGE_SIZE));
     api
@@ -61,23 +61,15 @@ export default function ClientsPage() {
       })
       .catch((err) => setError(err.message || 'Failed to load clients'))
       .finally(() => setLoading(false));
-  }, [activeTenant, activeBranch, search, type, page]);
+  }, [activeTenant, activeBranch, search, type, sortBy, page]);
 
   useEffect(() => {
     load();
   }, [load]);
   useEffect(() => {
     setPage(1);
-  }, [search, type]);
+  }, [search, type, sortBy]);
 
-  const openCreate = () => {
-    setEditing(null);
-    setFormOpen(true);
-  };
-  const openEdit = (client: Client) => {
-    setEditing(client);
-    setFormOpen(true);
-  };
   const handleDelete = async () => {
     if (!activeTenant || !deleting) return;
     try {
@@ -89,7 +81,7 @@ export default function ClientsPage() {
     }
   };
 
-  const hasFilters = search !== '' || type !== '';
+  const hasFilters = search !== '' || type !== '' || sortBy !== '';
 
   const columns: DataTableColumn<Client>[] = [
     {
@@ -105,6 +97,11 @@ export default function ClientsPage() {
     { key: 'contact', header: 'Contact', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{c.email || c.phone || '—'}</span> },
     { key: 'company', header: 'Company', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{c.companyName || '—'}</span> },
     { key: 'status', header: 'Status', cell: (c) => <StatusBadge status={c.status} /> },
+    { key: 'score', header: 'Activity', cell: (c) => {
+      const s = c.activityScore;
+      if (s == null) return <span className="text-muted-foreground text-xs">—</span>;
+      return <Badge variant={s >= 60 ? 'success' : s >= 30 ? 'warning' : 'destructive'} className="text-[11px]">{s}</Badge>;
+    } },
     { key: 'created', header: 'Created', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{formatDate(c.createdAt)}</span> },
     {
       key: 'actions',
@@ -117,8 +114,10 @@ export default function ClientsPage() {
               <Eye className="h-4 w-4" />
             </Link>
           </Button>
-          <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(c)}>
-            <Pencil className="h-4 w-4" />
+          <Button asChild variant="ghost" size="icon" title="Edit">
+            <Link href={`/clients/${c.id}/edit`}>
+              <Pencil className="h-4 w-4" />
+            </Link>
           </Button>
           <Button variant="ghost" size="icon" title="Delete" onClick={() => setDeleting(c)}>
             <Trash2 className="h-4 w-4 text-destructive" />
@@ -136,7 +135,7 @@ export default function ClientsPage() {
         actions={
           <div className="flex items-center gap-2">
             <ImportExportButtons type="clients" onImported={load} />
-            <Button size="sm" onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Add Client</Button>
+            <Button size="sm" asChild><Link href="/clients/new"><Plus className="mr-2 h-4 w-4" />New Client</Link></Button>
           </div>
         }
       />
@@ -149,18 +148,30 @@ export default function ClientsPage() {
         onReset={() => {
           setSearch('');
           setType('');
+          setSortBy('');
         }}
         filters={
-          <Select value={type || ALL} onValueChange={(v) => setType(v === ALL ? '' : v)}>
-            <SelectTrigger className="h-9 w-36" aria-label="Filter by type">
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All types</SelectItem>
-              <SelectItem value="PERSON">Person</SelectItem>
-              <SelectItem value="COMPANY">Company</SelectItem>
-            </SelectContent>
-          </Select>
+          <>
+            <Select value={type || ALL} onValueChange={(v) => setType(v === ALL ? '' : v)}>
+              <SelectTrigger className="h-9 w-36" aria-label="Filter by type">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All types</SelectItem>
+                <SelectItem value="PERSON">Person</SelectItem>
+                <SelectItem value="COMPANY">Company</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy || 'createdAt'} onValueChange={(v) => setSortBy(v === 'createdAt' ? '' : v)}>
+              <SelectTrigger className="h-9 w-40" aria-label="Sort clients">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="createdAt">Newest first</SelectItem>
+                <SelectItem value="activityScore">Sort by Activity</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
         }
       />
 
@@ -177,9 +188,8 @@ export default function ClientsPage() {
             emptyDescription={hasFilters ? 'Try adjusting your filters.' : 'Create your first client to get started.'}
             emptyAction={
               !hasFilters ? (
-                <Button size="sm" variant="outline" onClick={openCreate}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create your first client
+                <Button size="sm" variant="outline" asChild>
+                  <Link href="/clients/new"><Plus className="mr-2 h-4 w-4" />Create your first client</Link>
                 </Button>
               ) : undefined
             }
@@ -189,7 +199,10 @@ export default function ClientsPage() {
                   <Link href={`/clients/${c.id}`} className="font-medium hover:underline">
                     {c.displayName}
                   </Link>
-                  <StatusBadge status={c.status} />
+                  <div className="flex items-center gap-2">
+                    {c.activityScore != null && <Badge variant={c.activityScore >= 60 ? 'success' : c.activityScore >= 30 ? 'warning' : 'destructive'} className="text-[10px]">{c.activityScore}</Badge>}
+                    <StatusBadge status={c.status} />
+                  </div>
                 </div>
                 <p className="text-sm text-muted-foreground">{c.email || c.phone || c.companyName || '—'}</p>
               </div>
@@ -201,7 +214,6 @@ export default function ClientsPage() {
         </>
       )}
 
-      <ClientFormDialog open={formOpen} onOpenChange={setFormOpen} client={editing} onSaved={load} />
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}

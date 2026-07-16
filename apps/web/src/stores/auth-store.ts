@@ -15,6 +15,7 @@ interface TenantInfo {
   slug: string;
   logo?: string;
   role: string;
+  settings?: { defaultCurrency?: string; dateFormat?: string; timezone?: string };
 }
 
 interface BranchInfo {
@@ -30,15 +31,32 @@ interface AuthState {
   activeTenant: TenantInfo | null;
   activeBranch: BranchInfo | null;
   isAuthenticated: boolean;
-  /** Effective permissions for the active tenant (only set after login or explicit fetch). */
   permissions: string[];
   isPlatformSuperAdmin: boolean;
 
-  setAuth: (user: User, token: string, tenants: TenantInfo[]) => void;
+  setAuth: (user: User, accessToken: string, refreshToken: string, tenants: TenantInfo[]) => void;
+  setAccessToken: (token: string) => void;
   setActiveTenant: (tenant: TenantInfo) => void;
   setActiveBranch: (branch: BranchInfo | null) => void;
   setPermissions: (permissions: string[], isPlatformSuperAdmin: boolean) => void;
   logout: () => void;
+}
+
+let _refreshToken: string | null = null;
+
+export function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return _refreshToken || localStorage.getItem('refreshToken');
+}
+
+function setRefreshToken(token: string) {
+  _refreshToken = token;
+  localStorage.setItem('refreshToken', token);
+}
+
+function clearRefreshToken() {
+  _refreshToken = null;
+  localStorage.removeItem('refreshToken');
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -53,8 +71,9 @@ export const useAuthStore = create<AuthState>()(
       permissions: [],
       isPlatformSuperAdmin: false,
 
-      setAuth: (user, accessToken, tenants) => {
+      setAuth: (user, accessToken, refreshToken, tenants) => {
         localStorage.setItem('accessToken', accessToken);
+        setRefreshToken(refreshToken);
         set({
           user,
           accessToken,
@@ -63,6 +82,11 @@ export const useAuthStore = create<AuthState>()(
           activeTenant: tenants.length > 0 ? tenants[0] : null,
           isPlatformSuperAdmin: user.isPlatformSuperAdmin,
         });
+      },
+
+      setAccessToken: (accessToken) => {
+        localStorage.setItem('accessToken', accessToken);
+        set({ accessToken });
       },
 
       setActiveTenant: (tenant) => set({ activeTenant: tenant, activeBranch: null, permissions: [] }),
@@ -74,6 +98,7 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('travelo-auth');
+        clearRefreshToken();
         set({
           user: null,
           accessToken: null,
@@ -111,4 +136,9 @@ export function hasPermission(permission: string): boolean {
   const { permissions, isPlatformSuperAdmin } = useAuthStore.getState();
   if (isPlatformSuperAdmin || permissions.includes('*')) return true;
   return permissions.includes(permission);
+}
+
+export function getDefaultCurrency(): string {
+  const { activeTenant } = useAuthStore.getState();
+  return (activeTenant?.settings?.defaultCurrency) || 'USD';
 }

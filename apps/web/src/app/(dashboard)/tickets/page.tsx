@@ -100,7 +100,15 @@ export default function TicketsPage() {
         </Link>
       ),
     },
-    { key: 'passenger', header: 'Passenger', cell: (t) => <span className="text-muted-foreground">{t.passengerName || '—'}</span> },
+    { key: 'passenger', header: 'Passenger', cell: (t: any) => <span className="text-muted-foreground">{t.passengerName || '—'}</span> },
+    { key: 'booking', header: 'Booking', hideOnMobile: true, cell: (t: any) => <span className="text-muted-foreground text-sm">{t.booking?.bookingRef || '—'}</span> },
+    {
+      key: 'contact', header: 'Client', hideOnMobile: true,
+      cell: (t: any) => t.booking?.client?.displayName ? <Link href={`/clients/${t.booking.clientId || ''}`} className="text-sm text-primary hover:underline">{t.booking.client.displayName}</Link>
+        : t.booking?.lead?.fullName ? <span className="text-sm text-muted-foreground">Lead: {t.booking.lead.fullName}</span>
+        : <span className="text-muted-foreground text-sm">—</span>,
+    },
+    { key: 'airline', header: 'Airline', hideOnMobile: true, cell: (t: any) => <span className="text-muted-foreground text-sm">{t.airline?.iataCode || t.airline?.name || '—'}</span> },
     { key: 'status', header: 'Status', cell: (t) => <StatusBadge status={t.status} /> },
     { key: 'issued', header: 'Issued', hideOnMobile: true, cell: (t) => <span className="text-muted-foreground">{t.issuedAt ? formatDate(t.issuedAt) : '—'}</span> },
     { key: 'created', header: 'Created', hideOnMobile: true, cell: (t) => <span className="text-muted-foreground">{formatDate(t.createdAt)}</span> },

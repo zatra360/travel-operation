@@ -157,3 +157,9 @@ tr:last-child td { border-bottom: none; }
     scroll-behavior: auto !important;
   }
 }
+
+@media print {
+  .print\:hidden { display: none !important; }
+  body { background: white !important; color: black !important; }
+  .bg-muted\/30 { background: white !important; }
+}

@@ -6,6 +6,8 @@ import { Topbar } from './topbar';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
+import { useCommandPalette, CommandPalette } from '@/components/command-palette';
+import { WorldClock } from '@/components/world-clock';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -13,10 +15,12 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { activeTenant, activeBranch, setPermissions, isAuthenticated } = useAuthStore();
+  const { activeTenant, activeBranch, setPermissions, isAuthenticated, permissions } = useAuthStore();
+  const { open, setOpen, commands } = useCommandPalette();
 
   useEffect(() => {
     if (!isAuthenticated || !activeTenant) return;
+    if (permissions.length > 0) return;
     let cancelled = false;
     api
       .get<{ permissions: string[]; isPlatformSuperAdmin: boolean }>('/api/v1/auth/permissions', {
@@ -32,7 +36,7 @@ export function AppShell({ children }: AppShellProps) {
     return () => {
       cancelled = true;
     };
-  }, [activeTenant?.id, activeBranch?.id, isAuthenticated, setPermissions]);
+  }, [activeTenant?.id, activeBranch?.id, isAuthenticated, permissions.length]);
 
   return (
     <div className="min-h-screen">
@@ -54,10 +58,13 @@ export function AppShell({ children }: AppShellProps) {
         <Sidebar />
       </div>
 
-      <div className="lg:pl-64">
+      <div className="lg:pl-64 overflow-visible">
         <Topbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+        <WorldClock />
         <main className="h-[calc(100vh-3.5rem)] overflow-y-auto p-4 lg:p-6">{children}</main>
       </div>
+
+      <CommandPalette open={open} onOpenChange={setOpen} commands={commands} />
     </div>
   );
 }

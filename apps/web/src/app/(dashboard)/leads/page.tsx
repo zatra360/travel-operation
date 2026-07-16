@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { Plus, Pencil, Trash2, UserCheck, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, UserCheck, Eye, FileText } from 'lucide-react';
 import { ImportExportButtons } from '@/components/import-export-buttons';
 import { PageHeader } from '@/components/ui/page-header';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
@@ -23,6 +23,8 @@ import {
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
+import { humanizeStatus } from '@/lib/status';
+import { Badge } from '@/components/ui/badge';
 import { Lead, Paginated, LEAD_STATUSES } from '@/lib/crm';
 import { LeadFormDialog } from './lead-form-dialog';
 
@@ -114,6 +116,25 @@ export default function LeadsPage() {
     }
   };
 
+  const getSlaVariant = (lead: Lead): 'destructive' | 'warning' | 'default' => {
+    if (!lead.slaDueAt) return 'default';
+    const due = new Date(lead.slaDueAt).getTime();
+    if (Date.now() > due) return 'destructive';
+    if ((due - Date.now()) < 7200000) return 'warning';
+    return 'default';
+  };
+
+  const getSlaLabel = (lead: Lead): string => {
+    if (!lead.slaDueAt) return '';
+    const due = new Date(lead.slaDueAt).getTime();
+    const diffMs = due - Date.now();
+    const absH = Math.abs(Math.round(diffMs / 3600000));
+    const absM = Math.abs(Math.round((diffMs % 3600000) / 60000));
+    if (diffMs < 0) return `Breached ${absH}h`;
+    if (diffMs < 7200000) return `${absH}h ${absM}m`;
+    return `${absH}h left`;
+  };
+
   const hasFilters = search !== '' || status !== '';
 
   const columns: DataTableColumn<Lead>[] = [
@@ -134,6 +155,12 @@ export default function LeadsPage() {
     },
     { key: 'status', header: 'Status', cell: (lead) => <StatusBadge status={lead.status} /> },
     {
+      key: 'sla',
+      header: 'SLA',
+      hideOnMobile: true,
+      cell: (lead) => lead.slaDueAt ? <Badge variant={getSlaVariant(lead)} className="text-[10px]">{getSlaLabel(lead)}</Badge> : <span className="text-muted-foreground text-xs">—</span>,
+    },
+    {
       key: 'priority',
       header: 'Priority',
       hideOnMobile: true,
@@ -143,7 +170,7 @@ export default function LeadsPage() {
       key: 'service',
       header: 'Service',
       hideOnMobile: true,
-      cell: (lead) => <span className="text-muted-foreground">{lead.serviceType || '—'}</span>,
+      cell: (lead) => <span className="text-muted-foreground">{humanizeStatus(lead.serviceType) || '—'}</span>,
     },
     {
       key: 'created',
@@ -186,7 +213,7 @@ export default function LeadsPage() {
         actions={
           <div className="flex items-center gap-2">
             <ImportExportButtons type="leads" onImported={load} />
-            <Button size="sm" onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Add Lead</Button>
+            <Button size="sm" asChild><Link href="/leads/new"><Plus className="mr-2 h-4 w-4" />Add Lead</Link></Button>
           </div>
         }
       />
@@ -230,9 +257,11 @@ export default function LeadsPage() {
             emptyDescription={hasFilters ? 'Try adjusting your filters.' : 'Create your first lead to get started.'}
             emptyAction={
               !hasFilters ? (
-                <Button size="sm" variant="outline" onClick={openCreate}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create your first lead
+                <Button size="sm" variant="outline" asChild>
+                  <Link href="/leads/new">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create your first lead
+                  </Link>
                 </Button>
               ) : undefined
             }
@@ -250,7 +279,7 @@ export default function LeadsPage() {
                 <p className="text-sm text-muted-foreground">{lead.email || lead.phone || '—'}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <StatusBadge status={lead.priority} kind="priority" />
-                  <span>{lead.serviceType || '—'}</span>
+                  <span>{humanizeStatus(lead.serviceType) || '—'}</span>
                   <span>· {formatDate(lead.createdAt)}</span>
                 </div>
               </div>

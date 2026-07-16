@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -95,12 +96,10 @@ export default function EmployeesPage() {
     {
       key: 'name',
       header: 'Name',
-      cell: (e) => (
-        <Link href={`/employees/${e.id}`} className="font-medium text-primary hover:underline">
-          {e.firstName} {e.lastName}
-        </Link>
-      ),
+      cell: (e) => <Link href={`/employees/${e.id}`} className="font-medium hover:text-primary transition-colors">{e.firstName} {e.lastName}</Link>,
     },
+    { key: 'email', header: 'Email', hideOnMobile: true, cell: (e) => <span className="text-muted-foreground text-sm">{(e as any).email || '—'}</span> },
+    { key: 'department', header: 'Department', hideOnMobile: true, cell: (e) => <span className="text-muted-foreground text-sm">{(e as any).department?.name || '—'}</span> },
     { key: 'position', header: 'Position', hideOnMobile: true, cell: (e) => <span className="text-muted-foreground">{e.position || '—'}</span> },
     { key: 'status', header: 'Status', cell: (e) => <StatusBadge status={e.status} /> },
     { key: 'joined', header: 'Joined', hideOnMobile: true, cell: (e) => <span className="text-muted-foreground">{e.joinedAt ? formatDate(e.joinedAt) : '—'}</span> },
@@ -124,8 +123,8 @@ export default function EmployeesPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Employees"
-        subtitle="Manage staff, departments, attendance and payroll"
+        title="Team"
+        subtitle={`${meta.total} members — manage staff, roles and access`}
         actions={
           <Button size="sm" onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
@@ -182,9 +181,7 @@ export default function EmployeesPage() {
             mobileCard={(e) => (
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <Link href={`/employees/${e.id}`} className="font-medium text-primary hover:underline">
-                    {e.firstName} {e.lastName}
-                  </Link>
+                  <span className="font-medium">{e.firstName} {e.lastName}</span>
                   <StatusBadge status={e.status} />
                 </div>
                 <p className="text-sm text-muted-foreground">

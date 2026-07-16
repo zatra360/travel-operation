@@ -2,13 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Users, Building2, Shield, ClipboardList, Plane, Ticket,
   Receipt, BarChart3, Settings, FileText, GitBranch, ScrollText, LogOut,
   CalendarClock, UserCog, Undo2, RefreshCw, XCircle, CreditCard, DollarSign,
   Calculator, Bell, Activity, Package, Percent, Coins, FileCheck, Globe,
-  PenTool, ShoppingCart, MessageSquare,
+  ShoppingCart, MessageSquare, FolderKanban, CheckSquare, Layers,
+  LogIn, Database, Landmark, BookOpen, ChevronDown, Target,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -17,35 +19,29 @@ import { brand } from '@/lib/brand';
 
 const navGroups = [
   {
-    label: 'Core',
+    label: 'Overview',
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Calendar', href: '/calendar', icon: CalendarClock },
-      { label: 'Branches', href: '/branches', icon: GitBranch, perm: 'BRANCH_READ' },
-      { label: 'Users', href: '/users', icon: Users, perm: 'USER_READ' },
-      { label: 'Roles', href: '/roles', icon: Shield, perm: 'ROLE_READ' },
+      { label: 'Notifications', href: '/notifications', icon: Bell },
     ],
   },
   {
-    label: 'CRM',
+    label: 'Sales',
     items: [
       { label: 'Leads', href: '/leads', icon: ClipboardList, perm: 'LEAD_READ' },
       { label: 'Clients', href: '/clients', icon: Building2, perm: 'CLIENT_READ' },
-      { label: 'Passports', href: '/passports', icon: FileCheck, perm: 'CLIENT_READ' },
-      { label: 'Visas', href: '/visas', icon: Globe, perm: 'CLIENT_READ' },
       { label: 'Follow-ups', href: '/follow-ups', icon: CalendarClock, perm: 'FOLLOW_UP_READ' },
+      { label: 'Quotations', href: '/quotations', icon: FileText, perm: 'QUOTATION_READ' },
+      { label: 'Feedback', href: '/feedback', icon: MessageSquare, perm: 'FEEDBACK_READ' },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { label: 'Quotations', href: '/quotations', icon: FileText, perm: 'QUOTATION_READ' },
-      { label: 'Contracts', href: '/contracts', icon: PenTool },
-      { label: 'Orders', href: '/orders', icon: ShoppingCart },
       { label: 'Bookings', href: '/bookings', icon: Plane, perm: 'BOOKING_READ' },
       { label: 'Tickets', href: '/tickets', icon: Ticket, perm: 'TICKET_READ' },
-      { label: 'Cases', href: '/cases', icon: MessageSquare },
-      { label: 'Documents', href: '/documents', icon: FileText, perm: 'DOCUMENT_READ' },
+      { label: 'Insurance', href: '/insurances', icon: Shield, perm: 'INSURANCE_READ' },
     ],
   },
   {
@@ -54,6 +50,7 @@ const navGroups = [
       { label: 'Refunds', href: '/refunds', icon: Undo2, perm: 'REFUND_READ' },
       { label: 'Reissues', href: '/reissues', icon: RefreshCw, perm: 'REISSUE_READ' },
       { label: 'Cancellations', href: '/cancellations', icon: XCircle, perm: 'CANCELLATION_READ' },
+      { label: 'Cases', href: '/cases', icon: MessageSquare },
     ],
   },
   {
@@ -64,17 +61,28 @@ const navGroups = [
       { label: 'Payments', href: '/payments', icon: CreditCard, perm: 'PAYMENT_READ' },
       { label: 'Expenses', href: '/expenses', icon: DollarSign, perm: 'EXPENSE_READ' },
       { label: 'Ledger', href: '/ledger', icon: ScrollText, perm: 'LEDGER_READ' },
+      { label: 'Bank & Cash', href: '/banking', icon: Landmark, perm: 'SETTINGS_READ' },
+      { label: 'Gateway Logs', href: '/transaction-logs', icon: Activity, perm: 'PAYMENT_READ' },
     ],
   },
   {
-    label: 'HRM',
+    label: 'Team',
     items: [
-      { label: 'Employees', href: '/employees', icon: Users, perm: 'EMPLOYEE_READ' },
-      { label: 'Leaves', href: '/leaves', icon: CalendarClock, perm: 'LEAVE_READ' },
+      { label: 'Team', href: '/employees', icon: Users },
       { label: 'Attendance', href: '/attendance', icon: ClipboardList, perm: 'ATTENDANCE_READ' },
+      { label: 'Leaves', href: '/leaves', icon: CalendarClock, perm: 'LEAVE_READ' },
       { label: 'Commissions', href: '/commissions', icon: DollarSign, perm: 'COMMISSION_READ' },
       { label: 'Salary Runs', href: '/salary-runs', icon: Calculator, perm: 'SALARY_RUN_READ' },
       { label: 'Performance', href: '/performance', icon: BarChart3, perm: 'PERFORMANCE_READ' },
+      { label: 'Perf. Report', href: '/performance-report', icon: Target, perm: 'DASHBOARD_READ' },
+    ],
+  },
+  {
+    label: 'Projects',
+    items: [
+      { label: 'Projects', href: '/projects', icon: FolderKanban, perm: 'PROJECT_READ' },
+      { label: 'My Tasks', href: '/tasks', icon: CheckSquare, perm: 'TASK_READ' },
+      { label: 'Orders', href: '/orders', icon: ShoppingCart },
     ],
   },
   {
@@ -89,16 +97,19 @@ const navGroups = [
     ],
   },
   {
-    label: 'System',
+    label: 'Settings',
     items: [
+      { label: 'Branches', href: '/branches', icon: GitBranch, perm: 'BRANCH_READ' },
+      { label: 'Roles', href: '/roles', icon: Shield, perm: 'ROLE_READ' },
+      { label: 'Settings', href: '/settings', icon: Settings, perm: 'SETTINGS_READ' },
+      { label: 'Vendors', href: '/vendors', icon: Building2, perm: 'VENDOR_READ' },
       { label: 'Service Catalog', href: '/service-catalog', icon: Package },
       { label: 'Tax Rates', href: '/tax-rates', icon: Percent },
       { label: 'Currencies', href: '/currencies', icon: Coins },
-      { label: 'Settings', href: '/settings', icon: Settings, perm: 'SETTINGS_READ' },
       { label: 'Custom Fields', href: '/settings/custom-fields', icon: Layers, perm: 'SETTINGS_READ' },
-      { label: 'Reports', href: '/reports', icon: BarChart3, perm: 'REPORT_READ' },
       { label: 'Audit Log', href: '/audit-log', icon: ScrollText, perm: 'AUDIT_LOG_READ' },
-      { label: 'Notifications', href: '/notifications', icon: Bell },
+      { label: 'Knowledge Hub', href: '/knowledge', icon: BookOpen },
+      { label: 'GDS Tools', href: '/tools/gds', icon: Globe },
       { label: 'Activity', href: '/activity', icon: Activity },
     ],
   },
@@ -109,8 +120,11 @@ const platformNavItems = [
   { label: 'Companies', href: '/platform/tenants', icon: Building2 },
   { label: 'Packages', href: '/platform/packages', icon: Package },
   { label: 'Audit Log', href: '/platform/audit-logs', icon: ScrollText },
+  { label: 'Login History', href: '/platform/login-history', icon: LogIn },
   { label: 'Users', href: '/platform/users', icon: Users },
   { label: 'Permissions', href: '/platform/permissions', icon: Shield },
+  { label: 'Master Data', href: '/platform/master-data', icon: Database },
+  { label: 'Reference Data', href: '/platform/reference-data', icon: Landmark },
 ];
 
 function NavItem({ href, icon: Icon, label }: { href: string; icon: any; label: string }) {
@@ -138,6 +152,7 @@ export function Sidebar() {
   const { user, activeTenant, logout, permissions } = useAuthStore();
   const isPlatform = pathname.startsWith('/platform');
   const hasPerms = permissions.length > 0 || user?.isPlatformSuperAdmin;
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   // Only filter nav items by permission once permissions have been loaded from the server.
   const visibleGroups = hasPerms
@@ -171,12 +186,22 @@ export function Sidebar() {
         )}
         {isPlatform
           ? platformNavItems.map((item) => <NavItem key={item.href} {...item} />)
-          : visibleGroups.map((group) => (
-              <div key={group.label} className="space-y-1">
-                <p className="px-3 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">{group.label}</p>
-                {group.items.map((item) => <NavItem key={item.href} {...item} />)}
-              </div>
-            ))}
+          : visibleGroups.map((group) => {
+              const isCollapsed = collapsed[group.label] || false;
+              const toggle = () => setCollapsed({ ...collapsed, [group.label]: !isCollapsed });
+              return (
+                <div key={group.label} className="space-y-1">
+                  <button
+                    onClick={toggle}
+                    className="w-full flex items-center justify-between px-3 py-1 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider hover:text-sidebar-foreground/70 transition-colors"
+                  >
+                    <span>{group.label}</span>
+                    <ChevronDown className={cn('h-3 w-3 transition-transform', isCollapsed && '-rotate-90')} />
+                  </button>
+                  {!isCollapsed && group.items.map((item) => <NavItem key={item.href} {...item} />)}
+                </div>
+              );
+            })}
       </nav>
 
       <Separator className="shrink-0 bg-sidebar-border" />
