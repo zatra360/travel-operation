@@ -5,6 +5,7 @@
   "description": "Travel Operation - SaaS platform for travel agencies, OTAs, visa agencies, and corporate travel teams",
   "scripts": {
     "dev": "concurrently -n api,web -c blue,green \"pnpm --filter @travelo/api dev\" \"pnpm --filter @travelo/web dev\"",
+    "dev:setup": "powershell -ExecutionPolicy Bypass -File scripts/dev.ps1",
     "build": "pnpm --filter @travelo/database generate && pnpm --filter @travelo/api build && pnpm --filter @travelo/web build",
     "db:generate": "pnpm --filter @travelo/database generate",
     "db:migrate": "pnpm --filter @travelo/database migrate:dev",
@@ -17,8 +18,8 @@
   },
   "devDependencies": {
     "bcryptjs": "^2.4.3",
-    "concurrently": "^9.2.3",
-    "prettier": "^3.9.4",
+    "concurrently": "^9.2.4",
+    "prettier": "^3.9.5",
     "typescript": "^5.9.3"
   },
   "engines": {
