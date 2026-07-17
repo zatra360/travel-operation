@@ -216,6 +216,25 @@ export class BookingService {
       }
     }
 
+    if (dto.status && dto.status !== oldStatus && ['CONFIRMED', 'TICKETED', 'CANCELLED'].includes(dto.status)) {
+      const notifyUserId = booking.assignedToId || dto.assignedToId;
+      if (notifyUserId) {
+        this.notification.notify({
+          tenantId, userId: notifyUserId,
+          title: `Booking ${booking.bookingRef} ${dto.status.toLowerCase()}`,
+          body: `Booking ${booking.bookingRef} status changed from ${oldStatus} to ${dto.status}.`,
+        }).catch(() => {});
+      }
+    }
+
+    if (dto.assignedToId && dto.assignedToId !== current.assignedToId) {
+      this.notification.notify({
+        tenantId, userId: dto.assignedToId,
+        title: `Booking assigned: ${booking.bookingRef}`,
+        body: `You have been assigned booking ${booking.bookingRef}${booking.clientId ? '' : ''}.`,
+      }).catch(() => {});
+    }
+
     await this.audit.logMutation(actorId, tenantId, 'BOOKING', 'Booking', id, dto.status !== oldStatus ? 'STATUS_CHANGE' : 'UPDATE', { changes: dto });
 
     this.scoring.refreshInBackground(tenantId, booking.clientId);

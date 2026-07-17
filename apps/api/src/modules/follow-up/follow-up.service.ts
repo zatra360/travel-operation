@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { LookupValidationService } from '../master-data/lookup-validation.service';
+import { NotificationService } from '../notification/notification.service';
 import { CreateFollowUpDto } from './dto/create-follow-up.dto';
 import { UpdateFollowUpDto } from './dto/update-follow-up.dto';
 import { QueryFollowUpDto } from './dto/query-follow-up.dto';
@@ -14,6 +15,7 @@ export class FollowUpService {
     private readonly audit: AuditService,
     private readonly activity: ActivityService,
     private readonly lookup: LookupValidationService,
+    private readonly notification: NotificationService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateFollowUpDto) {
@@ -49,6 +51,14 @@ export class FollowUpService {
     );
 
     await this.activity.log(tenantId, actorId, 'FOLLOW_UP_CREATED', `Follow-up: ${followUp.subject}`, 'FollowUp', followUp.id, followUp.branchId);
+
+    if (followUp.assignedToId && followUp.assignedToId !== actorId) {
+      this.notification.notify({
+        tenantId, userId: followUp.assignedToId,
+        title: `Follow-up: ${followUp.subject}`,
+        body: `A follow-up has been scheduled for you on ${new Date(followUp.scheduledAt).toLocaleDateString()}.`,
+      }).catch(() => {});
+    }
 
     return followUp;
   }
