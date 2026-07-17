@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -10,6 +10,14 @@ export class BranchService {
       where: { tenantId_code: { tenantId, code: data.code } },
     });
     if (existing) throw new ConflictException('Branch code already exists for this tenant');
+
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { maxBranches: true } });
+    if (tenant?.maxBranches) {
+      const count = await this.prisma.branch.count({ where: { tenantId, deletedAt: null } });
+      if (count >= tenant.maxBranches) {
+        throw new BadRequestException(`Branch limit reached (${tenant.maxBranches}). Upgrade your plan to add more branches.`);
+      }
+    }
 
     return this.prisma.branch.create({
       data: { ...data, tenantId, status: 'ACTIVE' },

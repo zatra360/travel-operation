@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -74,6 +74,18 @@ export class UserService {
   }
 
   async addToTenant(tenantId: string, userId: string, role: string = 'MEMBER') {
+    const membership = await this.prisma.userTenantMembership.findUnique({
+      where: { userId_tenantId: { userId, tenantId } },
+    });
+
+    if (!membership || !membership.isActive) {
+      const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { maxUsers: true } });
+      const count = await this.prisma.userTenantMembership.count({ where: { tenantId, isActive: true } });
+      if (tenant?.maxUsers && count >= tenant.maxUsers) {
+        throw new BadRequestException(`User limit reached (${tenant.maxUsers}). Upgrade your plan to add more users.`);
+      }
+    }
+
     return this.prisma.userTenantMembership.upsert({
       where: { userId_tenantId: { userId, tenantId } },
       update: { role: role as any, isActive: true },
