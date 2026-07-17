@@ -4,6 +4,7 @@ import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../common/services/email.service';
+import { TotpService } from '../../common/services/totp.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -15,6 +16,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly email: EmailService,
+    private readonly totp: TotpService,
   ) {}
 
   async login(dto: LoginDto, ip?: string, userAgent?: string) {
@@ -63,6 +65,20 @@ export class AuthService {
       where: { id: user.id },
       data: { lastLoginAt: new Date(), failedLoginAttempts: 0, lockedUntil: null },
     });
+
+    // Check 2FA — if enabled, return temp token instead of full auth
+    const meta = (user as any).metadata || {};
+    const fullUser = await this.prisma.user.findUnique({ where: { id: user.id }, select: { metadata: true } });
+    const userMeta = (fullUser?.metadata as any) || {};
+    if (userMeta.twoFactorEnabled && userMeta.twoFactorSecret) {
+      const tempPayload = { sub: user.id, email: user.email, purpose: '2fa', isPlatformSuperAdmin: user.isPlatformSuperAdmin };
+      const tempToken = this.jwtService.sign(tempPayload, { expiresIn: '5m' });
+      return {
+        requires2FA: true,
+        tempToken,
+        message: '2FA is enabled. Please enter your authenticator code.',
+      };
+    }
 
     const payload = {
       sub: user.id,
@@ -365,6 +381,104 @@ export class AuthService {
     });
 
     return { success: true, message: 'Password has been reset successfully. You can now log in.' };
+  }
+
+  async enroll2fa(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, metadata: true } });
+    if (!user) throw new BadRequestException('User not found');
+
+    const meta = (user.metadata as any) || {};
+    if (meta.twoFactorEnabled) throw new BadRequestException('2FA is already enabled');
+
+    const secret = this.totp.generateSecret();
+    const otpAuthUrl = this.totp.getOtpAuthUrl(secret, user.email);
+
+    // Store secret but not yet enabled — must verify first
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { metadata: { ...meta, twoFactorSecret: secret, twoFactorEnabled: false } },
+    });
+
+    return { secret, otpAuthUrl, message: 'Scan the QR code with your authenticator app, then verify with a code.' };
+  }
+
+  async verifyEnroll2fa(userId: string, token: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { metadata: true } });
+    if (!user) throw new BadRequestException('User not found');
+
+    const meta = (user.metadata as any) || {};
+    if (!meta.twoFactorSecret) throw new BadRequestException('2FA enrollment has not been started');
+
+    if (!this.totp.verify(meta.twoFactorSecret, token)) {
+      throw new BadRequestException('Invalid verification code');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { metadata: { ...meta, twoFactorEnabled: true } },
+    });
+
+    await this.prisma.securityEvent.create({
+      data: { userId, type: 'MFA_ENABLED', details: 'Two-factor authentication enabled' },
+    });
+
+    return { success: true, message: '2FA has been enabled' };
+  }
+
+  async disable2fa(userId: string, token: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { metadata: true } });
+    if (!user) throw new BadRequestException('User not found');
+
+    const meta = (user.metadata as any) || {};
+    if (!meta.twoFactorEnabled) throw new BadRequestException('2FA is not enabled');
+
+    if (!this.totp.verify(meta.twoFactorSecret, token)) {
+      throw new BadRequestException('Invalid verification code');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { metadata: { ...meta, twoFactorEnabled: false, twoFactorSecret: null } },
+    });
+
+    await this.prisma.securityEvent.create({
+      data: { userId, type: 'MFA_DISABLED', details: 'Two-factor authentication disabled' },
+    });
+
+    return { success: true, message: '2FA has been disabled' };
+  }
+
+  async login2fa(tempToken: string, totp: string) {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(tempToken, { ignoreExpiration: false });
+    } catch {
+      throw new BadRequestException('Invalid or expired 2FA token. Please login again.');
+    }
+
+    if (payload.purpose !== '2fa') throw new BadRequestException('Invalid token purpose');
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, email: true, isPlatformSuperAdmin: true, metadata: true, status: true },
+    });
+
+    if (!user || user.status !== 'ACTIVE') throw new BadRequestException('User not found or inactive');
+
+    const meta = (user.metadata as any) || {};
+    if (!meta.twoFactorSecret || !this.totp.verify(meta.twoFactorSecret, totp)) {
+      throw new BadRequestException('Invalid verification code');
+    }
+
+    const jwtPayload = { sub: user.id, email: user.email, isPlatformSuperAdmin: user.isPlatformSuperAdmin };
+    const accessToken = this.jwtService.sign(jwtPayload);
+    const refreshToken = await this.generateRefreshToken(user.id);
+
+    return {
+      accessToken, refreshToken,
+      user: { id: user.id, email: user.email, firstName: '', lastName: '', isPlatformSuperAdmin: user.isPlatformSuperAdmin },
+      message: '2FA verified successfully',
+    };
   }
 
   async getPreferences(userId: string) {

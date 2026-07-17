@@ -70,6 +70,38 @@ export class AuthController {
     return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('2fa/enroll')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Enable 2FA — returns secret and QR URL' })
+  async enroll2fa(@CurrentUser() user: AuthUser) {
+    return this.authService.enroll2fa(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('2fa/verify-enroll')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verify TOTP token to complete 2FA enrollment' })
+  async verifyEnroll2fa(@CurrentUser() user: AuthUser, @Body() dto: { token: string }) {
+    return this.authService.verifyEnroll2fa(user.id, dto.token);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('2fa/disable')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Disable 2FA' })
+  async disable2fa(@CurrentUser() user: AuthUser, @Body() dto: { token: string }) {
+    return this.authService.disable2fa(user.id, dto.token);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Post('login/2fa')
+  @ApiOperation({ summary: 'Second factor: verify TOTP with 2fa token from login' })
+  async login2fa(@Body() dto: { tempToken: string; totp: string }) {
+    return this.authService.login2fa(dto.tempToken, dto.totp);
+  }
+
   @UseGuards(JwtAuthGuard, TenantGuard)
   @Get('permissions')
   @ApiBearerAuth()
