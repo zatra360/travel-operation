@@ -18,11 +18,13 @@ export default function RegisterPage() {
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '', companyName: '', companySlug: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [agreed, setAgreed] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.password.length < 8) { setError('Password must be at least 8 characters'); return; }
     if (form.password !== form.confirmPassword) { setError('Passwords do not match'); return; }
+    if (!agreed) { setError('You must agree to the terms of service and privacy policy'); return; }
     setLoading(true); setError('');
     try {
       const res = await api.post<any>('/api/v1/auth/register', {
@@ -66,6 +68,10 @@ export default function RegisterPage() {
             <div className="space-y-1.5"><Label>Confirm password</Label><Input type="password" value={form.confirmPassword} onChange={e => setForm({ ...form, confirmPassword: e.target.value })} placeholder="Re-enter your password" required minLength={8} /></div>
             <div className="space-y-1.5"><Label>Company name</Label><Input value={form.companyName} onChange={e => setForm({ ...form, companyName: e.target.value })} placeholder="Your Travel Agency" required /></div>
             <div className="space-y-1.5"><Label>Company slug <span className="text-xs text-muted-foreground">(optional)</span></Label><Input value={form.companySlug} onChange={e => setForm({ ...form, companySlug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })} placeholder="your-agency" /></div>
+            <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
+              <input type="checkbox" className="mt-0.5 accent-primary" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+              <span>I agree to the <a href="/terms" className="text-primary hover:underline">Terms of Service</a> and <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a></span>
+            </label>
             <Button type="submit" className="w-full" disabled={loading}>{loading ? 'Creating...' : 'Start free trial'}</Button>
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">

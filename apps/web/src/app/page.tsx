@@ -6,7 +6,7 @@ import {
   Plane, Building2, Users, CreditCard, FileText, Ticket,
   Globe, Shield, BarChart3, ArrowRight, Check, Star, Sparkles,
   Calculator, ClipboardList, UserCheck, Bell, Clock, Phone,
-  Mail, MapPin, ChevronRight, Quote, Layers, Wallet, Award, ChevronDown,
+  Mail, MapPin, ChevronRight, Quote, Layers, Wallet, Award, ChevronDown, Menu, X,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { brand } from '@/lib/brand';
@@ -76,6 +76,7 @@ export default function LandingPage() {
   const { isAuthenticated, user } = useAuthStore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -108,8 +109,25 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:inline">Sign in</Link>
             <Link href="/register"><Button size="sm">Start free trial</Button></Link>
+            <button
+              type="button"
+              className="md:hidden p-2 -mr-2 text-muted-foreground hover:text-foreground"
+              onClick={() => setMobileOpen(!mobileOpen)}
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
+        {mobileOpen && (
+          <div className="md:hidden border-t bg-background px-4 py-3 space-y-1">
+            <a href="#features" className="block py-2 text-sm text-muted-foreground hover:text-foreground" onClick={() => setMobileOpen(false)}>Features</a>
+            <a href="#how" className="block py-2 text-sm text-muted-foreground hover:text-foreground" onClick={() => setMobileOpen(false)}>How it works</a>
+            <a href="#modules" className="block py-2 text-sm text-muted-foreground hover:text-foreground" onClick={() => setMobileOpen(false)}>Modules</a>
+            <a href="#pricing" className="block py-2 text-sm text-muted-foreground hover:text-foreground" onClick={() => setMobileOpen(false)}>Pricing</a>
+            <a href="#faq" className="block py-2 text-sm text-muted-foreground hover:text-foreground" onClick={() => setMobileOpen(false)}>FAQ</a>
+            <Link href="/login" className="block py-2 text-sm text-muted-foreground hover:text-foreground sm:hidden" onClick={() => setMobileOpen(false)}>Sign in</Link>
+          </div>
+        )}
       </header>
 
       {/* Hero */}
