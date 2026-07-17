@@ -53,7 +53,7 @@ const navGroups = [
       { label: 'Refunds', href: '/refunds', icon: Undo2, perm: 'REFUND_READ' },
       { label: 'Reissues', href: '/reissues', icon: RefreshCw, perm: 'REISSUE_READ' },
       { label: 'Cancellations', href: '/cancellations', icon: XCircle, perm: 'CANCELLATION_READ' },
-      { label: 'Cases', href: '/cases', icon: MessageSquare, perm: 'SERVICE_CASE_READ' },
+      { label: 'Cases', href: '/cases', icon: MessageSquare, perm: 'TICKET_READ' },
     ],
   },
   {
@@ -90,7 +90,7 @@ const navGroups = [
     items: [
       { label: 'Projects', href: '/projects', icon: FolderKanban, perm: 'PROJECT_READ' },
       { label: 'My Tasks', href: '/tasks', icon: CheckSquare, perm: 'TASK_READ' },
-      { label: 'Orders', href: '/orders', icon: ShoppingCart, perm: 'SETTINGS_READ' },
+      { label: 'Orders', href: '/orders', icon: ShoppingCart, perm: 'ORDER_READ' },
     ],
   },
   {
