@@ -32,9 +32,6 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key'];
 
-const TIMEZONES = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Asia/Dubai', 'Asia/Kolkata', 'Asia/Dhaka', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney'];
-const DATE_FORMATS = ['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'];
-
 export default function SettingsPage() {
   const { activeTenant } = useAuthStore();
   const [tab, setTab] = useState<TabKey>('profile');
@@ -45,8 +42,6 @@ export default function SettingsPage() {
   const [companyEmail, setCompanyEmail] = useState('');
   const [website, setWebsite] = useState('');
   const [address, setAddress] = useState('');
-  const [timezone, setTimezone] = useState('UTC');
-  const [dateFormat, setDateFormat] = useState('MM/DD/YYYY');
   const [themeColor, setThemeColor] = useState('#6366f1');
 
   // Currencies
@@ -80,10 +75,6 @@ export default function SettingsPage() {
         setCompanyEmail(c.companyEmail || '');
         setWebsite(c.website || '');
         setAddress(c.address || '');
-
-        const g = settings?.general || {};
-        setTimezone(g.timezone || 'UTC');
-        setDateFormat(g.dateFormat || 'MM/DD/YYYY');
 
         const b = settings?.branding || {};
         setThemeColor(b.themeColor || '#6366f1');
@@ -123,8 +114,13 @@ export default function SettingsPage() {
 
   const saveSection = async (key: string, value: Record<string, unknown>, label: string) => {
     if (!activeTenant) return;
+    // Strip empty strings so we never persist blank values.
+    const cleaned: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (v !== '' && v !== undefined && v !== null) cleaned[k] = v;
+    }
     try {
-      await api.put(`/api/v1/tenant/settings/${key}`, value, { tenantId: activeTenant.id });
+      await api.put(`/api/v1/tenant/settings/${key}`, cleaned, { tenantId: activeTenant.id });
       toast.success(`${label} saved`);
     } catch (err: any) { toast.error(err.message); }
   };
@@ -213,20 +209,13 @@ export default function SettingsPage() {
 
           <div className="space-y-4">
             <Card>
-              <CardHeader><CardTitle className="text-base flex items-center gap-2"><Palette className="h-4 w-4" />Preferences</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base flex items-center gap-2"><Palette className="h-4 w-4" />Branding</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Timezone</Label><Select value={timezone} onValueChange={setTimezone}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{TIMEZONES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select></div>
-                  <div className="space-y-1"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date format</Label><Select value={dateFormat} onValueChange={setDateFormat}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{DATE_FORMATS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select></div>
-                </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Theme color</Label>
                   <div className="flex items-center gap-2"><Input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="h-9 w-16 p-1" /><span className="text-sm text-muted-foreground">{themeColor}</span></div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" onClick={() => saveSection('general', { timezone, dateFormat }, 'Preferences')}><CheckCircle2 className="mr-2 h-4 w-4" />Save Preferences</Button>
-                  <Button size="sm" variant="outline" onClick={() => saveSection('branding', { themeColor }, 'Branding')}>Save Theme</Button>
-                </div>
+                <Button size="sm" variant="outline" onClick={() => saveSection('branding', { themeColor }, 'Branding')}>Save Theme</Button>
               </CardContent>
             </Card>
           </div>
