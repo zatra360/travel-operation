@@ -63,9 +63,23 @@ export default function SettingsPage() {
   const [currencies, setCurrencies] = useState<any[]>([]);
   const [currencyForm, setCurrencyForm] = useState({ code: '', name: '', symbol: '', exchangeRate: '1', decimalPlaces: '2' });
 
-  // Modules
+  // Only show modules that make sense for a tenant to toggle.
+  // Everything else stays silently enabled.
   const [modules, setModules] = useState<Record<string, boolean>>({});
-  const [moduleCategories, setModuleCategories] = useState<Array<{ category: string; keys: string[] }>>([]);
+  const moduleToggles = [
+    { key: 'lead', label: 'Leads', cat: 'CRM' },
+    { key: 'client', label: 'Clients', cat: 'CRM' },
+    { key: 'quotation', label: 'Quotations', cat: 'Sales' },
+    { key: 'booking', label: 'Bookings', cat: 'Sales' },
+    { key: 'ticket', label: 'Tickets', cat: 'Sales' },
+    { key: 'invoice', label: 'Invoices', cat: 'Finance' },
+    { key: 'payment', label: 'Payments', cat: 'Finance' },
+    { key: 'expense', label: 'Expenses', cat: 'Finance' },
+    { key: 'employee', label: 'Employees', cat: 'HRM' },
+    { key: 'attendance', label: 'Attendance', cat: 'HRM' },
+    { key: 'service_case', label: 'Service Cases', cat: 'Operations' },
+    { key: 'settings', label: 'Settings Access', cat: 'System' },
+  ];
 
   // Notifications
   const [emailNotifs, setEmailNotifs] = useState(true);
@@ -116,29 +130,27 @@ export default function SettingsPage() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  useEffect(() => {
-    if (!activeTenant) return;
-    import('@/lib/module-config').then(({ ALL_MODULES }) => {
-      const cats: Array<{ category: string; keys: string[] }> = [];
-      for (const m of ALL_MODULES) {
-        let cat = cats.find((c) => c.category === m.category);
-        if (!cat) { cat = { category: m.category, keys: [] }; cats.push(cat); }
-        cat.keys.push(m.key);
-      }
-      setModuleCategories(cats);
-    });
-  }, [activeTenant]);
-
   const saveSection = async (key: string, value: Record<string, unknown>, label: string) => {
     if (!activeTenant) return;
-    // Strip empty/undefined/null AND strip true values from modules
-    // (modules default to enabled, only disabled ones need storing).
     const cleaned: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
       if (v === '' || v === undefined || v === null) continue;
       if (key === 'modules' && v === true) continue;
       cleaned[k] = v;
     }
+
+    // Merge with existing modules so previously-disabled modules stay disabled
+    if (key === 'modules') {
+      try {
+        const existing = await api.get<Record<string,boolean>>('/api/v1/tenant/settings/modules', { tenantId: activeTenant.id });
+        if (existing) {
+          for (const [k, v] of Object.entries(existing)) {
+            if (!(k in cleaned) && v === false) cleaned[k] = false;
+          }
+        }
+      } catch {}
+    }
+
     try {
       await api.put(`/api/v1/tenant/settings/${key}`, cleaned, { tenantId: activeTenant.id });
       toast.success(`${label} saved`);
@@ -289,19 +301,15 @@ export default function SettingsPage() {
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><Package className="h-4 w-4" />Module Settings</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {moduleCategories.map((cat) => (
-              <div key={cat.category}>
-                <h3 className="text-sm font-semibold mb-2">{cat.category}</h3>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {cat.keys.map((key) => (
-                    <div key={key} className="flex items-center justify-between rounded-md border px-3 py-2">
-                      <Label className="text-sm">{humanizeStatus(key)}</Label>
-                      <Switch checked={modules[key] !== false} onCheckedChange={(v) => { setModules((m) => ({ ...m, [key]: v })); }} />
-                    </div>
-                  ))}
+            <p className="text-xs text-muted-foreground">Toggle the modules your team needs. Everything not listed here stays enabled automatically.</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {moduleToggles.map((m) => (
+                <div key={m.key} className="flex items-center justify-between rounded-md border px-3 py-2">
+                  <div><span className="text-sm font-medium">{m.label}</span><span className="ml-2 text-[10px] text-muted-foreground">{m.cat}</span></div>
+                  <Switch checked={modules[m.key] !== false} onCheckedChange={(v) => { setModules((prev) => ({ ...prev, [m.key]: v })); }} />
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
             <Button size="sm" onClick={() => saveSection('modules', modules, 'Module settings')}><CheckCircle2 className="mr-2 h-4 w-4" />Save Modules</Button>
           </CardContent>
         </Card>
