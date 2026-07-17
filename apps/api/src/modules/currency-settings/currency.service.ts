@@ -7,6 +7,12 @@ export class CurrencyService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(tenantId: string, dto: CreateCurrencyDto) {
+    if (dto.isDefault) {
+      await this.prisma.currencyConfig.updateMany({
+        where: { tenantId, isDefault: true },
+        data: { isDefault: false },
+      });
+    }
     return this.prisma.currencyConfig.create({
       data: { tenantId, code: dto.code, name: dto.name, symbol: dto.symbol, exchangeRate: dto.exchangeRate ?? 1, isDefault: dto.isDefault ?? false, decimalPlaces: dto.decimalPlaces ?? 2 },
     });
@@ -23,6 +29,12 @@ export class CurrencyService {
   async update(tenantId: string, id: string, dto: UpdateCurrencyDto) {
     const c = await this.prisma.currencyConfig.findFirst({ where: { id, tenantId } });
     if (!c) throw new NotFoundException('Currency not found');
+    if ((dto as any).isDefault) {
+      await this.prisma.currencyConfig.updateMany({
+        where: { tenantId, isDefault: true, id: { not: id } },
+        data: { isDefault: false },
+      });
+    }
     return this.prisma.currencyConfig.update({ where: { id }, data: dto as any });
   }
 
