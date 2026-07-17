@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
+import { humanizeStatus } from '@/lib/status';
 import { Client, Paginated } from '@/lib/crm';
 
 const ALL = '__all__';
@@ -93,7 +94,7 @@ export default function ClientsPage() {
         </Link>
       ),
     },
-    { key: 'type', header: 'Type', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground capitalize">{c.type?.toLowerCase()}</span> },
+    { key: 'type', header: 'Type', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{humanizeStatus(c.type)}</span> },
     { key: 'contact', header: 'Contact', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{c.email || c.phone || '—'}</span> },
     { key: 'company', header: 'Company', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{c.companyName || '—'}</span> },
     { key: 'status', header: 'Status', cell: (c) => <StatusBadge status={c.status} /> },

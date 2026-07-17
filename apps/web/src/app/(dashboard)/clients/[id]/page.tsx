@@ -152,7 +152,7 @@ export default function ClientDetailPage() {
       <Breadcrumb items={[{ label: 'Clients', href: '/clients' }, { label: client.displayName }]} />
       <PageHeader
         title={client.displayName}
-        subtitle={<span className="flex items-center gap-2"><StatusBadge status={client.status} />{client.isVip && <Badge variant="warning" className="text-[10px]">VIP</Badge>}{client.activityScore != null && <Badge variant={client.activityScore >= 60 ? 'success' : client.activityScore >= 30 ? 'warning' : 'destructive'} className="text-[10px]">Score {client.activityScore}</Badge>}<span className="text-xs text-muted-foreground">{client.type?.toLowerCase()}</span><span className={cn('text-xs font-medium', scoreColor)}>· {score}% complete</span>{missing.length > 0 && <span className="text-[10px] text-muted-foreground">Missing: {missing.slice(0, 3).join(', ')}{missing.length > 3 ? ` +${missing.length - 3}` : ''}</span>}</span>}
+        subtitle={<span className="flex items-center gap-2"><StatusBadge status={client.status} />{client.isVip && <Badge variant="warning" className="text-[10px]">VIP</Badge>}{client.activityScore != null && <Badge variant={client.activityScore >= 60 ? 'success' : client.activityScore >= 30 ? 'warning' : 'destructive'} className="text-[10px]">Score {client.activityScore}</Badge>}<span className="text-xs text-muted-foreground">{humanizeStatus(client.type)}</span><span className={cn('text-xs font-medium', scoreColor)}>· {score}% complete</span>{missing.length > 0 && <span className="text-[10px] text-muted-foreground">Missing: {missing.slice(0, 3).join(', ')}{missing.length > 3 ? ` +${missing.length - 3}` : ''}</span>}</span>}
         actions={<Button size="sm" asChild><Link href={`/clients/${client.id}/edit`}><Pencil className="h-4 w-4 mr-2" />Edit</Link></Button>}
       />
 
@@ -163,7 +163,7 @@ export default function ClientDetailPage() {
             <F icon={Mail} label="Email" value={client.email} />
             <F icon={Phone} label="Phone" value={client.phone} />
             <F icon={MessageCircle} label="WhatsApp" value={client.whatsapp} />
-            <F icon={User} label="Gender" value={client.gender} />
+            <F icon={User} label="Gender" value={humanizeStatus(client.gender)} />
             <F icon={MapPin} label="Country" value={client.country} />
             <F icon={MapPin} label="City" value={client.city} />
             <F icon={Globe} label="Nationality" value={nationalityName || client.nationalityLabel} />
