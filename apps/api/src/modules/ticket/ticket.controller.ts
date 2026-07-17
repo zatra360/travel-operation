@@ -46,6 +46,13 @@ export class TicketController {
     return this.ticketService.update(ctx.tenantId, ctx.userId, id, dto);
   }
 
+  @Post(':id/approve')
+  @RequirePermissions('TICKET_UPDATE')
+  @ApiOperation({ summary: 'Approve a ticket for issuance' })
+  async approveTicket(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.ticketService.approveTicket(ctx.tenantId, ctx.userId, id);
+  }
+
   @Post(':id/issue')
   @RequirePermissions('TICKET_UPDATE')
   @ApiOperation({ summary: 'Issue a ticket' })

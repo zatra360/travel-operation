@@ -30,7 +30,8 @@ const transitions: Record<string, Record<string, string[]>> = {
     VOIDED: [],
   },
   ticket: {
-    PENDING: ['ISSUED', 'VOIDED'],
+    PENDING: ['APPROVED', 'VOIDED'],
+    APPROVED: ['ISSUED', 'VOIDED'],
     ISSUED: ['VOIDED', 'REFUNDED', 'REISSUED'],
     VOIDED: [],
     REFUNDED: [],

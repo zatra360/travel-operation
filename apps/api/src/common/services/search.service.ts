@@ -38,14 +38,30 @@ export class SearchService {
 
   async search(tenantId: string, query: string, limit = 10) {
     try {
-      const res = await fetch(`${MEILI_URL}/indexes/leads/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(MEILI_KEY ? { Authorization: `Bearer ${MEILI_KEY}` } : {}) },
-        body: JSON.stringify({ q: query, limit, filter: `tenantId = "${tenantId}"` }),
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return (data.hits || []).map((h: any) => ({ ...h, _type: 'lead' }));
+      const [leadsRes, clientsRes] = await Promise.all([
+        fetch(`${MEILI_URL}/indexes/leads/search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(MEILI_KEY ? { Authorization: `Bearer ${MEILI_KEY}` } : {}) },
+          body: JSON.stringify({ q: query, limit, filter: `tenantId = "${tenantId}"` }),
+        }),
+        fetch(`${MEILI_URL}/indexes/clients/search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(MEILI_KEY ? { Authorization: `Bearer ${MEILI_KEY}` } : {}) },
+          body: JSON.stringify({ q: query, limit, filter: `tenantId = "${tenantId}"` }),
+        }),
+      ]);
+
+      const results: any[] = [];
+      if (leadsRes.ok) {
+        const data = await leadsRes.json();
+        results.push(...(data.hits || []).map((h: any) => ({ ...h, _type: 'lead' })));
+      }
+      if (clientsRes.ok) {
+        const data = await clientsRes.json();
+        results.push(...(data.hits || []).map((h: any) => ({ ...h, _type: 'client' })));
+      }
+
+      return results.slice(0, limit);
     } catch {
       return [];
     }

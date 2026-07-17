@@ -161,7 +161,7 @@ export interface DocumentItem {
 
 export const QUOTATION_STATUSES = ['DRAFT', 'SENT', 'VIEWED', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'CANCELLED', 'BOOKING_CREATED'] as const;
 export const BOOKING_STATUSES = ['HELD', 'CONFIRMED', 'TICKETED', 'CANCELLED', 'REFUNDED', 'VOIDED'] as const;
-export const TICKET_STATUSES = ['PENDING', 'ISSUED', 'VOIDED', 'REFUNDED', 'REISSUED'] as const;
+export const TICKET_STATUSES = ['PENDING', 'APPROVED', 'ISSUED', 'VOIDED', 'REFUNDED', 'REISSUED'] as const;
 
 export interface QuotationLineItem {
   id: string;
@@ -309,7 +309,7 @@ export const bookingStatusVariant: Record<string, 'default' | 'secondary' | 'suc
 };
 
 export const ticketStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
-  PENDING: 'secondary', ISSUED: 'success', VOIDED: 'destructive', REFUNDED: 'warning', REISSUED: 'default',
+  PENDING: 'secondary', APPROVED: 'warning', ISSUED: 'success', VOIDED: 'destructive', REFUNDED: 'warning', REISSUED: 'default',
 };
 
 export const INVOICE_STATUSES = ['DRAFT', 'SENT', 'PAID', 'PARTIALLY_PAID', 'OVERDUE', 'CANCELLED'] as const;

@@ -203,9 +203,22 @@ export class TicketService {
     }
   }
 
+  async approveTicket(tenantId: string, actorId: string, id: string) {
+    const ticket = await this.findById(tenantId, id);
+    if (ticket.status !== 'PENDING') throw new BadRequestException('Only pending tickets can be approved');
+    if (ticket.createdById === actorId) throw new BadRequestException('Cannot approve a ticket you created. A different user must approve.');
+    const updated = await this.update(tenantId, actorId, id, { status: 'APPROVED' } as any);
+    this.notification.notify({
+      tenantId, userId: actorId,
+      title: `Ticket ${updated.ticketNumber} approved`,
+      body: `Ticket ${updated.ticketNumber} has been approved and is ready for issuance.`,
+    }).catch(() => {});
+    return updated;
+  }
+
   async issueTicket(tenantId: string, actorId: string, id: string) {
     const ticket = await this.findById(tenantId, id);
-    if (ticket.status === 'ISSUED') throw new BadRequestException('Ticket already issued');
+    if (ticket.status !== 'APPROVED' && ticket.status !== 'PENDING') throw new BadRequestException('Ticket must be in PENDING or APPROVED status to be issued');
     const updated = await this.update(tenantId, actorId, id, { status: 'ISSUED', issuedAt: new Date().toISOString() } as any);
     await this.prisma.ticketLifecycleEvent.create({
       data: { tenantId, ticketId: id, action: 'ISSUE', category: 'ISSUANCE', ticketCount: 1 },
