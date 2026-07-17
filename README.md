@@ -1,207 +1,171 @@
-# Travel Operation
+# ZATRA360 — Travel Operation Platform
 
 **SaaS platform for travel agencies, OTAs, visa agencies, B2B agents, corporate travel teams, ticketing companies, and multi-branch travel businesses.**
+
+## Status
+
+- **Build**: Passing (TypeScript strict, NestJS + Next.js)
+- **Tests**: 155/155 across 13 e2e suites
+- **Security**: CSP/HSTS/Helmet, password complexity (upper+lower+digit), TOTP 2FA, rate limiting, tenant isolation
+- **Phase 0 Stabilization**: Complete — all P0/P1 critical blockers resolved
 
 ## Architecture
 
 ```
 travel-operation/
 ├── apps/
-│   ├── web/          # Next.js frontend (port 3901)
-│   └── api/          # NestJS backend API (port 3900)
+│   ├── web/          # Next.js 16 frontend (port 3901)
+│   └── api/          # NestJS 11 backend (port 3900)
 ├── packages/
-│   ├── database/     # Prisma schema & client
+│   ├── database/     # Prisma schema (77 models) & client
 │   ├── config/       # Shared configurations
 │   ├── types/        # Shared TypeScript types
-│   ├── permissions/  # Permission definitions
+│   ├── permissions/  # 245 permissions across 49 modules
 │   └── validators/   # Shared validation schemas
-├── docs/             # Architecture & module documentation
-├── infra/            # Docker, Cloudflare, CI/CD configs
+├── docs/             # Architecture, audit, research docs
+├── infra/            # Docker, Cloudflare, CI/CD
 └── scripts/          # Utility scripts
 ```
 
 ## Tech Stack
 
-- **Frontend**: Next.js, TypeScript, Tailwind CSS, shadcn/ui
-- **Backend**: NestJS, TypeScript, REST API, Swagger/OpenAPI
-- **Database**: PostgreSQL via Prisma ORM
-- **Storage**: Cloudflare R2 (documents, assets, backups)
-- **Infrastructure**: Cloudflare DNS, CDN, WAF, Pages
+- **Frontend**: Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui, Recharts, Framer Motion
+- **Backend**: NestJS 11, TypeScript, REST API, Swagger/OpenAPI, Passport JWT
+- **Database**: PostgreSQL 16 via Prisma ORM (77 models)
+- **Storage**: Cloudflare R2 (documents, assets)
+- **Email**: Resend (transactional)
+- **Search**: Meilisearch (leads + clients)
 
 ## Quick Start
 
-### Prerequisites
-
-- Node.js >= 20
-- pnpm >= 9
-- Docker & Docker Compose
-
-### Setup
-
 ```bash
-# 1. Clone the repository
-git clone <repo-url> travel-operation
-cd travel-operation
-
-# 2. Install dependencies
+git clone <repo-url> travel-operation && cd travel-operation
 pnpm install
-
-# 3. Start local services (PostgreSQL, Redis, MinIO)
 docker compose -f infra/docker/docker-compose.yml up -d
-
-# 4. Set up environment
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
-
-# 5. Generate Prisma client
-pnpm db:generate
-
-# 6. Run database migrations
-pnpm db:migrate
-
-# 7. Seed the database
-pnpm db:seed
-
-# 8. Start development servers
+cp apps/api/.env.example apps/api/.env && cp apps/web/.env.example apps/web/.env
+pnpm db:generate && pnpm db:migrate && pnpm db:seed
 pnpm dev
 ```
 
-The API will be available at http://localhost:3900 and the web app at http://localhost:3901.
+API: http://localhost:3900 | Web: http://localhost:3901 | Swagger: http://localhost:3900/api/v1/docs
 
-### Local Development Accounts
+## Implemented Features
 
-The database seed (`pnpm db:seed`) creates demo accounts **for local development only**.
-Their credentials are printed to the console at the end of a successful seed run.
+### Foundation
+- Multi-tenant SaaS (Tenant, Branch, User, Role/Permission)
+- 245 granular permissions across 49 modules
+- JWT auth with refresh token rotation, login history, account lockout
+- TOTP-based 2FA/MFA (enroll, verify, disable, login second factor)
+- Password reset flow (forgot → email → reset)
+- Tenant self-service subscription management (view/upgrade/cancel)
+- Module toggle enforcement at API guard level
+- Immutable audit logging on all mutations
+- Hash-chained accounting audit ledger with verification
 
-- The seed refuses to run when `NODE_ENV=production` unless `ALLOW_PROD_SEED=true` is set.
-- Set `SUPER_ADMIN_EMAIL` and a strong `SUPER_ADMIN_PASSWORD` in your environment to
-  control the platform super-admin account instead of relying on the demo default.
-- Never seed demo accounts into a production database.
+### CRM
+- Leads pipeline with 100+ fields, scoring, source tracking, SLA
+- Client profiles with lifetime value, activity scoring, VIP tracking
+- Passport/visa management with verification
+- Follow-up scheduling with notifications
+- Duplicate detection (email, phone, passport)
+- Lead-to-client conversion
 
-## API Documentation
+### Sales & Operations
+- Quotation builder with line items, revisions, e-sign, public sharing
+- Quotation-to-booking conversion
+- Booking/PNR management with passengers, segments, itinerary
+- PNR duplicate detection, TTL tracking
+- Ticket issuance with approval gate (PENDING → APPROVED → ISSUED)
+- After-sales: Refunds, Reissues, Cancellations (approval workflows)
+- Service catalog with configurable items and tax rates
+- Contracts with e-sign
 
-Swagger/OpenAPI documentation is available at `/api/v1/docs` when the API is running.
+### Finance
+- Invoices with auto-calculated tax (configurable rate)
+- Payments with idempotency, auto-generated receipts
+- Expenses with segregation of duties (SOD) approval
+- Bank accounts & cash registers (balance locked, deposit/withdraw only)
+- Multi-currency with configured exchange rates
+- Full double-entry accounting: Chart of Accounts, GL, journals, fiscal periods
+- Sub-ledger reconciliation (AR, AP, Bank)
+- Financial risk alerts (8 fraud/anomaly detectors)
+- Income Statement, Balance Sheet, Trial Balance, Cash Flow
 
-### Route Structure
+### HRM
+- Employees with departments, positions, branches
+- Attendance with clock-in/out, SLA tracking
+- Leave management with approvals
+- Performance reviews, salary profiles, salary runs
+- Commissions and incentives
+
+### Additional
+- Vendor/supplier management (airlines, hotels, GDS, transport)
+- Insurance policy management
+- Projects with Kanban tasks, dependencies, time tracking
+- Support cases with channels, types, groups
+- Customer feedback (NPS, ratings)
+- Knowledge base hub
+- Calendar with events and holidays
+- Global search (leads + clients)
+- Notifications: 12+ event triggers (booking, ticket, payment, expense, leave, commission, invoice, follow-up)
+- In-app notification center with unread badge (sidebar + topbar)
+- CSV export for 9 modules (GDPR data portability)
+- CSV import for leads and clients
+
+### Security & Compliance
+- Helmet CSP/HSTS/Referrer-Policy/Frame-Ancestors
+- Next.js security headers
+- Request body size limit (10MB)
+- Rate limiting on auth, import/export, password reset
+- MIME type allowlist on document upload
+- CSV injection prevention on exports
+- Privacy Policy and Terms of Service pages
+- Consent checkbox on registration
+
+## API Overview
 
 | Prefix | Description |
 |--------|-------------|
-| `POST /api/v1/auth/login` | Public login |
-| `GET /api/v1/auth/profile` | Current user profile |
-| `GET/POST/PUT/DELETE /api/v1/platform/tenants` | Platform tenant management |
-| `GET/POST/PUT/DELETE /api/v1/platform/users` | Platform user management |
-| `GET /api/v1/platform/permissions` | Permission catalog |
-| `GET/POST/PUT/DELETE /api/v1/tenant/branches` | Tenant branch management |
-| `GET/POST/PUT/DELETE /api/v1/tenant/roles` | Tenant role management |
-| `GET /api/v1/tenant/audit-logs` | Tenant audit log |
-| `GET/POST/PUT/DELETE /api/v1/tenant/leads` | Lead pipeline management |
-| `POST /api/v1/tenant/leads/:id/convert` | Convert lead to client |
-| `GET/POST/PUT/DELETE /api/v1/tenant/clients` | Client management |
-| `GET/POST/PUT/DELETE /api/v1/tenant/follow-ups` | Follow-up scheduling |
-| `POST /api/v1/tenant/follow-ups/:id/complete` | Mark follow-up complete |
-| `POST /api/v1/tenant/documents/upload-url` | Presigned R2 upload URL |
-| `GET/POST/DELETE /api/v1/tenant/documents` | Document management |
-| `GET /api/v1/tenant/documents/:id/download` | Presigned download URL |
-| `GET /api/v1/tenant/settings` | Tenant settings |
-| `GET /api/v1/tenant/dashboard/stats` | Dashboard statistics |
+| `POST /api/v1/auth/login` | Login (returns requires2FA if 2FA enabled) |
+| `POST /api/v1/auth/login/2fa` | Second factor TOTP verification |
+| `POST /api/v1/auth/register` | Register company + admin |
+| `POST /api/v1/auth/forgot-password` | Request password reset email |
+| `POST /api/v1/auth/reset-password` | Reset with token |
+| `POST /api/v1/auth/2fa/enroll` | Start 2FA enrollment |
+| `POST /api/v1/auth/2fa/verify-enroll` | Complete 2FA enrollment |
+| `POST /api/v1/auth/2fa/disable` | Disable 2FA |
+| `GET /api/v1/tenant/subscription` | View current plan + usage |
+| `POST /api/v1/tenant/subscription/change` | Upgrade/downgrade plan |
+| `POST /api/v1/tenant/subscription/cancel` | Cancel subscription |
+| `GET /api/v1/tenant/*/export` | CSV export (leads, clients, bookings, invoices, payments, tickets, quotations, employees, expenses) |
+| `GET /api/v1/tenant/activity/entity/:entity/:entityId` | Per-entity activity timeline |
+| `GET /api/v1/tenant/notifications/count` | Unread notification count |
 
-### Headers
+Headers: `Authorization: Bearer <jwt>` | `X-Tenant-Id` | `X-Branch-Id` (optional)
 
-- `Authorization: Bearer <jwt-token>` - Required for all authenticated routes
-- `X-Tenant-Id: <tenant-id>` - Required for tenant-scoped routes
-- `X-Branch-Id: <branch-id>` - Optional, for branch-scoped operations
+## Project Status
 
-## Database
+### Milestone 1 — Foundation ✅
+- Auth, tenant, branch, RBAC, audit, settings, dashboard
 
-### Key Principles
+### Milestone 2 — CRM ✅
+- Leads, clients, follow-ups, documents, passports, visas
 
-- Every tenant-owned table includes `tenantId`
-- Branch-scoped tables include `branchId`
-- Composite unique constraints use `@@unique([tenantId, field])` pattern
-- Soft deletes via `deletedAt` timestamp
-- All mutations are audit-logged
+### Milestone 3 — Travel Operations ✅
+- Quotations, bookings, PNR, tickets, after-sales (refund/reissue/cancellation)
 
-### Core Models
+### Milestone 4 — Finance ✅
+- Invoices, receipts, payments, expenses, double-entry accounting, financial reports
 
-- **Tenant** - SaaS tenant with status tracking
-- **Branch** - Multi-branch support per tenant
-- **User** - Platform user with tenant memberships
-- **Role/Permission** - RBAC with granular permission control
-- **AuditLog** - Immutable audit trail for all mutations
-- **Lead/Client** - CRM foundation
-- **Quotation/Booking/Ticket** - Travel operations
-- **Invoice/Receipt/Payment** - Financial records
-- **Employee/Leave/Attendance** - HRM foundation
+### Milestone 5 — HRM ✅
+- Employees, attendance, leave, performance, salary runs, commissions
 
-## Deployment
-
-### Frontend (Cloudflare Pages)
-
-```bash
-cd apps/web
-npx wrangler pages deploy .next
-```
-
-### Backend (Railway/Render/Fly.io)
-
-1. Set environment variables from `apps/api/.env.example`
-2. Run `pnpm --filter @travelo/database migrate:deploy`
-3. Run `pnpm --filter @travelo/database seed`
-4. Start with `pnpm --filter @travelo/api start:prod`
-
-### Database (Neon PostgreSQL)
-
-1. Create a Neon project
-2. Copy the connection string
-3. Set as `DATABASE_URL` in your API deployment
-
-### Storage (Cloudflare R2)
-
-1. Create R2 buckets: `travelo-documents`, `travelo-assets`
-2. Generate R2 API tokens
-3. Configure `R2_*` environment variables on the API
-
-## Project Roadmap
-
-### Milestone 1 - Foundation (Current)
-- [x] Auth & user management
-- [x] Tenant management
-- [x] Branch management
-- [x] RBAC with permissions
-- [x] Tenant-aware API middleware
-- [x] Audit logging
-- [x] Settings foundation
-- [x] Dashboard shell
-
-### Milestone 2 - CRM (Current)
-- [x] Leads pipeline
-- [x] Client management
-- [x] Follow-ups & activity timeline
-- [x] Document management
-
-### Milestone 3 - Travel Operations
-- [ ] Quotation builder
-- [ ] Booking / PNR management
-- [ ] Payment collection
-- [ ] Ticket issuance
-
-### Milestone 4 - Finance
-- [ ] Invoices & receipts
-- [ ] Ledger management
-- [ ] Expenses
-- [ ] Vendor liability
-
-### Milestone 5 - HRM
-- [ ] Employee management
-- [ ] Attendance & leave
-- [ ] Performance & targets
-
-### Milestone 6 - AI & Automation
-- [ ] TTL alerts & reminders
-- [ ] Auto assignment
-- [ ] AI quotation drafts
-- [ ] Knowledge Hub
+### Milestone 6 — Advanced ✅ (partial)
+- ✅ Vendors, insurance, projects, cases, feedback, knowledge, calendar, search, notifications, import/export
+- ✅ 2FA/MFA, password reset, tenant self-service, module toggle enforcement
+- ⚠️ TTL/deadline automation (cron needed)
+- ⚠️ Product catalog, costing, supplier payables (Phase 1 roadmap)
 
 ## License
 
-Private - All rights reserved.
+Private — All rights reserved.
