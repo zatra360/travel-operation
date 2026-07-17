@@ -1,6 +1,7 @@
 import { Controller, Post, Get, UseGuards, UseInterceptors, UploadedFile, Res } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { ImportService } from '../../common/services/import.service';
 import { JwtAuthGuard, TenantGuard, PermissionsGuard, RequirePermissions, TenantCtx, TenantContext } from '../../common';
@@ -8,6 +9,7 @@ import { JwtAuthGuard, TenantGuard, PermissionsGuard, RequirePermissions, Tenant
 @ApiTags('Tenant - Import/Export')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+@Throttle({ default: { limit: 10, ttl: 60000 } })
 @Controller('tenant')
 export class ImportExportController {
   constructor(private readonly importService: ImportService) {}
