@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
+import { useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { humanizeStatus } from '@/lib/status';
 
@@ -45,6 +46,36 @@ export default function SettingsPage() {
   const [themeColor, setThemeColor] = useState('#6366f1');
   const [logoUrl, setLogoUrl] = useState('');
   const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeTenant) return;
+    setLogoUploading(true);
+    try {
+      // 1. Get presigned upload URL
+      const { uploadUrl, storageKey } = await api.post<{ uploadUrl: string; storageKey: string }>(
+        '/api/v1/tenant/documents/upload-url',
+        { fileName: file.name, mimeType: file.type, category: 'OTHER', sizeBytes: file.size },
+        { tenantId: activeTenant.id },
+      );
+      // 2. PUT file to R2
+      await fetch(uploadUrl, { method: 'PUT', body: file });
+      // 3. Register document
+      const doc = await api.post<any>('/api/v1/tenant/documents',
+        { storageKey, fileName: file.name, mimeType: file.type, category: 'OTHER', sizeBytes: file.size },
+        { tenantId: activeTenant.id },
+      );
+      // 4. Get download URL
+      const { url } = await api.get<{ url: string }>(`/api/v1/tenant/documents/${doc.id}/download`, { tenantId: activeTenant.id });
+      setLogoUrl(url);
+      // 5. Save immediately
+      await api.put(`/api/v1/tenant/settings/branding`, { themeColor, logoUrl: url }, { tenantId: activeTenant.id });
+      toast.success('Logo uploaded');
+      loadAll();
+    } catch (err: any) { toast.error(err.message || 'Upload failed'); }
+    finally { setLogoUploading(false); }
+  };
 
   // Currencies
   const [currencies, setCurrencies] = useState<any[]>([]);
@@ -215,12 +246,18 @@ export default function SettingsPage() {
               <CardHeader><CardTitle className="text-base flex items-center gap-2"><Palette className="h-4 w-4" />Branding</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Logo URL</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Company Logo</Label>
                   <div className="flex items-center gap-2">
-                    <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://example.com/logo.png" />
-                    {logoUrl && <img src={logoUrl} alt="Logo preview" className="h-8 w-8 rounded object-contain border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                    {logoUrl && <img src={logoUrl} alt="Logo" className="h-10 w-10 rounded border object-contain" />}
+                    <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                    <Button size="sm" variant="outline" onClick={() => logoInputRef.current?.click()} disabled={logoUploading}>
+                      <Upload className="mr-2 h-4 w-4" />{logoUploading ? 'Uploading...' : 'Upload Image'}
+                    </Button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">Paste a direct image URL. Shown in the top bar and sidebar.</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="Or paste a direct image URL" className="text-xs" />
+                    <Button size="sm" variant="ghost" onClick={() => saveSection('branding', { themeColor, logoUrl }, 'Branding')}>Save</Button>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Theme color</Label>
