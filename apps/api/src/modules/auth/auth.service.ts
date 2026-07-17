@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../../common/services/email.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -13,6 +14,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly email: EmailService,
   ) {}
 
   async login(dto: LoginDto, ip?: string, userAgent?: string) {
@@ -312,13 +314,27 @@ export class AuthService {
   async forgotPassword(email: string) {
     const user = await this.prisma.user.findUnique({
       where: { email },
-      select: { id: true, email: true, status: true },
+      select: { id: true, email: true, firstName: true, status: true },
     });
 
     if (user && user.status === 'ACTIVE') {
       const payload = { sub: user.id, email: user.email, purpose: 'password-reset' };
       const token = this.jwtService.sign(payload, { expiresIn: '15m' });
-      return { success: true, message: 'Reset token generated', resetToken: token };
+      const resetUrl = `${process.env.WEB_ORIGIN || 'http://localhost:3901'}/reset-password?token=${token}`;
+
+      this.email.send({
+        to: user.email,
+        subject: 'Reset your ZATRA360 password',
+        html: `<div style="font-family:sans-serif;padding:20px">
+          <h2 style="color:#6366f1">Password Reset Request</h2>
+          <p>Hi ${user.firstName},</p>
+          <p>You requested a password reset. Click the button below to set a new password. This link expires in 15 minutes.</p>
+          <p><a href="${resetUrl}" style="display:inline-block;padding:10px 20px;background:#6366f1;color:#fff;text-decoration:none;border-radius:6px;font-weight:500">Reset Password</a></p>
+          <p style="margin-top:20px">If you did not request this, please ignore this email.</p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0"/>
+          <p style="color:#9ca3af;font-size:12px">Sent by ZATRA360 — Travel Operation Platform</p>
+        </div>`,
+      }).catch(() => {});
     }
 
     return { success: true, message: 'If the email exists, a reset link has been sent.' };
