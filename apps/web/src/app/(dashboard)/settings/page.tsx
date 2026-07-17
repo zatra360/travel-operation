@@ -131,10 +131,13 @@ export default function SettingsPage() {
 
   const saveSection = async (key: string, value: Record<string, unknown>, label: string) => {
     if (!activeTenant) return;
-    // Strip empty strings so we never persist blank values.
+    // Strip empty/undefined/null AND strip true values from modules
+    // (modules default to enabled, only disabled ones need storing).
     const cleaned: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
-      if (v !== '' && v !== undefined && v !== null) cleaned[k] = v;
+      if (v === '' || v === undefined || v === null) continue;
+      if (key === 'modules' && v === true) continue;
+      cleaned[k] = v;
     }
     try {
       await api.put(`/api/v1/tenant/settings/${key}`, cleaned, { tenantId: activeTenant.id });
