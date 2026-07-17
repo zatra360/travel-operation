@@ -101,6 +101,9 @@ export default function LoginPage() {
           Don&apos;t have an account?{' '}
           <Link href="/register" className="text-primary hover:underline font-medium">Start free trial</Link>
         </div>
+        <div className="mt-2 text-center">
+          <Link href="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Back to home</Link>
+        </div>
       </CardContent>
     </Card>
   );
