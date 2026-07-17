@@ -64,6 +64,7 @@ export default function DashboardPage() {
   const [perf, setPerf] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [noTenant, setNoTenant] = useState(false);
+  const [dismissedOnboarding, setDismissedOnboarding] = useState(false);
   const { activeTenant, activeBranch } = useAuthStore();
 
   useEffect(() => {
@@ -76,6 +77,13 @@ export default function DashboardPage() {
       .then(([s, p]) => { setStats(s); setPerf(p); })
       .catch(console.error).finally(() => setLoading(false));
   }, [activeTenant, activeBranch]);
+
+  useEffect(() => {
+    if (!activeTenant) return;
+    api.get('/api/v1/tenant/settings/dashboard_onboarding_dismissed', { tenantId: activeTenant.id })
+      .then((d: any) => { if (d === true) setDismissedOnboarding(true); })
+      .catch(() => {});
+  }, [activeTenant]);
 
   if (noTenant) return <EmptyState title="No company assigned" description="Select a company from the switcher, or contact your administrator." />;
 
@@ -102,14 +110,6 @@ export default function DashboardPage() {
   ];
 
   const isNewTenant = stats && stats.leads.total === 0 && stats.clients.total === 0 && stats.bookings.total === 0;
-  const [dismissedOnboarding, setDismissedOnboarding] = useState(false);
-
-  useEffect(() => {
-    if (!activeTenant) return;
-    api.get('/api/v1/tenant/settings/dashboard_onboarding_dismissed', { tenantId: activeTenant.id })
-      .then((d: any) => { if (d === true) setDismissedOnboarding(true); })
-      .catch(() => {});
-  }, [activeTenant]);
 
   const dismissOnboarding = async () => {
     if (!activeTenant) return;
