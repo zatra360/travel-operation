@@ -32,8 +32,7 @@ const ALL_BRANCHES = '__all__';
 
 const QUICK_CREATE = [
   { label: 'New Lead', href: '/leads/new' },
-  { label: 'New Client', href: '/clients' },
-  { label: 'New Follow-up', href: '/follow-ups' },
+  { label: 'New Client', href: '/clients/new' },
   { label: 'New Quotation', href: '/quotations/new' },
   { label: 'New Booking', href: '/bookings' },
 ];
