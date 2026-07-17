@@ -9,6 +9,7 @@ import { NumberGeneratorService } from '../../common/services/number-generator.s
 import { validateStatusTransition } from '../../common/utils/status-transitions';
 import { GLPostingService } from '../accounting/gl-posting.service';
 import { TaxService } from '../tax/tax.service';
+import { NotificationService } from '../notification/notification.service';
 import { resolveServiceTypeRef } from '../service-ops/service-type-map';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
@@ -25,6 +26,7 @@ export class InvoiceService {
     private readonly numberGen: NumberGeneratorService,
     private readonly glPosting: GLPostingService,
     private readonly taxService: TaxService,
+    private readonly notification: NotificationService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateInvoiceDto) {
@@ -163,6 +165,13 @@ export class InvoiceService {
         subject: `Invoice ${invoice.invoiceNumber}: ${current.status} -> ${dto.status}`,
         entity: 'Invoice', entityId: id, branchId: invoice.branchId,
       });
+      if (dto.status === 'SENT' || dto.status === 'OVERDUE') {
+        this.notification.notify({
+          tenantId, userId: actorId,
+          title: `Invoice ${invoice.invoiceNumber} ${dto.status.toLowerCase()}`,
+          body: `Invoice ${invoice.invoiceNumber} (${invoice.totalAmount} ${invoice.currencyCode}) has been ${dto.status === 'SENT' ? 'sent' : 'marked overdue'}.`,
+        }).catch(() => {});
+      }
     }
 
     await this.audit.logMutation(actorId, tenantId, 'INVOICE', 'Invoice', id, dto.status !== current.status ? 'STATUS_CHANGE' : 'UPDATE', { changes: dto });
