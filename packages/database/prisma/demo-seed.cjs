@@ -71,6 +71,37 @@ async function main() {
   }
   console.log('Roles: 7 created with permissions');
 
+  // Grant per-role permissions to non-admin roles so they're immediately
+  // usable with the demo users.  Maps match the systemPermissions in seed.ts.
+  const roleGrants = {
+    'Branch Manager': ['LEAD', 'CLIENT', 'QUOTATION', 'BOOKING', 'TICKET', 'INVOICE', 'RECEIPT', 'PAYMENT', 'EXPENSE', 'LEDGER', 'REFUND', 'REISSUE', 'CANCELLATION', 'EMPLOYEE', 'LEAVE', 'ATTENDANCE', 'PERFORMANCE', 'COMMISSION', 'SALARY_RUN', 'DOCUMENT', 'SETTINGS', 'REPORT', 'DASHBOARD', 'NOTIFICATION', 'MASTER_DATA', 'VENDOR', 'INSURANCE', 'FEEDBACK', 'PROJECT', 'TASK', 'JOURNAL', 'GL_ACCOUNT', 'ACCOUNTING_PERIOD', 'SERVICE_TYPE', 'SERVICE_CASE', 'SERVICE_ITEM', 'WORKFLOW', 'WORKFLOW_TASK', 'WORKFLOW_APPROVAL', 'SERVICE_DOCUMENT', 'SERVICE_REPORT', 'TEAM'],
+    'Sales Executive': ['LEAD', 'CLIENT', 'FOLLOW_UP', 'QUOTATION', 'BOOKING', 'TICKET', 'INVOICE', 'SERVICE_TYPE', 'SERVICE_CASE', 'SERVICE_ITEM', 'WORKFLOW', 'WORKFLOW_TASK', 'SERVICE_DOCUMENT', 'REPORT', 'DASHBOARD', 'NOTIFICATION'],
+    'Ticketing Officer': ['BOOKING', 'TICKET', 'INVOICE', 'CLIENT', 'LEAD', 'QUOTATION', 'SERVICE_TYPE', 'SERVICE_CASE', 'SERVICE_ITEM', 'WORKFLOW', 'WORKFLOW_TASK', 'SERVICE_REPORT', 'REPORT', 'DASHBOARD', 'NOTIFICATION'],
+    'Visa Officer': ['CLIENT', 'LEAD', 'FOLLOW_UP', 'QUOTATION', 'BOOKING', 'DOCUMENT', 'SERVICE_TYPE', 'SERVICE_CASE', 'SERVICE_ITEM', 'WORKFLOW', 'WORKFLOW_TASK', 'WORKFLOW_APPROVAL', 'SERVICE_DOCUMENT', 'SERVICE_REPORT', 'REPORT', 'DASHBOARD', 'NOTIFICATION'],
+    'Finance Officer': ['INVOICE', 'RECEIPT', 'PAYMENT', 'EXPENSE', 'LEDGER', 'CLIENT', 'LEAD', 'JOURNAL', 'GL_ACCOUNT', 'ACCOUNTING_PERIOD', 'REPORT', 'DASHBOARD', 'NOTIFICATION', 'SERVICE_TYPE', 'SERVICE_CASE', 'SERVICE_REPORT', 'AUDIT_LOG'],
+    'HR Manager': ['EMPLOYEE', 'LEAVE', 'ATTENDANCE', 'PERFORMANCE', 'COMMISSION', 'SALARY_RUN', 'DOCUMENT', 'SETTINGS', 'REPORT', 'DASHBOARD', 'NOTIFICATION'],
+  };
+
+  const permMap = {};
+  for (const p of perms) permMap[p.name] = p.id;
+  for (const [roleName, modules] of Object.entries(roleGrants)) {
+    const role = roles[roleName];
+    if (!role) continue;
+    for (const module of modules) {
+      for (const action of ['READ', 'CREATE', 'UPDATE', 'MANAGE']) {
+        const permName = `${module}_${action}`;
+        const permId = permMap[permName];
+        if (!permId) continue;
+        await prisma.rolePermission.upsert({
+          where: { roleId_permissionId: { roleId: role.id, permissionId: permId } },
+          update: {},
+          create: { roleId: role.id, permissionId: permId },
+        });
+      }
+    }
+  }
+  console.log('Role permissions granted per role');
+
   const map = {
     'admin@tripnow.com': 'Tenant Admin',
     'sales1@tripnow.com': 'Sales Executive',

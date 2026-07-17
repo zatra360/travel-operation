@@ -33,7 +33,8 @@ packages/
 - Passports, Visās, Documents removed from sidebar (now accessible only inside client profile)
 - ConfirmDialog replaces all window.confirm()
 - N+1 queries eliminated (flat list endpoints for passports, visās, orders, contracts)
-- humanizeStatus() on all raw codes, QuoteNumber auto-generated, defaultCurrency from tenant settings
+- Sidebar merged confusing "Team"/"Teams" duplicates into single "Employees & Teams" entry
+- Employee form now links to platform User accounts (Combobox from /tenant/users); detail page shows linked user email + team memberships via User→TeamMember→Team
 - Passport/Visa CRUD inside client profile (passport-form-dialog.tsx + visa-form-dialog.tsx, add/edit/delete with ConfirmDialog; API now supports relation + isVerified on passports; findByClient filters isActive)
 - Document upload/download/delete inside client profile (reuses DocumentUploadDialog with entity=Client)
 - Auto-recalculate client score (ClientScoringService in client module, fire-and-forget refreshInBackground() called from booking/payment/refund/cancellation services on create/update/delete/process)

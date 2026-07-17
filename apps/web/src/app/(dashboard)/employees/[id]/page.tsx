@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Clock, UserCheck, Calendar, DollarSign, FileText, TrendingUp } from 'lucide-react';
+import { Clock, UserCheck, Calendar, DollarSign, FileText, TrendingUp, Users, Mail, Shield } from 'lucide-react';
 import { Breadcrumb, PageHeader } from '@/components/ui/page-header';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDateTime, formatDate } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { Employee, Leave, Attendance, Paginated, TimelineEvent, employeeStatusVariant, leaveStatusVariant } from '@/lib/crm';
 
 export default function EmployeeDetailPage() {
@@ -24,6 +25,8 @@ export default function EmployeeDetailPage() {
   const [commissions, setCommissions] = useState<any[]>([]);
   const [salaryRuns, setSalaryRuns] = useState<any[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [linkedUser, setLinkedUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -41,6 +44,19 @@ export default function EmployeeDetailPage() {
       .then(([e, l, a, c, s, tl]) => {
         setEmp(e); setLeaves(l.data || []); setAttendance(a.data || []);
         setCommissions(c.data || []); setSalaryRuns(s.data || []); setTimeline(tl);
+        // If the employee is linked to a platform user, fetch their team memberships.
+        const userId = (e as any).userId || (e as any).user?.id;
+        if (userId) {
+          setLinkedUser((e as any).user ?? { id: userId });
+          api.get<any[]>('/api/v1/tenant/teams', { tenantId: activeTenant!.id })
+            .then((allTeams) => {
+              const memberTeams = allTeams.filter((t: any) =>
+                t.members?.some((m: any) => m.user?.id === userId),
+              );
+              setTeams(memberTeams);
+            })
+            .catch(() => setTeams([]));
+        }
       })
       .catch((err) => setError(err.message || 'Failed to load'))
       .finally(() => setLoading(false));
@@ -74,9 +90,43 @@ export default function EmployeeDetailPage() {
             <Field label="Phone" value={emp.phone} />
             <Field label="Joined" value={emp.joinedAt ? formatDate(emp.joinedAt) : null} />
             <Field label="Department" value={emp.departmentId} />
+            {linkedUser && (
+              <Field label="User Account" value={linkedUser.email ?? linkedUser.id} />
+            )}
             <Field label="Created" value={formatDateTime(emp.createdAt)} />
           </CardContent>
         </Card>
+
+        {teams.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Users className="h-4 w-4" />Teams</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {teams.map((t: any) => {
+                const membership = t.members?.find((m: any) => m.user?.id === (linkedUser?.id || (emp as any).userId));
+                return (
+                  <div key={t.id} className="flex items-center justify-between border-b pb-2 text-sm last:border-0">
+                    <div>
+                      <p className="font-medium">{t.name}</p>
+                      <p className="text-xs text-muted-foreground">{t.code}{t.description ? ` · ${t.description}` : ''}</p>
+                    </div>
+                    <Badge variant="outline">{membership?.role || 'MEMBER'}</Badge>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {!linkedUser && (
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Mail className="h-4 w-4" />Account</CardTitle></CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                This employee is not linked to a platform user account. Edit the employee to link one — they will need a user account to log in and have their team memberships shown here. Passwords are managed in <strong>Settings → Users</strong>.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign className="h-4 w-4" />Commissions</CardTitle></CardHeader>
