@@ -18,9 +18,9 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
-import { useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { humanizeStatus } from '@/lib/status';
+import { DocumentUploadDialog } from '../documents/document-upload-dialog';
 
 const TABS = [
   { key: 'profile', label: 'Profile', icon: Building2 },
@@ -46,35 +46,23 @@ export default function SettingsPage() {
   const [themeColor, setThemeColor] = useState('#6366f1');
   const [logoUrl, setLogoUrl] = useState('');
   const [logoUploading, setLogoUploading] = useState(false);
-  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !activeTenant) return;
-    setLogoUploading(true);
+  const onLogoUploaded = async () => {
+    if (!activeTenant) return;
+    setUploadOpen(false);
+    // Fetch the uploaded document and get its download URL
     try {
-      // 1. Get presigned upload URL
-      const { uploadUrl, storageKey } = await api.post<{ uploadUrl: string; storageKey: string }>(
-        '/api/v1/tenant/documents/upload-url',
-        { fileName: file.name, mimeType: file.type, category: 'OTHER', sizeBytes: file.size },
-        { tenantId: activeTenant.id },
-      );
-      // 2. PUT file to R2
-      await fetch(uploadUrl, { method: 'PUT', body: file });
-      // 3. Register document
-      const doc = await api.post<any>('/api/v1/tenant/documents',
-        { storageKey, fileName: file.name, mimeType: file.type, category: 'OTHER', sizeBytes: file.size },
-        { tenantId: activeTenant.id },
-      );
-      // 4. Get download URL
-      const { url } = await api.get<{ url: string }>(`/api/v1/tenant/documents/${doc.id}/download`, { tenantId: activeTenant.id });
-      setLogoUrl(url);
-      // 5. Save immediately
-      await api.put(`/api/v1/tenant/settings/branding`, { themeColor, logoUrl: url }, { tenantId: activeTenant.id });
-      toast.success('Logo uploaded');
-      loadAll();
-    } catch (err: any) { toast.error(err.message || 'Upload failed'); }
-    finally { setLogoUploading(false); }
+      const docs = await api.get<any>(`/api/v1/tenant/documents?category=OTHER&limit=1`, { tenantId: activeTenant.id });
+      const lastDoc = docs?.data?.[0];
+      if (lastDoc) {
+        const { url } = await api.get<{ url: string }>(`/api/v1/tenant/documents/${lastDoc.id}/download`, { tenantId: activeTenant.id });
+        setLogoUrl(url);
+        await api.put(`/api/v1/tenant/settings/branding`, { themeColor, logoUrl: url }, { tenantId: activeTenant.id });
+        toast.success('Logo saved');
+        loadAll();
+      }
+    } catch (err: any) { toast.error(err.message || 'Failed to set logo'); }
   };
 
   // Currencies
@@ -249,9 +237,8 @@ export default function SettingsPage() {
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Company Logo</Label>
                   <div className="flex items-center gap-2">
                     {logoUrl && <img src={logoUrl} alt="Logo" className="h-10 w-10 rounded border object-contain" />}
-                    <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-                    <Button size="sm" variant="outline" onClick={() => logoInputRef.current?.click()} disabled={logoUploading}>
-                      <Upload className="mr-2 h-4 w-4" />{logoUploading ? 'Uploading...' : 'Upload Image'}
+                    <Button size="sm" variant="outline" onClick={() => setUploadOpen(true)} disabled={logoUploading}>
+                      <Upload className="mr-2 h-4 w-4" />{logoUploading ? 'Uploading...' : 'Upload Logo'}
                     </Button>
                   </div>
                   <div className="flex items-center gap-2 mt-2">
@@ -369,6 +356,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       )}
+      <DocumentUploadDialog open={uploadOpen} onOpenChange={setUploadOpen} onUploaded={onLogoUploaded} />
     </div>
   );
 }
