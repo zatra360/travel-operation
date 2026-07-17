@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +19,6 @@ import { formatDateTime, formatDate, formatMoney } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { humanizeStatus } from '@/lib/status';
 import { Client, Booking, Invoice, Payment, Paginated, TimelineEvent, bookingStatusVariant, invoiceStatusVariant, formatFileSize } from '@/lib/crm';
-import { ClientFormDialog } from '../client-form-dialog';
 import { PassportFormDialog } from './passport-form-dialog';
 import { VisaFormDialog } from './visa-form-dialog';
 import { DocumentUploadDialog } from '../../documents/document-upload-dialog';
@@ -43,7 +43,6 @@ export default function ClientDetailPage() {
   const [followUps, setFollowUps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [editOpen, setEditOpen] = useState(false);
   const [passportFormOpen, setPassportFormOpen] = useState(false);
   const [editingPassport, setEditingPassport] = useState<any | null>(null);
   const [deletingPassport, setDeletingPassport] = useState<any | null>(null);
@@ -154,7 +153,7 @@ export default function ClientDetailPage() {
       <PageHeader
         title={client.displayName}
         subtitle={<span className="flex items-center gap-2"><StatusBadge status={client.status} />{client.isVip && <Badge variant="warning" className="text-[10px]">VIP</Badge>}{client.activityScore != null && <Badge variant={client.activityScore >= 60 ? 'success' : client.activityScore >= 30 ? 'warning' : 'destructive'} className="text-[10px]">Score {client.activityScore}</Badge>}<span className="text-xs text-muted-foreground">{client.type?.toLowerCase()}</span><span className={cn('text-xs font-medium', scoreColor)}>· {score}% complete</span>{missing.length > 0 && <span className="text-[10px] text-muted-foreground">Missing: {missing.slice(0, 3).join(', ')}{missing.length > 3 ? ` +${missing.length - 3}` : ''}</span>}</span>}
-        actions={<Button size="sm" onClick={() => setEditOpen(true)}><Pencil className="h-4 w-4 mr-2" />Edit</Button>}
+        actions={<Button size="sm" asChild><Link href={`/clients/${client.id}/edit`}><Pencil className="h-4 w-4 mr-2" />Edit</Link></Button>}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -290,7 +289,6 @@ export default function ClientDetailPage() {
           <li key={event.id} className="flex gap-3 border-b pb-3 last:border-0"><div className="mt-0.5 h-2 w-2 rounded-full bg-primary shrink-0" /><div className="flex-1 min-w-0"><p className="text-sm">{event.subject}</p><p className="text-xs text-muted-foreground mt-0.5">{event.userName} · {formatDateTime(event.createdAt)}</p></div></li>
         ))}</ul>}</CardContent></Card>
 
-      <ClientFormDialog open={editOpen} onOpenChange={setEditOpen} client={client} onSaved={load} />
       <PassportFormDialog open={passportFormOpen} onOpenChange={setPassportFormOpen} clientId={id} passport={editingPassport} onSaved={load} />
       <VisaFormDialog open={visaFormOpen} onOpenChange={setVisaFormOpen} clientId={id} visa={editingVisa} passports={passports} onSaved={load} />
       <DocumentUploadDialog open={uploadOpen} onOpenChange={setUploadOpen} onUploaded={load} entity="Client" entityId={id} />
