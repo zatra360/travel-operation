@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Users, Building2, Shield, ClipboardList, Plane, Ticket,
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore, hasPermission } from '@/stores/auth-store';
 import { brand } from '@/lib/brand';
+import { api } from '@/lib/api';
 
 const navGroups = [
   {
@@ -132,7 +133,7 @@ const platformNavItems = [
   { label: 'Reference Data', href: '/platform/reference-data', icon: Landmark },
 ];
 
-function NavItem({ href, icon: Icon, label }: { href: string; icon: any; label: string }) {
+function NavItem({ href, icon: Icon, label, badge }: { href: string; icon: any; label: string; badge?: number }) {
   const pathname = usePathname();
   const isActive = pathname === href || (href !== '/dashboard' && href !== '/platform' && pathname.startsWith(href + '/'));
   return (
@@ -148,6 +149,11 @@ function NavItem({ href, icon: Icon, label }: { href: string; icon: any; label: 
     >
       <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'opacity-100' : 'opacity-60')} />
       <span className="truncate">{label}</span>
+      {badge != null && badge > 0 && (
+        <span className={cn('ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none', isActive ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary/10 text-primary')}>
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
     </Link>
   );
 }
@@ -158,6 +164,20 @@ export function Sidebar() {
   const isPlatform = pathname.startsWith('/platform');
   const hasPerms = permissions.length > 0 || user?.isPlatformSuperAdmin;
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  useEffect(() => {
+    if (!activeTenant) return;
+    api.get<{ unread: number }>('/api/v1/tenant/notifications/count', { tenantId: activeTenant.id })
+      .then((r) => { setNotificationCount(r.unread ?? 0); })
+      .catch(() => {});
+    const interval = setInterval(() => {
+      api.get<{ unread: number }>('/api/v1/tenant/notifications/count', { tenantId: activeTenant.id })
+        .then((r) => { setNotificationCount(r.unread ?? 0); })
+        .catch(() => {});
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [activeTenant]);
 
   // Only filter nav items by permission once permissions have been loaded from the server.
   const visibleGroups = hasPerms
@@ -206,7 +226,9 @@ export function Sidebar() {
                     <span>{group.label}</span>
                     <ChevronDown className={cn('h-3 w-3 transition-transform', isCollapsed && '-rotate-90')} />
                   </button>
-                  {!isCollapsed && group.items.map((item) => <NavItem key={item.href} {...item} />)}
+                  {!isCollapsed && group.items.map((item) => (
+            <NavItem key={item.href} {...item} badge={item.href === '/notifications' ? notificationCount : undefined} />
+          ))}
                 </div>
               );
             })}
