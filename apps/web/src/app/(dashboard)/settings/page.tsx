@@ -43,7 +43,6 @@ export default function SettingsPage() {
   const [companyEmail, setCompanyEmail] = useState('');
   const [website, setWebsite] = useState('');
   const [address, setAddress] = useState('');
-  const [themeColor, setThemeColor] = useState('#6366f1');
   const [logoUrl, setLogoUrl] = useState('');
   const [logoUploading, setLogoUploading] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -58,7 +57,7 @@ export default function SettingsPage() {
       if (lastDoc) {
         const { url } = await api.get<{ url: string }>(`/api/v1/tenant/documents/${lastDoc.id}/download`, { tenantId: activeTenant.id });
         setLogoUrl(url);
-        await api.put(`/api/v1/tenant/settings/branding`, { themeColor, logoUrl: url }, { tenantId: activeTenant.id });
+        await api.put(`/api/v1/tenant/settings/branding`, { logoUrl: url }, { tenantId: activeTenant.id });
         toast.success('Logo saved');
         loadAll();
       }
@@ -98,7 +97,6 @@ export default function SettingsPage() {
         setAddress(c.address || '');
 
         const b = settings?.branding || {};
-        setThemeColor(b.themeColor || '#6366f1');
         setLogoUrl(b.logoUrl || '');
 
         const m = settings?.modules || {};
@@ -243,14 +241,9 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex items-center gap-2 mt-2">
                     <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="Or paste a direct image URL" className="text-xs" />
-                    <Button size="sm" variant="ghost" onClick={() => saveSection('branding', { themeColor, logoUrl }, 'Branding')}>Save</Button>
+                    {logoUrl && <Button size="sm" variant="ghost" onClick={() => saveSection('branding', { logoUrl }, 'Branding')}>Save</Button>}
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Theme color</Label>
-                  <div className="flex items-center gap-2"><Input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="h-9 w-16 p-1" /><span className="text-sm text-muted-foreground">{themeColor}</span></div>
-                </div>
-                <Button size="sm" onClick={() => saveSection('branding', { themeColor, logoUrl }, 'Branding')}>Save Branding</Button>
               </CardContent>
             </Card>
           </div>
