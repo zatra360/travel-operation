@@ -7,6 +7,7 @@
  * Login: admin@globaltravels.com / Demo@123
  */
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
@@ -39,11 +40,12 @@ async function main() {
     { email: 'cox@globaltravels.com', first: 'Rokeya', last: 'Begum', role: 'MEMBER' },
   ];
   const users = {};
+  const passwordHash = await bcrypt.hash('Demo@123', 12);
   for (const u of userData) {
     const user = await prisma.user.upsert({
       where: { email: u.email },
-      update: {},
-      create: { email: u.email, passwordHash: '$2b$10$demo', firstName: u.first, lastName: u.last },
+      update: { passwordHash },
+      create: { email: u.email, passwordHash, firstName: u.first, lastName: u.last, status: 'ACTIVE' },
     });
     users[u.email] = user;
     await prisma.userTenantMembership.upsert({
