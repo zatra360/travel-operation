@@ -96,11 +96,10 @@ export function QuotationFormDialog({ open, onOpenChange, quotation, onSaved }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeTenant) return;
-    if (!form.quoteNumber.trim()) { setError('Quote number is required'); return; }
     setSaving(true); setError('');
 
     try {
-      const payload = { quoteNumber: form.quoteNumber, title: form.title || undefined, status: form.status, currencyCode: form.currencyCode, validUntil: form.validUntil || undefined, notes: form.notes || undefined, terms: form.terms || undefined, clientId: form.clientId || undefined, leadId: form.leadId || undefined };
+      const payload = { ...(form.quoteNumber.trim() ? { quoteNumber: form.quoteNumber.trim() } : {}), title: form.title || undefined, status: form.status, currencyCode: form.currencyCode, validUntil: form.validUntil || undefined, notes: form.notes || undefined, terms: form.terms || undefined, clientId: form.clientId || undefined, leadId: form.leadId || undefined };
 
       const method = isEdit && quotation ? 'put' : 'post';
       const url = isEdit && quotation ? `/api/v1/tenant/quotations/${quotation.id}` : '/api/v1/tenant/quotations';
@@ -131,7 +130,7 @@ export function QuotationFormDialog({ open, onOpenChange, quotation, onSaved }: 
           {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
           <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quote # *</Label><Input value={form.quoteNumber} onChange={e => set('quoteNumber', e.target.value)} placeholder="QTN-2026-0001" required className="mt-1" /></div>
+            <div><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quote # <span className="text-[10px] font-normal text-muted-foreground">(auto)</span></Label><Input value={form.quoteNumber} onChange={e => set('quoteNumber', e.target.value)} placeholder="Auto-generated if blank" className="mt-1" /></div>
             <div><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Title</Label><Input value={form.title} onChange={e => set('title', e.target.value)} placeholder="Umrah Package" className="mt-1" /></div>
           </div>
 
