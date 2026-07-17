@@ -155,8 +155,14 @@ async function main() {
     { fullName: 'Corporate Travels Ltd', email: 'info@corp.travel', companyName: 'Corporate Travels Ltd', serviceType: 'VISA', source: 'REFERRAL', status: 'QUALIFIED', priority: 'HIGH', potentialRevenue: 800000, isCorporateLead: true, assignedTo: sales2 },
     { fullName: 'Fatema Begum', email: 'fatema@example.com', phone: '+8801312345678', serviceType: 'VISA', source: 'SOCIAL', status: 'NEW', priority: 'LOW', potentialRevenue: 15000, assignedTo: sales1 },
   ];
-  for (const l of leads) {
-    await prisma.lead.create({ data: { tenantId: tenant.id, branchId: ho.id, assignedToId: l.assignedTo.id, fullName: l.fullName, email: l.email, primaryMobile: l.phone || undefined, companyName: l.companyName || undefined, serviceType: l.serviceType, source: l.source, status: l.status, priority: l.priority, potentialRevenue: l.potentialRevenue, isCorporateLead: l.isCorporateLead || false, numAdults: 1, leadScore: l.priority === 'HIGH' ? 75 : 40, createdById: l.assignedTo.id } });
+  const LEAD_IDS = ['dl1','dl2','dl3','dl4','dl5','dl6'];
+  for (let i = 0; i < leads.length; i++) {
+    const l = leads[i];
+    await prisma.lead.upsert({
+      where: { id: LEAD_IDS[i] },
+      update: {},
+      create: { id: LEAD_IDS[i], tenantId: tenant.id, branchId: ho.id, assignedToId: l.assignedTo.id, fullName: l.fullName, email: l.email, primaryMobile: l.phone || undefined, companyName: l.companyName || undefined, serviceType: l.serviceType, source: l.source, status: l.status, priority: l.priority, potentialRevenue: l.potentialRevenue, isCorporateLead: l.isCorporateLead || false, numAdults: 1, leadScore: l.priority === 'HIGH' ? 75 : 40, createdById: l.assignedTo.id },
+    });
   }
   console.log('  Leads: 6 created');
 
@@ -173,28 +179,39 @@ async function main() {
 
   const b1 = await prisma.booking.upsert({ where: { tenantId_bookingRef: { tenantId: tenant.id, bookingRef: 'BKG-2607-1001' } }, update: {}, create: { tenantId: tenant.id, branchId: ho.id, bookingRef: 'BKG-2607-1001', pnrLocator: 'ABC123', status: 'CONFIRMED', clientId: c1.id, quotationId: q1.id, assignedToId: ticketing.id, travelStart: new Date('2026-07-10'), travelEnd: new Date('2026-07-24'), createdById: ticketing.id } });
   await prisma.bookingPassenger.upsert({ where: { id: 'bp1' }, update: {}, create: { id: 'bp1', tenantId: tenant.id, bookingId: b1.id, passengerType: 'ADULT', firstName: 'Rahim', lastName: 'Uddin' } });
-  await prisma.bookingStatusLog.create({ data: { tenantId: tenant.id, bookingId: b1.id, toStatus: 'CONFIRMED', note: 'Booking created and confirmed' } });
+  await prisma.bookingStatusLog.upsert({ where: { id: 'bsl1' }, update: {}, create: { id: 'bsl1', tenantId: tenant.id, bookingId: b1.id, toStatus: 'CONFIRMED', note: 'Booking created and confirmed' } });
 
   const b2 = await prisma.booking.upsert({ where: { tenantId_bookingRef: { tenantId: tenant.id, bookingRef: 'BKG-2607-1002' } }, update: {}, create: { tenantId: tenant.id, branchId: dhk.id, bookingRef: 'BKG-2607-1002', pnrLocator: 'XYZ789', status: 'TICKETED', clientId: c2.id, quotationId: q2.id, assignedToId: ticketing.id, travelStart: new Date('2026-08-05'), travelEnd: new Date('2026-08-12'), createdById: ticketing.id } });
-  await prisma.bookingPassenger.createMany({ data: [{ tenantId: tenant.id, bookingId: b2.id, passengerType: 'ADULT', firstName: 'Ayesha', lastName: 'Siddique' }, { tenantId: tenant.id, bookingId: b2.id, passengerType: 'CHILD', firstName: 'Aariz', lastName: 'Siddique' }] });
-  await prisma.bookingSegment.create({ data: { tenantId: tenant.id, bookingId: b2.id, segmentType: 'FLIGHT', flightNumber: 'BG347', departureAt: new Date('2026-08-05T10:00:00Z'), arrivalAt: new Date('2026-08-05T16:00:00Z'), status: 'CONFIRMED' } });
-  await prisma.bookingStatusLog.createMany({ data: [{ tenantId: tenant.id, bookingId: b2.id, toStatus: 'HELD' }, { tenantId: tenant.id, bookingId: b2.id, fromStatus: 'HELD', toStatus: 'CONFIRMED', note: 'Payment received' }, { tenantId: tenant.id, bookingId: b2.id, fromStatus: 'CONFIRMED', toStatus: 'TICKETED', note: 'All tickets issued' }] });
+  await prisma.bookingPassenger.upsert({ where: { id: 'bp2a' }, update: {}, create: { id: 'bp2a', tenantId: tenant.id, bookingId: b2.id, passengerType: 'ADULT', firstName: 'Ayesha', lastName: 'Siddique' } });
+  await prisma.bookingPassenger.upsert({ where: { id: 'bp2b' }, update: {}, create: { id: 'bp2b', tenantId: tenant.id, bookingId: b2.id, passengerType: 'CHILD', firstName: 'Aariz', lastName: 'Siddique' } });
+  await prisma.bookingSegment.upsert({ where: { id: 'bsg1' }, update: {}, create: { id: 'bsg1', tenantId: tenant.id, bookingId: b2.id, segmentType: 'FLIGHT', flightNumber: 'BG347', departureAt: new Date('2026-08-05T10:00:00Z'), arrivalAt: new Date('2026-08-05T16:00:00Z'), status: 'CONFIRMED' } });
+  await prisma.bookingStatusLog.upsert({ where: { id: 'bsl2' }, update: {}, create: { id: 'bsl2', tenantId: tenant.id, bookingId: b2.id, toStatus: 'HELD' } });
+  await prisma.bookingStatusLog.upsert({ where: { id: 'bsl3' }, update: {}, create: { id: 'bsl3', tenantId: tenant.id, bookingId: b2.id, fromStatus: 'HELD', toStatus: 'CONFIRMED', note: 'Payment received' } });
+  await prisma.bookingStatusLog.upsert({ where: { id: 'bsl4' }, update: {}, create: { id: 'bsl4', tenantId: tenant.id, bookingId: b2.id, fromStatus: 'CONFIRMED', toStatus: 'TICKETED', note: 'All tickets issued' } });
   console.log('  Bookings: 2 with passengers/segments');
 
   const inv1 = await prisma.invoice.upsert({ where: { tenantId_invoiceNumber: { tenantId: tenant.id, invoiceNumber: 'INV-2607-1001' } }, update: {}, create: { tenantId: tenant.id, branchId: ho.id, invoiceNumber: 'INV-2607-1001', status: 'PAID', clientId: c1.id, bookingId: b1.id, currencyCode: 'BDT', subtotal: 333333, taxAmount: 16667, totalAmount: 350000, paidAmount: 350000, dueAmount: 0, createdById: finance.id, issuedAt: new Date() } });
-  await prisma.invoiceLine.create({ data: { tenantId: tenant.id, invoiceId: inv1.id, serviceType: 'UMRAH', description: '14-day Umrah package', quantity: 1, unitPrice: 333333, lineTotal: 333333 } });
+  await prisma.invoiceLine.upsert({ where: { id: 'invl1' }, update: {}, create: { id: 'invl1', tenantId: tenant.id, invoiceId: inv1.id, serviceType: 'UMRAH', description: '14-day Umrah package', quantity: 1, unitPrice: 333333, lineTotal: 333333 } });
 
   const inv2 = await prisma.invoice.upsert({ where: { tenantId_invoiceNumber: { tenantId: tenant.id, invoiceNumber: 'INV-2607-1002' } }, update: {}, create: { tenantId: tenant.id, branchId: dhk.id, invoiceNumber: 'INV-2607-1002', status: 'PARTIALLY_PAID', clientId: c2.id, bookingId: b2.id, currencyCode: 'USD', subtotal: 1190, taxAmount: 60, totalAmount: 1250, paidAmount: 500, dueAmount: 750, createdById: finance.id, issuedAt: new Date(), dueAt: new Date('2026-08-15') } });
-  await prisma.invoiceLine.create({ data: { tenantId: tenant.id, invoiceId: inv2.id, serviceType: 'VISA', description: 'Dubai tourist visa x2', quantity: 2, unitPrice: 595, lineTotal: 1190 } });
+  await prisma.invoiceLine.upsert({ where: { id: 'invl2' }, update: {}, create: { id: 'invl2', tenantId: tenant.id, invoiceId: inv2.id, serviceType: 'VISA', description: 'Dubai tourist visa x2', quantity: 2, unitPrice: 595, lineTotal: 1190 } });
   console.log('  Invoices: 2');
 
   const pay1 = await prisma.payment.upsert({ where: { id: 'dp1' }, update: {}, create: { id: 'dp1', tenantId: tenant.id, branchId: ho.id, invoiceId: inv1.id, bookingId: b1.id, clientId: c1.id, amount: 350000, currencyCode: 'BDT', paymentMethod: 'BANK_TRANSFER', status: 'RECEIVED', reference: 'BANK-001', createdById: finance.id, receivedAt: new Date() } });
-  await prisma.receipt.create({ data: { tenantId: tenant.id, receiptNumber: 'RCP-2607-1001', invoiceId: inv1.id, paymentId: pay1.id, paymentMethod: 'BANK_TRANSFER', amount: 350000, currencyCode: 'BDT', receivedAt: new Date() } });
-  await prisma.ledgerEntry.create({ data: { tenantId: tenant.id, referenceType: 'PAYMENT', referenceId: pay1.id, direction: 'CREDIT', currencyCode: 'BDT', amount: 350000, description: 'Payment for INV-2607-1001' } });
+  await prisma.receipt.upsert({
+    where: { tenantId_receiptNumber: { tenantId: tenant.id, receiptNumber: 'RCP-2607-1001' } },
+    update: { paymentId: pay1.id },
+    create: { id: 'dr1', tenantId: tenant.id, receiptNumber: 'RCP-2607-1001', invoiceId: inv1.id, paymentId: pay1.id, paymentMethod: 'BANK_TRANSFER', amount: 350000, currencyCode: 'BDT', receivedAt: new Date() },
+  });
+  await prisma.ledgerEntry.upsert({ where: { id: 'dle1' }, update: {}, create: { id: 'dle1', tenantId: tenant.id, referenceType: 'PAYMENT', referenceId: pay1.id, direction: 'CREDIT', currencyCode: 'BDT', amount: 350000, description: 'Payment for INV-2607-1001' } });
 
   const pay2 = await prisma.payment.upsert({ where: { id: 'dp2' }, update: {}, create: { id: 'dp2', tenantId: tenant.id, branchId: dhk.id, invoiceId: inv2.id, bookingId: b2.id, clientId: c2.id, amount: 500, currencyCode: 'USD', paymentMethod: 'CASH', status: 'RECEIVED', createdById: finance.id, receivedAt: new Date() } });
-  await prisma.receipt.create({ data: { tenantId: tenant.id, receiptNumber: 'RCP-2607-1002', invoiceId: inv2.id, paymentId: pay2.id, paymentMethod: 'CASH', amount: 500, currencyCode: 'USD', receivedAt: new Date() } });
-  await prisma.ledgerEntry.create({ data: { tenantId: tenant.id, referenceType: 'PAYMENT', referenceId: pay2.id, direction: 'CREDIT', currencyCode: 'USD', amount: 500, description: 'Payment for INV-2607-1002' } });
+  await prisma.receipt.upsert({
+    where: { tenantId_receiptNumber: { tenantId: tenant.id, receiptNumber: 'RCP-2607-1002' } },
+    update: { paymentId: pay2.id },
+    create: { id: 'dr2', tenantId: tenant.id, receiptNumber: 'RCP-2607-1002', invoiceId: inv2.id, paymentId: pay2.id, paymentMethod: 'CASH', amount: 500, currencyCode: 'USD', receivedAt: new Date() },
+  });
+  await prisma.ledgerEntry.upsert({ where: { id: 'dle2' }, update: {}, create: { id: 'dle2', tenantId: tenant.id, referenceType: 'PAYMENT', referenceId: pay2.id, direction: 'CREDIT', currencyCode: 'USD', amount: 500, description: 'Payment for INV-2607-1002' } });
   console.log('  Payments: 2 with receipts + ledger');
 
   await prisma.ticket.upsert({ where: { tenantId_ticketNumber: { tenantId: tenant.id, ticketNumber: 'TKT-2607-1001' } }, update: {}, create: { tenantId: tenant.id, branchId: dhk.id, bookingId: b2.id, ticketNumber: 'TKT-2607-1001', passengerName: 'Ayesha Siddique', status: 'ISSUED', issuedAt: new Date(), createdById: ticketing.id } });
@@ -209,9 +226,16 @@ async function main() {
     { type: 'PAYMENT_RECEIVED', subject: 'Payment 350,000 BDT received', userId: finance.id },
     { type: 'TICKET_ISSUED', subject: 'Ticket TKT-2607-1001 issued', userId: ticketing.id },
   ];
-  for (const e of events) {
-    await prisma.activity.create({ data: { tenantId: tenant.id, branchId: ho.id, userId: e.userId, type: e.type, subject: e.subject } });
+  const EVENT_IDS = ['dea1','dea2','dea3','dea4','dea5','dea6'];
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i];
+    await prisma.activity.upsert({
+      where: { id: EVENT_IDS[i] },
+      update: {},
+      create: { id: EVENT_IDS[i], tenantId: tenant.id, branchId: ho.id, userId: e.userId, type: e.type, subject: e.subject },
+    });
   }
+  console.log('  Activity: 6 timeline events');
   console.log('  Activity: 6 timeline events');
 
   console.log('\nDemo tenant created successfully!');
