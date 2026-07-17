@@ -22,6 +22,11 @@ import { cn } from '@/lib/utils';
 import { humanizeStatus } from '@/lib/status';
 import { DocumentUploadDialog } from '../documents/document-upload-dialog';
 
+function applyTheme(hex?: string) {
+  if (!hex) return;
+  try { document.documentElement.style.setProperty('--tenant-primary', hex); } catch {}
+}
+
 const TABS = [
   { key: 'profile', label: 'Profile', icon: Building2 },
   { key: 'currencies', label: 'Currencies', icon: DollarSign },
@@ -44,24 +49,14 @@ export default function SettingsPage() {
   const [website, setWebsite] = useState('');
   const [address, setAddress] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [themeColor, setThemeColor] = useState('#6366f1');
   const [logoUploading, setLogoUploading] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
 
   const onLogoUploaded = async () => {
-    if (!activeTenant) return;
     setUploadOpen(false);
-    // Fetch the uploaded document and get its download URL
-    try {
-      const docs = await api.get<any>(`/api/v1/tenant/documents?category=OTHER&limit=1`, { tenantId: activeTenant.id });
-      const lastDoc = docs?.data?.[0];
-      if (lastDoc) {
-        const { url } = await api.get<{ url: string }>(`/api/v1/tenant/documents/${lastDoc.id}/download`, { tenantId: activeTenant.id });
-        setLogoUrl(url);
-        await api.put(`/api/v1/tenant/settings/branding`, { logoUrl: url }, { tenantId: activeTenant.id });
-        toast.success('Logo saved');
-        loadAll();
-      }
-    } catch (err: any) { toast.error(err.message || 'Failed to set logo'); }
+    toast.success('Logo uploaded — reloading settings to apply');
+    loadAll();
   };
 
   // Currencies
@@ -98,6 +93,8 @@ export default function SettingsPage() {
 
         const b = settings?.branding || {};
         setLogoUrl(b.logoUrl || '');
+        setThemeColor(b.themeColor || '#6366f1');
+        applyTheme(b.themeColor);
 
         const m = settings?.modules || {};
         setModules(m);
@@ -242,6 +239,14 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-2 mt-2">
                     <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="Or paste a direct image URL" className="text-xs" />
                     {logoUrl && <Button size="sm" variant="ghost" onClick={() => saveSection('branding', { logoUrl }, 'Branding')}>Save</Button>}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Theme color</Label>
+                  <div className="flex items-center gap-2">
+                    <Input type="color" value={themeColor} onChange={(e) => { setThemeColor(e.target.value); applyTheme(e.target.value); }} className="h-9 w-16 p-1" />
+                    <span className="text-sm text-muted-foreground">{themeColor}</span>
+                    <Button size="sm" variant="ghost" onClick={() => saveSection('branding', { themeColor, logoUrl }, 'Theme')}>Save</Button>
                   </div>
                 </div>
               </CardContent>
