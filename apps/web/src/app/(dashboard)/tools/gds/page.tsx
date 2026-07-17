@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plane, Search, Code, FileText, Users, Calendar, MapPin, Ticket, Phone, Mail } from 'lucide-react';
 import { useAirports, useAirlines } from '@/lib/use-ref-data';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 function parseGdsCommand(cmd: string) {
   const result: { type: string; fields: Record<string, string> } = { type: 'unknown', fields: {} };
@@ -99,7 +100,7 @@ export default function GdsToolsPage() {
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <PageHeader title="GDS Tools" subtitle="Parse GDS commands, convert PNR data, and search flights" />
+      <PageHeader title="GDS Tools" subtitle="Parse GDS commands, convert PNR data, and search flights — Beta" />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -137,7 +138,7 @@ export default function GdsToolsPage() {
               <div><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 block">Children</Label><Input type="number" defaultValue={0} min={0} className="h-9" /></div>
               <div><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 block">Infants</Label><Input type="number" defaultValue={0} min={0} className="h-9" /></div>
             </div>
-            <Button className="w-full"><Search className="h-4 w-4 mr-2" />Search</Button>
+            <Button className="w-full" onClick={() => toast.info('Live flight search will be available once a GDS provider is connected.')}><Search className="h-4 w-4 mr-2" />Search</Button>
           </CardContent>
         </Card>
       </div>
@@ -220,7 +221,7 @@ export default function GdsToolsPage() {
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-4">
             {['Amadeus', 'Sabre', 'Galileo', 'Worldspan'].map(gds => (
-              <div key={gds} className="rounded-lg border p-4"><div className="flex items-center justify-between mb-2"><h4 className="font-semibold text-sm">{gds}</h4><Badge variant="secondary" className="text-[10px]">Offline</Badge></div><p className="text-xs text-muted-foreground mb-3">Configure API credentials to enable live flight search.</p><Button variant="outline" size="sm" className="w-full">Connect</Button></div>
+              <div key={gds} className="rounded-lg border p-4"><div className="flex items-center justify-between mb-2"><h4 className="font-semibold text-sm">{gds}</h4><Badge variant="secondary" className="text-[10px]">Offline</Badge></div>              <p className="text-xs text-muted-foreground mb-3">Configure API credentials to enable live flight search.</p><Button variant="outline" size="sm" className="w-full" onClick={() => toast.info('GDS provider integration coming soon.')}>Connect</Button></div>
             ))}
           </div>
         </CardContent>
