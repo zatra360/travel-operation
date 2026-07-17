@@ -7,8 +7,8 @@
  * active tenant record).
  */
 export const brand = {
-  name: 'Travel Operation',
-  shortName: 'Travel Operation',
+  name: 'ZATRA360',
+  shortName: 'ZATRA360',
   tagline: 'One operating system for modern travel businesses',
   description:
     'Manage leads, quotations, bookings, ticketing, after-sales service, finance, employees and customer communication from one secure workspace.',
