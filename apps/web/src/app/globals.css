@@ -164,14 +164,17 @@ tr:last-child td { border-bottom: none; }
   .bg-muted\/30 { background: white !important; }
 }
 
-/* Thin custom scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: oklch(0.82 0.005 260); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: oklch(0.7 0.01 260); }
+/* Thin scrollbar — html/body only, not every widget */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.88 0.005 260) transparent;
+}
+.dark html {
+  scrollbar-color: oklch(0.25 0.01 260) transparent;
+}
 
-.dark ::-webkit-scrollbar-thumb { background: oklch(0.35 0.01 260); }
-.dark ::-webkit-scrollbar-thumb:hover { background: oklch(0.45 0.02 260); }
-
-* { scrollbar-width: thin; scrollbar-color: oklch(0.82 0.005 260) transparent; }
-.dark * { scrollbar-color: oklch(0.35 0.01 260) transparent; }
+/* Sidebar nav gets an even thinner scrollbar */
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: oklch(0.82 0.005 260); border-radius: 2px; }
+.dark .sidebar-scroll::-webkit-scrollbar-thumb { background: oklch(0.35 0.01 260); }

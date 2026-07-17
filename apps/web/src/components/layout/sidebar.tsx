@@ -208,7 +208,7 @@ export function Sidebar() {
         </div>
       )}
 
-      <nav className="flex-1 overflow-y-auto p-2 space-y-3">
+      <nav className="flex-1 overflow-y-auto p-2 space-y-3 sidebar-scroll">
         {user?.isPlatformSuperAdmin && activeTenant && !isPlatform && (
           <NavItem href="/platform" icon={Shield} label="Platform Admin" />
         )}
