@@ -21,6 +21,7 @@ import { Money } from '@/components/travel/money';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
+import { humanizeStatus } from '@/lib/status';
 import { Payment, Paginated, PAYMENT_STATUSES } from '@/lib/crm';
 import { PaymentFormDialog } from './payment-form-dialog';
 
@@ -95,7 +96,7 @@ export default function PaymentsPage() {
     {
       key: 'method',
       header: 'Method',
-      cell: (p) => <span>{p.paymentMethod || '—'}</span>,
+      cell: (p) => <span>{humanizeStatus(p.paymentMethod)}</span>,
     },
     {
       key: 'amount',
