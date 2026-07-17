@@ -39,8 +39,8 @@ const QUICK_CREATE = [
 ];
 
 function formatCrumb(segment: string): string {
-  // Hide opaque ids (cuid/uuid-like) from the breadcrumb.
-  if (/^[a-z0-9]{20,}$/i.test(segment) || /^\d+$/.test(segment)) return 'Details';
+  // Hide opaque cuid/uuid-like ids (25+ char alphanumeric), not document numbers.
+  if (/^[a-z0-9]{25,}$/i.test(segment)) return '';
   return segment
     .split('-')
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
@@ -145,7 +145,7 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
     }
   };
 
-  const crumbs = pathname.split('/').filter(Boolean).map(formatCrumb);
+  const crumbs = pathname.split('/').filter(Boolean).map(formatCrumb).filter(Boolean);
   const title = crumbs[crumbs.length - 1] || 'Dashboard';
   const isPlatform = pathname.startsWith('/platform');
 
