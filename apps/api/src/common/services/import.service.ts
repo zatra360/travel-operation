@@ -5,6 +5,19 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class ImportService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private sanitizeCell(value: string): string {
+    if (!value) return '';
+    const trimmed = value.trim();
+    if (trimmed.startsWith('=') || trimmed.startsWith('+') || trimmed.startsWith('-') || trimmed.startsWith('@')) {
+      return `'${trimmed}`;
+    }
+    return trimmed;
+  }
+
+  private csvLine(values: (string | number)[]): string {
+    return values.map(v => `"${this.sanitizeCell(String(v ?? ''))}"`).join(',');
+  }
+
   parseCSV(buffer: Buffer): Record<string, string>[] {
     const text = buffer.toString('utf-8').trim();
     if (!text) throw new BadRequestException('Empty file');
@@ -86,7 +99,7 @@ export class ImportService {
     const headers = ['FullName', 'Email', 'Phone', 'Source', 'Status', 'CreatedAt'];
     const lines = [headers.join(',')];
     for (const l of leads) {
-      lines.push([l.fullName, l.email || '', l.primaryMobile || '', l.source || '', l.status, l.createdAt.toISOString()].map(v => `"${v}"`).join(','));
+      lines.push([l.fullName, l.email || '', l.primaryMobile || '', l.source || '', l.status, l.createdAt.toISOString()].map(v => `"${this.sanitizeCell(String(v ?? ''))}"`).join(','));
     }
     return lines.join('\n');
   }
@@ -96,7 +109,7 @@ export class ImportService {
     const headers = ['DisplayName', 'Email', 'Phone', 'Company', 'Type', 'Status', 'CreatedAt'];
     const lines = [headers.join(',')];
     for (const c of clients) {
-      lines.push([c.displayName, c.email || '', c.phone || '', c.companyName || '', c.type, c.status, c.createdAt.toISOString()].map(v => `"${v}"`).join(','));
+      lines.push([c.displayName, c.email || '', c.phone || '', c.companyName || '', c.type, c.status, c.createdAt.toISOString()].map(v => `"${this.sanitizeCell(String(v ?? ''))}"`).join(','));
     }
     return lines.join('\n');
   }
@@ -106,7 +119,7 @@ export class ImportService {
     const headers = ['BookingRef', 'PNR', 'Status', 'Client', 'TravelStart', 'TravelEnd', 'CreatedAt'];
     const lines = [headers.join(',')];
     for (const r of data) {
-      lines.push([r.bookingRef, r.pnrLocator || '', r.status, r.client?.displayName || '', r.travelStart?.toISOString() || '', r.travelEnd?.toISOString() || '', r.createdAt.toISOString()].map(v => `"${v}"`).join(','));
+      lines.push([r.bookingRef, r.pnrLocator || '', r.status, r.client?.displayName || '', r.travelStart?.toISOString() || '', r.travelEnd?.toISOString() || '', r.createdAt.toISOString()].map(v => `"${this.sanitizeCell(String(v ?? ''))}"`).join(','));
     }
     return lines.join('\n');
   }
@@ -116,7 +129,7 @@ export class ImportService {
     const headers = ['InvoiceNumber', 'Status', 'Client', 'Currency', 'Subtotal', 'Tax', 'Discount', 'Total', 'Paid', 'Due', 'DueDate', 'CreatedAt'];
     const lines = [headers.join(',')];
     for (const r of data) {
-      lines.push([r.invoiceNumber, r.status, r.client?.displayName || '', r.currencyCode, String(r.subtotal), String(r.taxAmount), String(r.discountAmount), String(r.totalAmount), String(r.paidAmount), String(r.dueAmount), r.dueAt?.toISOString() || '', r.createdAt.toISOString()].map(v => `"${v}"`).join(','));
+      lines.push([r.invoiceNumber, r.status, r.client?.displayName || '', r.currencyCode, String(r.subtotal), String(r.taxAmount), String(r.discountAmount), String(r.totalAmount), String(r.paidAmount), String(r.dueAmount), r.dueAt?.toISOString() || '', r.createdAt.toISOString()].map(v => `"${this.sanitizeCell(String(v ?? ''))}"`).join(','));
     }
     return lines.join('\n');
   }
@@ -126,7 +139,7 @@ export class ImportService {
     const headers = ['Reference', 'Status', 'Amount', 'Currency', 'Method', 'InvoiceId', 'ReceivedAt', 'CreatedAt'];
     const lines = [headers.join(',')];
     for (const r of data) {
-      lines.push([r.reference || '', r.status, String(r.amount), r.currencyCode, r.paymentMethod || '', r.invoiceId || '', r.receivedAt?.toISOString() || '', r.createdAt?.toISOString()].map(v => `"${v}"`).join(','));
+      lines.push([r.reference || '', r.status, String(r.amount), r.currencyCode, r.paymentMethod || '', r.invoiceId || '', r.receivedAt?.toISOString() || '', r.createdAt?.toISOString()].map(v => `"${this.sanitizeCell(String(v ?? ''))}"`).join(','));
     }
     return lines.join('\n');
   }
@@ -136,7 +149,7 @@ export class ImportService {
     const headers = ['TicketNumber', 'BookingRef', 'Passenger', 'Status', 'IssuedAt', 'CreatedAt'];
     const lines = [headers.join(',')];
     for (const r of data) {
-      lines.push([r.ticketNumber, r.booking?.bookingRef || '', r.passengerName || '', r.status, r.issuedAt?.toISOString() || '', r.createdAt?.toISOString()].map(v => `"${v}"`).join(','));
+      lines.push([r.ticketNumber, r.booking?.bookingRef || '', r.passengerName || '', r.status, r.issuedAt?.toISOString() || '', r.createdAt?.toISOString()].map(v => `"${this.sanitizeCell(String(v ?? ''))}"`).join(','));
     }
     return lines.join('\n');
   }
@@ -146,7 +159,7 @@ export class ImportService {
     const headers = ['QuoteNumber', 'Status', 'Client', 'Currency', 'Subtotal', 'Tax', 'Discount', 'GrandTotal', 'ValidUntil', 'CreatedAt'];
     const lines = [headers.join(',')];
     for (const r of data) {
-      lines.push([r.quoteNumber, r.status, r.client?.displayName || '', r.currencyCode, String(r.subtotal), String(r.taxTotal), String(r.discountTotal), String(r.grandTotal), r.validUntil?.toISOString() || '', r.createdAt?.toISOString()].map(v => `"${v}"`).join(','));
+      lines.push([r.quoteNumber, r.status, r.client?.displayName || '', r.currencyCode, String(r.subtotal), String(r.taxTotal), String(r.discountTotal), String(r.grandTotal), r.validUntil?.toISOString() || '', r.createdAt?.toISOString()].map(v => `"${this.sanitizeCell(String(v ?? ''))}"`).join(','));
     }
     return lines.join('\n');
   }
@@ -156,7 +169,7 @@ export class ImportService {
     const headers = ['EmployeeCode', 'FirstName', 'LastName', 'Email', 'Phone', 'Position', 'Status', 'JoinedAt', 'CreatedAt'];
     const lines = [headers.join(',')];
     for (const r of data) {
-      lines.push([r.employeeCode, r.firstName, r.lastName, r.email || '', r.phone || '', r.position || '', r.status, r.joinedAt?.toISOString() || '', r.createdAt?.toISOString()].map(v => `"${v}"`).join(','));
+      lines.push([r.employeeCode, r.firstName, r.lastName, r.email || '', r.phone || '', r.position || '', r.status, r.joinedAt?.toISOString() || '', r.createdAt?.toISOString()].map(v => `"${this.sanitizeCell(String(v ?? ''))}"`).join(','));
     }
     return lines.join('\n');
   }
@@ -166,7 +179,7 @@ export class ImportService {
     const headers = ['ExpenseNumber', 'Category', 'Vendor', 'Amount', 'Currency', 'Status', 'ExpenseDate', 'CreatedAt'];
     const lines = [headers.join(',')];
     for (const r of data) {
-      lines.push([r.expenseNumber, r.category || '', r.vendorName || '', String(r.amount), r.currencyCode, r.status, r.expenseDate?.toISOString() || '', r.createdAt?.toISOString()].map(v => `"${v}"`).join(','));
+      lines.push([r.expenseNumber, r.category || '', r.vendorName || '', String(r.amount), r.currencyCode, r.status, r.expenseDate?.toISOString() || '', r.createdAt?.toISOString()].map(v => `"${this.sanitizeCell(String(v ?? ''))}"`).join(','));
     }
     return lines.join('\n');
   }
