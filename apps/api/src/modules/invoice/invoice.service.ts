@@ -36,7 +36,10 @@ export class InvoiceService {
     ].filter((v) => v.code));
 
     const invoiceNumber = dto.invoiceNumber || (await this.numberGen.generateInvoiceNumber(tenantId));
-    const totalAmount = dto.totalAmount ?? 0;
+    const subtotal = dto.subtotal ?? 0;
+    const defaultTaxRate = await this.taxService.getDefault(tenantId);
+    const taxAmount = dto.taxAmount ?? Math.round(subtotal * Number(defaultTaxRate?.rate ?? 0.05) * 100) / 100;
+    const totalAmount = dto.totalAmount ?? (subtotal + taxAmount - (dto.discountAmount ?? 0));
     const status = dto.status ?? 'DRAFT';
 
     const invoice = await this.prisma.$transaction(async (tx) => {
@@ -46,7 +49,7 @@ export class InvoiceService {
           clientId: dto.clientId ?? null, bookingId: dto.bookingId ?? null,
           quotationId: dto.quotationId ?? null,
           currencyCode: dto.currencyCode ?? 'USD',
-          subtotal: dto.subtotal ?? 0, taxAmount: dto.taxAmount ?? 0,
+          subtotal, taxAmount,
           discountAmount: dto.discountAmount ?? 0, totalAmount,
           paidAmount: 0, dueAmount: totalAmount,
           issuedAt: dto.issuedAt ? new Date(dto.issuedAt) : (status === 'SENT' ? new Date() : null),

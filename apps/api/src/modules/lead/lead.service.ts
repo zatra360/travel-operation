@@ -8,6 +8,7 @@ import { SlaService } from '../../common/services/sla.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
 import { SearchService } from '../../common/services/search.service';
 import { FollowUpService } from '../follow-up/follow-up.service';
+import { NotificationService } from '../notification/notification.service';
 import { resolveServiceTypeRef } from '../service-ops/service-type-map';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
@@ -49,6 +50,7 @@ export class LeadService {
     private readonly sla: SlaService,
     private readonly search: SearchService,
     private readonly followUps: FollowUpService,
+    private readonly notification: NotificationService,
   ) {}
 
   private async validateLinkedIds(tenantId: string, dto: any) {
@@ -178,6 +180,13 @@ export class LeadService {
     const lead = await this.prisma.lead.update({ where: { id }, data: { ...data, slaDueAt } });
     await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'UPDATE', { changes: dto, lostReason: (dto as any).lostReason }, lead.branchId ?? undefined);
     await this.activity.log(tenantId, actorId, dto.status === 'LOST' ? 'LEAD_MARKED_LOST' : 'LEAD_UPDATED', `Lead updated: ${lead.fullName}${(dto as any).lostReason ? ` (reason: ${(dto as any).lostReason})` : ''}`, 'Lead', lead.id, lead.branchId);
+    if (dto.assignedToId && dto.assignedToId !== current.assignedToId) {
+      this.notification.notify({
+        tenantId, userId: dto.assignedToId,
+        title: `Lead assigned: ${lead.fullName}`,
+        body: `You have been assigned the lead "${lead.fullName}".`,
+      }).catch(() => {});
+    }
     this.search.indexLeads(tenantId, [lead]).catch(() => {});
     if (dto.status === 'CONTACTED' && current.status !== 'CONTACTED') {
       this.scheduleContactFollowUp(tenantId, actorId, lead, slaDueAt).catch(() => {});

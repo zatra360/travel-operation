@@ -16,7 +16,7 @@ export class CreateBookingDto {
   @MaxLength(20)
   pnrLocator?: string;
 
-  @ApiPropertyOptional({ enum: BOOKING_STATUSES, default: 'PENDING' })
+  @ApiPropertyOptional({ enum: BOOKING_STATUSES, default: 'HELD' })
   @IsOptional()
   @IsIn(BOOKING_STATUSES)
   status?: string;

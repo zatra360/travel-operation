@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { ActivityService } from '../activity/activity.service';
 import { CreateVendorDto, UpdateVendorDto, QueryVendorDto } from './dto/vendor.dto';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class VendorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly activity: ActivityService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateVendorDto) {
@@ -35,6 +37,7 @@ export class VendorService {
       },
     });
     await this.audit.logMutation(actorId, tenantId, 'VENDOR', 'Vendor', vendor.id, 'CREATE', { name: vendor.name, code: vendor.code });
+    await this.activity.log(tenantId, actorId, 'VENDOR_CREATED', `Vendor ${vendor.name} created`, 'Vendor', vendor.id, vendor.branchId);
     return vendor;
   }
 
@@ -86,6 +89,7 @@ export class VendorService {
       },
     });
     await this.audit.logMutation(actorId, tenantId, 'VENDOR', 'Vendor', vendor.id, 'UPDATE', { changes: dto });
+    await this.activity.log(tenantId, actorId, 'VENDOR_UPDATED', `Vendor ${vendor.name} updated`, 'Vendor', vendor.id, vendor.branchId);
     return vendor;
   }
 
@@ -93,6 +97,7 @@ export class VendorService {
     const vendor = await this.findById(tenantId, id);
     await this.prisma.vendor.update({ where: { id }, data: { deletedAt: new Date() } });
     await this.audit.logMutation(actorId, tenantId, 'VENDOR', 'Vendor', vendor.id, 'DELETE', { name: vendor.name });
+    await this.activity.log(tenantId, actorId, 'VENDOR_DELETED', `Vendor ${vendor.name} deleted`, 'Vendor', vendor.id);
     return { id, deleted: true };
   }
 }

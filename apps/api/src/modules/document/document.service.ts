@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../../common/storage/storage.service';
+import { ActivityService } from '../activity/activity.service';
 import { RequestUploadDto } from './dto/request-upload.dto';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { QueryDocumentDto } from './dto/query-document.dto';
@@ -15,6 +16,7 @@ export class DocumentService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly storage: StorageService,
+    private readonly activity: ActivityService,
   ) {}
 
   async requestUpload(tenantId: string, dto: RequestUploadDto) {
@@ -59,6 +61,7 @@ export class DocumentService {
       doc.branchId ?? undefined,
     );
 
+    await this.activity.log(tenantId, actorId, 'DOCUMENT_CREATED', `Document ${dto.fileName} uploaded`, 'Document', doc.id, doc.branchId);
     return doc;
   }
 

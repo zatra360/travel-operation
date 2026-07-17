@@ -15,7 +15,7 @@ interface Paginated<T> { data: T[]; total: number; }
 export default function NotificationsPage() {
   const [items, setItems] = useState<NotifItem[]>([]); const [loading, setLoading] = useState(true); const [unread, setUnread] = useState(0);
   const { activeTenant } = useAuthStore();
-  const load = useCallback(() => { if (!activeTenant) return; setLoading(true); api.get<Paginated<NotifItem>>('/api/v1/tenant/notifications', { tenantId: activeTenant.id }).then((r) => { setItems(r.data); setUnread(r.data.filter((n) => !n.isRead).length); }).finally(() => setLoading(false)); }, [activeTenant]);
+  const load = useCallback(() => { if (!activeTenant) return; setLoading(true); Promise.all([api.get<Paginated<NotifItem>>('/api/v1/tenant/notifications', { tenantId: activeTenant.id }), api.get<{unread:number}>('/api/v1/tenant/notifications/count', { tenantId: activeTenant.id }).catch(() => ({unread:0}) as any)]).then(([itemsRes, countRes]) => { setItems(itemsRes.data); setUnread(countRes.unread ?? 0); }).finally(() => setLoading(false)); }, [activeTenant]);
   useEffect(() => { load(); }, [load]);
   const markRead = async (id: string) => { await api.post(`/api/v1/tenant/notifications/${id}/read`, {}, { tenantId: activeTenant!.id }); load(); };
   const markAll = async () => { await api.post('/api/v1/tenant/notifications/read-all', {}, { tenantId: activeTenant!.id }); load(); };

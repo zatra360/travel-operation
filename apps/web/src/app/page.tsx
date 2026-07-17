@@ -6,7 +6,7 @@ import {
   Plane, Building2, Users, CreditCard, FileText, Ticket,
   Globe, Shield, BarChart3, ArrowRight, Check, Star, Sparkles,
   Calculator, ClipboardList, UserCheck, Bell, Clock, Phone,
-  Mail, MapPin, ChevronRight, Quote, Layers, Wallet, Award,
+  Mail, MapPin, ChevronRight, Quote, Layers, Wallet, Award, ChevronDown,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { brand } from '@/lib/brand';
@@ -308,12 +308,9 @@ export default function LandingPage() {
             <h2 className="text-3xl font-bold tracking-tight mb-4">Frequently asked questions</h2>
             <p className="text-muted-foreground">Everything you need to know about {brand.name}.</p>
           </div>
-          <div className="space-y-4">
-            {faqs.map((f) => (
-              <div key={f.q} className="rounded-xl border bg-card p-5">
-                <h3 className="font-semibold mb-1.5">{f.q}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{f.a}</p>
-              </div>
+          <div className="space-y-3">
+            {faqs.map((f, i) => (
+              <FaqItem key={i} question={f.q} answer={f.a} defaultOpen={i === 0} />
             ))}
           </div>
         </div>
@@ -375,6 +372,23 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function FaqItem({ question, answer, defaultOpen }: { question: string; answer: string; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
+  return (
+    <div className="rounded-xl border bg-card overflow-hidden">
+      <button
+        type="button"
+        className="w-full flex items-center justify-between p-5 text-left font-semibold hover:bg-muted/50 transition-colors"
+        onClick={() => setOpen(!open)}
+      >
+        <span>{question}</span>
+        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="px-5 pb-5 -mt-1"><p className="text-sm text-muted-foreground leading-relaxed">{answer}</p></div>}
     </div>
   );
 }

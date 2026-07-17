@@ -72,6 +72,8 @@ export class ClientService {
         { email: { contains: query.search, mode: 'insensitive' } },
         { phone: { contains: query.search, mode: 'insensitive' } },
         { companyName: { contains: query.search, mode: 'insensitive' } },
+        { nationalId: { contains: query.search, mode: 'insensitive' } },
+        { passports: { some: { passportNumber: { contains: query.search, mode: 'insensitive' } } } },
       ];
     }
     enforceBranchScope(where, activeBranchId);

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
+import { ActivityService } from '../activity/activity.service';
 import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
@@ -10,7 +11,7 @@ import { QueryEmployeeDto } from './dto/query-employee.dto';
 
 @Injectable()
 export class EmployeeService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly lookup: LookupValidationService, private readonly numberGen: NumberGeneratorService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly lookup: LookupValidationService, private readonly numberGen: NumberGeneratorService, private readonly activity: ActivityService) {}
 
   async create(tenantId: string, actorId: string, dto: CreateEmployeeDto) {
     await this.lookup.validateMultiple(tenantId, [
@@ -19,6 +20,7 @@ export class EmployeeService {
     const employeeCode = dto.employeeCode || (await this.numberGen.generateEmployeeCode(tenantId));
     const emp = await this.prisma.employee.create({ data: { tenantId, branchId: dto.branchId ?? null, employeeCode, userId: dto.userId ?? null, departmentId: dto.departmentId ?? null, firstName: dto.firstName, lastName: dto.lastName, email: dto.email ?? null, phone: dto.phone ?? null, position: dto.position ?? null, status: dto.status ?? 'ACTIVE', joinedAt: dto.joinedAt ? new Date(dto.joinedAt) : null } });
     await this.audit.logMutation(actorId, tenantId, 'EMPLOYEE', 'Employee', emp.id, 'CREATE', { employeeCode: emp.employeeCode, name: `${emp.firstName} ${emp.lastName}` }, emp.branchId ?? undefined);
+    await this.activity.log(tenantId, actorId, 'EMPLOYEE_CREATED', `Employee ${emp.firstName} ${emp.lastName} created`, 'Employee', emp.id, emp.branchId);
     return emp;
   }
 
@@ -43,8 +45,9 @@ export class EmployeeService {
     ].filter((v) => v.code));
     const emp = await this.prisma.employee.update({ where: { id }, data: { ...(dto.employeeCode !== undefined && { employeeCode: dto.employeeCode }), ...(dto.userId !== undefined && { userId: dto.userId }), ...(dto.departmentId !== undefined && { departmentId: dto.departmentId }), ...(dto.firstName !== undefined && { firstName: dto.firstName }), ...(dto.lastName !== undefined && { lastName: dto.lastName }), ...(dto.email !== undefined && { email: dto.email }), ...(dto.phone !== undefined && { phone: dto.phone }), ...(dto.position !== undefined && { position: dto.position }), ...(dto.status !== undefined && { status: dto.status }), ...(dto.joinedAt !== undefined && { joinedAt: dto.joinedAt ? new Date(dto.joinedAt) : null }), ...(dto.branchId !== undefined && { branchId: dto.branchId }) } });
     await this.audit.logMutation(actorId, tenantId, 'EMPLOYEE', 'Employee', emp.id, 'UPDATE', { changes: dto }, emp.branchId ?? undefined);
+    await this.activity.log(tenantId, actorId, 'EMPLOYEE_UPDATED', `Employee ${emp.firstName} ${emp.lastName} updated`, 'Employee', emp.id, emp.branchId);
     return emp;
   }
 
-  async remove(tenantId: string, actorId: string, id: string) { const emp = await this.findById(tenantId, id); await this.prisma.employee.update({ where: { id }, data: { deletedAt: new Date() } }); await this.audit.logMutation(actorId, tenantId, 'EMPLOYEE', 'Employee', emp.id, 'DELETE', { employeeCode: emp.employeeCode }, emp.branchId ?? undefined); return { id, deleted: true }; }
+  async remove(tenantId: string, actorId: string, id: string) { const emp = await this.findById(tenantId, id); await this.prisma.employee.update({ where: { id }, data: { deletedAt: new Date() } }); await this.audit.logMutation(actorId, tenantId, 'EMPLOYEE', 'Employee', emp.id, 'DELETE', { employeeCode: emp.employeeCode }, emp.branchId ?? undefined); await this.activity.log(tenantId, actorId, 'EMPLOYEE_DELETED', `Employee ${emp.firstName} ${emp.lastName} deleted`, 'Employee', emp.id, emp.branchId); return { id, deleted: true }; }
 }

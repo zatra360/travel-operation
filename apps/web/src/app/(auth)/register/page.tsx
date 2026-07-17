@@ -15,13 +15,14 @@ import { brand } from '@/lib/brand';
 export default function RegisterPage() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', companyName: '', companySlug: '' });
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '', companyName: '', companySlug: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.password.length < 8) { setError('Password must be at least 8 characters'); return; }
+    if (form.password !== form.confirmPassword) { setError('Passwords do not match'); return; }
     setLoading(true); setError('');
     try {
       const res = await api.post<any>('/api/v1/auth/register', {
@@ -62,6 +63,7 @@ export default function RegisterPage() {
             </div>
             <div className="space-y-1.5"><Label>Work email</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="you@agency.com" required /></div>
             <div className="space-y-1.5"><Label>Password</Label><Input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="Min. 8 characters" required minLength={8} /></div>
+            <div className="space-y-1.5"><Label>Confirm password</Label><Input type="password" value={form.confirmPassword} onChange={e => setForm({ ...form, confirmPassword: e.target.value })} placeholder="Re-enter your password" required minLength={8} /></div>
             <div className="space-y-1.5"><Label>Company name</Label><Input value={form.companyName} onChange={e => setForm({ ...form, companyName: e.target.value })} placeholder="Your Travel Agency" required /></div>
             <div className="space-y-1.5"><Label>Company slug <span className="text-xs text-muted-foreground">(optional)</span></Label><Input value={form.companySlug} onChange={e => setForm({ ...form, companySlug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })} placeholder="your-agency" /></div>
             <Button type="submit" className="w-full" disabled={loading}>{loading ? 'Creating...' : 'Start free trial'}</Button>

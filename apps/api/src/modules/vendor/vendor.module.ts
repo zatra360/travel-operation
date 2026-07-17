@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { VendorController } from './vendor.controller';
 import { VendorService } from './vendor.service';
+import { ActivityModule } from '../activity/activity.module';
 
 @Module({
+  imports: [ActivityModule],
   controllers: [VendorController],
   providers: [VendorService],
   exports: [VendorService],

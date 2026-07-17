@@ -19,6 +19,7 @@ interface AuditItem {
   entity: string;
   entityId?: string | null;
   actorId: string;
+  actor?: { id: string; firstName: string; lastName: string; email: string } | null;
   createdAt: string;
 }
 
@@ -56,6 +57,7 @@ export default function AuditLogPage() {
 
   const columns: DataTableColumn<AuditItem>[] = [
     { key: 'date', header: 'Date', cell: (a) => <span className="text-muted-foreground">{formatDateTime(a.createdAt)}</span> },
+    { key: 'actor', header: 'Actor', cell: (a) => <span className="text-sm">{a.actor ? `${a.actor.firstName} ${a.actor.lastName}` : 'System'}</span> },
     { key: 'module', header: 'Module', cell: (a) => <Badge variant="secondary">{a.module}</Badge> },
     { key: 'action', header: 'Action', cell: (a) => <StatusBadge status={a.action} variant={actionTone(a.action)} /> },
     { key: 'entity', header: 'Entity', hideOnMobile: true, cell: (a) => <span>{a.entity}</span> },
@@ -79,7 +81,7 @@ export default function AuditLogPage() {
               <Badge variant="secondary">{a.module}</Badge>
               <StatusBadge status={a.action} variant={actionTone(a.action)} />
             </div>
-            <p className="text-sm">{a.entity}</p>
+            <p className="text-sm">{a.actor ? `${a.actor.firstName} ${a.actor.lastName}` : 'System'} — {a.entity}</p>
             <p className="text-xs text-muted-foreground">{formatDateTime(a.createdAt)}</p>
           </div>
         )}
