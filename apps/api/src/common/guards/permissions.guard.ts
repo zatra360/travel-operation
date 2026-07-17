@@ -28,6 +28,13 @@ export class PermissionsGuard implements CanActivate {
 
     if (!tenantContext) return false;
 
+    // Tenant Owner / Admin can do everything inside their company.
+    const membership = await this.prisma.userTenantMembership.findUnique({
+      where: { userId_tenantId: { userId: user.id, tenantId: tenantContext.tenantId } },
+      select: { role: true },
+    });
+    if (membership?.role === 'OWNER' || membership?.role === 'ADMIN') return true;
+
     const roles = await this.prisma.userRoleAssignment.findMany({
       where: {
         userId: user.id,

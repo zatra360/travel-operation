@@ -50,6 +50,38 @@ async function main() {
   console.log('Users: 7 created');
 
   const perms = await prisma.permission.findMany();
+
+  // Upsert any missing permission records so later role grants can find
+  // them even when the main seed (seed.ts) hasn't been re-run.
+  const allModules = [
+    'TENANT', 'BRANCH', 'USER', 'ROLE', 'PERMISSION',
+    'LEAD', 'CLIENT', 'FOLLOW_UP',
+    'QUOTATION', 'BOOKING', 'TICKET',
+    'INVOICE', 'RECEIPT', 'PAYMENT', 'EXPENSE', 'LEDGER',
+    'REFUND', 'REISSUE', 'CANCELLATION',
+    'EMPLOYEE', 'LEAVE', 'ATTENDANCE', 'PERFORMANCE',
+    'COMMISSION', 'SALARY_RUN',
+    'DOCUMENT', 'SETTINGS', 'AUDIT_LOG', 'REPORT', 'DASHBOARD',
+    'NOTIFICATION', 'MASTER_DATA',
+    'PROJECT', 'TASK', 'VENDOR', 'INSURANCE', 'FEEDBACK',
+    'JOURNAL', 'GL_ACCOUNT', 'ACCOUNTING_PERIOD',
+    'SERVICE_TYPE', 'SERVICE_CASE', 'SERVICE_ITEM', 'WORKFLOW',
+    'WORKFLOW_TASK', 'WORKFLOW_APPROVAL', 'SERVICE_DOCUMENT', 'SERVICE_REPORT',
+    'TEAM',
+  ];
+  const actions = ['CREATE', 'READ', 'UPDATE', 'DELETE', 'MANAGE'];
+  for (const m of allModules) {
+    for (const a of actions) {
+      const name = `${m}_${a}`;
+      await prisma.permission.upsert({
+        where: { name },
+        update: {},
+        create: { name, module: m, action: a, description: `Can ${a.toLowerCase()} ${m.toLowerCase().replace(/_/g, ' ')}` },
+      });
+    }
+  }
+  const refreshedPerms = await prisma.permission.findMany();
+
   const roleDefs = ['Tenant Admin', 'Branch Manager', 'Sales Executive', 'Ticketing Officer', 'Visa Officer', 'Finance Officer', 'HR Manager'];
   const roles = {};
   for (const name of roleDefs) {
@@ -60,7 +92,7 @@ async function main() {
     });
     roles[name] = r;
     if (name === 'Tenant Admin') {
-      for (const p of perms) {
+      for (const p of refreshedPerms) {
         await prisma.rolePermission.upsert({
           where: { roleId_permissionId: { roleId: r.id, permissionId: p.id } },
           update: {},
@@ -83,7 +115,7 @@ async function main() {
   };
 
   const permMap = {};
-  for (const p of perms) permMap[p.name] = p.id;
+  for (const p of refreshedPerms) permMap[p.name] = p.id;
   for (const [roleName, modules] of Object.entries(roleGrants)) {
     const role = roles[roleName];
     if (!role) continue;

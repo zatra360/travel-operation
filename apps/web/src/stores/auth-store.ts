@@ -154,8 +154,10 @@ export const useAuthStore = create<AuthState>()(
  * Reads from the store's persistent state so it is safe to call outside React.
  */
 export function hasPermission(permission: string): boolean {
-  const { permissions, isPlatformSuperAdmin } = useAuthStore.getState();
+  const { permissions, isPlatformSuperAdmin, activeTenant } = useAuthStore.getState();
   if (isPlatformSuperAdmin || permissions.includes('*')) return true;
+  // Tenant Owner / Admin can do everything inside their company.
+  if (activeTenant?.role === 'OWNER' || activeTenant?.role === 'ADMIN') return true;
   return permissions.includes(permission);
 }
 
