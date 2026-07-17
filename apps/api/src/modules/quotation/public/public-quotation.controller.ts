@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Req, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { SignQuotationDto, ClientCommentDto } from './esign.dto';
@@ -37,7 +37,7 @@ export class PublicQuotationController {
       where: { publicHash: hash },
       include: { sign: true },
     });
-    if (!quotation || quotation.deletedAt) throw new Error('Quotation not found');
+    if (!quotation || quotation.deletedAt) throw new NotFoundException('Quotation not found');
 
     const sign = await this.prisma.quotationSign.upsert({
       where: { quotationId: quotation.id },
@@ -64,7 +64,7 @@ export class PublicQuotationController {
   @ApiOperation({ summary: 'Submit a client comment on a quotation' })
   async comment(@Param('hash') hash: string, @Body() dto: ClientCommentDto) {
     const quotation = await this.prisma.quotation.findUnique({ where: { publicHash: hash } });
-    if (!quotation || quotation.deletedAt) throw new Error('Quotation not found');
+    if (!quotation || quotation.deletedAt) throw new NotFoundException('Quotation not found');
 
     return this.prisma.quotation.update({
       where: { id: quotation.id },
@@ -79,11 +79,11 @@ export class PublicQuotationController {
       where: { publicHash: hash },
       include: { sign: true },
     });
-    if (!quotation || quotation.deletedAt) throw new Error('Quotation not found');
-    if (quotation.status !== 'SENT') throw new Error('Quotation is not in a sendable state');
+    if (!quotation || quotation.deletedAt) throw new NotFoundException('Quotation not found');
+    if (quotation.status !== 'SENT') throw new BadRequestException('Quotation is not in a sendable state');
 
     if (quotation.signatureRequired && !quotation.sign) {
-      throw new Error('Signature is required before accepting this quotation');
+      throw new BadRequestException('Signature is required before accepting this quotation');
     }
 
     await this.prisma.quotation.update({
@@ -98,7 +98,7 @@ export class PublicQuotationController {
   @ApiOperation({ summary: 'Reject a quotation via public hash' })
   async reject(@Param('hash') hash: string) {
     const quotation = await this.prisma.quotation.findUnique({ where: { publicHash: hash } });
-    if (!quotation || quotation.deletedAt) throw new Error('Quotation not found');
+    if (!quotation || quotation.deletedAt) throw new NotFoundException('Quotation not found');
 
     await this.prisma.quotation.update({
       where: { id: quotation.id },

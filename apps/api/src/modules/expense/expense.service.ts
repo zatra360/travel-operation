@@ -29,6 +29,7 @@ export class ExpenseService {
         currencyCode: dto.currencyCode ?? 'USD', status: dto.status ?? 'PENDING',
         description: dto.description ?? null,
         expenseDate: dto.expenseDate ? new Date(dto.expenseDate) : null,
+        createdById: actorId,
       },
     });
     await this.audit.logMutation(actorId, tenantId, 'EXPENSE', 'Expense', expense.id, 'CREATE', { expenseNumber: expense.expenseNumber }, expense.branchId ?? undefined);
@@ -110,6 +111,7 @@ export class ExpenseService {
     const expense = await this.findById(tenantId, id);
     await this.prisma.expense.update({ where: { id }, data: { deletedAt: new Date() } });
     await this.audit.logMutation(actorId, tenantId, 'EXPENSE', 'Expense', expense.id, 'DELETE', { expenseNumber: expense.expenseNumber }, expense.branchId ?? undefined);
+    await this.activity.log(tenantId, actorId, 'EXPENSE_DELETED', `Expense ${expense.expenseNumber} deleted`, 'Expense', expense.id, expense.branchId);
     return { id, deleted: true };
   }
 }
