@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Printer } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   Select,
@@ -118,6 +118,9 @@ export default function TicketsPage() {
       align: 'right',
       cell: (t) => (
         <div className="flex items-center justify-end gap-1">
+          <Button asChild variant="ghost" size="icon" title="Print">
+            <Link href={`/tickets/${t.id}/print`} target="_blank"><Printer className="h-4 w-4" /></Link>
+          </Button>
           <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(t)}>
             <Pencil className="h-4 w-4" />
           </Button>

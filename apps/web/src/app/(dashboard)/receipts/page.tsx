@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Printer } from 'lucide-react';
+import Link from 'next/link';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { TableToolbar } from '@/components/ui/table-toolbar';
 import { Pagination } from '@/components/ui/pagination';
@@ -76,9 +77,14 @@ export default function ReceiptsPage() {
       header: '',
       align: 'right',
       cell: (r) => (
-        <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>
-          Edit
-        </Button>
+        <div className="flex items-center justify-end gap-1">
+          <Button asChild variant="ghost" size="icon" title="Print">
+            <Link href={`/receipts/${r.id}/print`} target="_blank"><Printer className="h-4 w-4" /></Link>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>
+            Edit
+          </Button>
+        </div>
       ),
     },
   ];
