@@ -43,6 +43,8 @@ export default function SettingsPage() {
   const [website, setWebsite] = useState('');
   const [address, setAddress] = useState('');
   const [themeColor, setThemeColor] = useState('#6366f1');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoUploading, setLogoUploading] = useState(false);
 
   // Currencies
   const [currencies, setCurrencies] = useState<any[]>([]);
@@ -78,6 +80,7 @@ export default function SettingsPage() {
 
         const b = settings?.branding || {};
         setThemeColor(b.themeColor || '#6366f1');
+        setLogoUrl(b.logoUrl || '');
 
         const m = settings?.modules || {};
         setModules(m);
@@ -212,10 +215,18 @@ export default function SettingsPage() {
               <CardHeader><CardTitle className="text-base flex items-center gap-2"><Palette className="h-4 w-4" />Branding</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-1">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Logo URL</Label>
+                  <div className="flex items-center gap-2">
+                    <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://example.com/logo.png" />
+                    {logoUrl && <img src={logoUrl} alt="Logo preview" className="h-8 w-8 rounded object-contain border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Paste a direct image URL. Shown in the top bar and sidebar.</p>
+                </div>
+                <div className="space-y-1">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Theme color</Label>
                   <div className="flex items-center gap-2"><Input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="h-9 w-16 p-1" /><span className="text-sm text-muted-foreground">{themeColor}</span></div>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => saveSection('branding', { themeColor }, 'Branding')}>Save Theme</Button>
+                <Button size="sm" onClick={() => saveSection('branding', { themeColor, logoUrl }, 'Branding')}>Save Branding</Button>
               </CardContent>
             </Card>
           </div>

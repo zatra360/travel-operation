@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Menu, Moon, Sun, Search, Bell, Plus, GitBranch, Building2, ChevronDown, User, ClipboardList } from 'lucide-react';
+import { Menu, Moon, Sun, Search, Bell, Plus, GitBranch, Building2, ChevronDown, User, ClipboardList, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -174,7 +174,7 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
         {!isPlatform && tenants.length > 1 && (
           <Select value={activeTenant?.id ?? ''} onValueChange={(v) => { if (v) { const t = tenants.find(x => x.id === v); if (t) setActiveTenant(t); } }}>
             <SelectTrigger className="h-7 w-auto px-2 gap-1 text-xs border-0 bg-muted/30 hover:bg-muted/50" aria-label="Switch company">
-              <Building2 className="h-3 w-3 shrink-0 opacity-60" />
+              {(activeTenant as any)?.logo ? <img src={(activeTenant as any).logo} alt="" className="h-4 w-4 rounded object-contain" /> : <Building2 className="h-3 w-3 shrink-0 opacity-60" />}
               <SelectValue placeholder={activeTenant?.name ?? 'Select'} />
             </SelectTrigger>
             <SelectContent>
@@ -183,6 +183,12 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
               ))}
             </SelectContent>
           </Select>
+        )}
+        {!isPlatform && tenants.length <= 1 && activeTenant && (
+          <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            {(activeTenant as any)?.logo ? <img src={(activeTenant as any).logo} alt="" className="h-4 w-4 rounded object-contain" /> : <Building2 className="h-3 w-3 opacity-60" />}
+            {activeTenant.name}
+          </span>
         )}
       </div>
 

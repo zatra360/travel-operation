@@ -70,6 +70,20 @@ async function loadDefaultCurrency(tenantId: string) {
   } catch { /* leave at USD */ }
 }
 
+async function loadTenantLogo(tenantId: string) {
+  try {
+    const data = await api.get<any>('/api/v1/tenant/settings/branding', { tenantId });
+    if (data?.logoUrl) {
+      const state = useAuthStore.getState();
+      if (state.activeTenant) {
+        useAuthStore.setState({
+          activeTenant: { ...state.activeTenant, logo: data.logoUrl as string },
+        });
+      }
+    }
+  } catch { /* no logo set */ }
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -83,7 +97,7 @@ export const useAuthStore = create<AuthState>()(
   isPlatformSuperAdmin: false,
   defaultCurrency: 'USD',
 
-  setAuth: (user, accessToken, refreshToken, tenants) => {
+      setAuth: (user, accessToken, refreshToken, tenants) => {
         localStorage.setItem('accessToken', accessToken);
         setRefreshToken(refreshToken);
         set({
@@ -96,6 +110,7 @@ export const useAuthStore = create<AuthState>()(
         });
         if (tenants.length > 0) {
           loadDefaultCurrency(tenants[0].id).catch(() => {});
+          loadTenantLogo(tenants[0].id).catch(() => {});
         }
       },
 
@@ -108,6 +123,7 @@ export const useAuthStore = create<AuthState>()(
         set({ activeTenant: tenant, activeBranch: null, permissions: [] });
         if (tenant) {
           loadDefaultCurrency(tenant.id).catch(() => {});
+          loadTenantLogo(tenant.id).catch(() => {});
         }
       },
 

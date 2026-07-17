@@ -180,6 +180,9 @@ export function Sidebar() {
 
       {activeTenant && !isPlatform && (
         <div className="px-4 py-2 border-b border-sidebar-border shrink-0">
+          {(activeTenant as any).logo && (
+            <img src={(activeTenant as any).logo} alt="" className="h-7 w-auto mb-1 rounded object-contain" />
+          )}
           <p className="text-xs text-sidebar-foreground/60">Company</p>
           <p className="text-sm font-medium truncate text-sidebar-foreground">{activeTenant.name}</p>
         </div>
