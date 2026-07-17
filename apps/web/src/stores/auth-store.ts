@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { api } from '@/lib/api';
 
 interface User {
   id: string;
@@ -33,6 +34,7 @@ interface AuthState {
   isAuthenticated: boolean;
   permissions: string[];
   isPlatformSuperAdmin: boolean;
+  defaultCurrency: string;
 
   setAuth: (user: User, accessToken: string, refreshToken: string, tenants: TenantInfo[]) => void;
   setAccessToken: (token: string) => void;
@@ -59,6 +61,15 @@ function clearRefreshToken() {
   localStorage.removeItem('refreshToken');
 }
 
+async function loadDefaultCurrency(tenantId: string) {
+  try {
+    const data = await api.get<{ code: string }>('/api/v1/tenant/currencies/default', { tenantId });
+    if (data?.code) {
+      useAuthStore.setState({ defaultCurrency: data.code });
+    }
+  } catch { /* leave at USD */ }
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -68,10 +79,11 @@ export const useAuthStore = create<AuthState>()(
       activeTenant: null,
       activeBranch: null,
       isAuthenticated: false,
-      permissions: [],
-      isPlatformSuperAdmin: false,
+  permissions: [],
+  isPlatformSuperAdmin: false,
+  defaultCurrency: 'USD',
 
-      setAuth: (user, accessToken, refreshToken, tenants) => {
+  setAuth: (user, accessToken, refreshToken, tenants) => {
         localStorage.setItem('accessToken', accessToken);
         setRefreshToken(refreshToken);
         set({
@@ -82,6 +94,9 @@ export const useAuthStore = create<AuthState>()(
           activeTenant: tenants.length > 0 ? tenants[0] : null,
           isPlatformSuperAdmin: user.isPlatformSuperAdmin,
         });
+        if (tenants.length > 0) {
+          loadDefaultCurrency(tenants[0].id).catch(() => {});
+        }
       },
 
       setAccessToken: (accessToken) => {
@@ -89,7 +104,12 @@ export const useAuthStore = create<AuthState>()(
         set({ accessToken });
       },
 
-      setActiveTenant: (tenant) => set({ activeTenant: tenant, activeBranch: null, permissions: [] }),
+      setActiveTenant: (tenant) => {
+        set({ activeTenant: tenant, activeBranch: null, permissions: [] });
+        if (tenant) {
+          loadDefaultCurrency(tenant.id).catch(() => {});
+        }
+      },
 
       setActiveBranch: (branch) => set({ activeBranch: branch }),
 
@@ -123,6 +143,7 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
         permissions: state.permissions,
         isPlatformSuperAdmin: state.isPlatformSuperAdmin,
+        defaultCurrency: state.defaultCurrency,
       }),
     },
   ),
@@ -139,6 +160,5 @@ export function hasPermission(permission: string): boolean {
 }
 
 export function getDefaultCurrency(): string {
-  const { activeTenant } = useAuthStore.getState();
-  return (activeTenant?.settings?.defaultCurrency) || 'USD';
+  return useAuthStore.getState().defaultCurrency || 'USD';
 }
