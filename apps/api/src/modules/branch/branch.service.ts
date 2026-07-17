@@ -23,21 +23,21 @@ export class BranchService {
     });
   }
 
-  async findById(id: string) {
+  async findById(tenantId: string, id: string) {
     const branch = await this.prisma.branch.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, tenantId, deletedAt: null },
     });
     if (!branch) throw new NotFoundException('Branch not found');
     return branch;
   }
 
-  async update(id: string, data: { name?: string; address?: string; phone?: string; email?: string }) {
-    await this.findById(id);
+  async update(tenantId: string, id: string, data: { name?: string; address?: string; phone?: string; email?: string }) {
+    await this.findById(tenantId, id);
     return this.prisma.branch.update({ where: { id }, data });
   }
 
-  async remove(id: string) {
-    await this.findById(id);
+  async remove(tenantId: string, id: string) {
+    await this.findById(tenantId, id);
     return this.prisma.branch.update({
       where: { id },
       data: { deletedAt: new Date(), status: 'CLOSED' as any },

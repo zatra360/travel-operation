@@ -22,7 +22,7 @@ export default function CustomFieldsPage() {
 
   const load = () => {
     if (!activeTenant) return;
-    api.get('/api/v1/tenant/settings/custom-fields/custom', { tenantId: activeTenant.id }).then((d: any) => setFields(d)).finally(() => setLoading(false));
+    api.get('/api/v1/tenant/settings/custom-fields', { tenantId: activeTenant.id }).then((d: any) => setFields(d)).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, [activeTenant]);
 

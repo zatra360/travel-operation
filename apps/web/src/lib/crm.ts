@@ -9,8 +9,8 @@ export interface Paginated<T> {
 export const LEAD_STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'QUOTATION_SENT', 'NEGOTIATION', 'WON', 'LOST', 'DUPLICATE', 'SPAM'] as const;
 export const LEAD_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
 export const LEAD_SOURCES = [
-  'WEBSITE', 'REFERRAL', 'WALK_IN', 'PHONE', 'SOCIAL', 'PARTNER',
-  'EMAIL', 'EVENT', 'ADVERTISEMENT', 'OTHER',
+  'WEBSITE', 'FACEBOOK', 'WHATSAPP', 'REFERRAL', 'WALK_IN', 'PHONE', 'SOCIAL', 'PARTNER',
+  'EMAIL', 'EVENT', 'ADVERTISEMENT', 'CORPORATE', 'API', 'OTHER',
 ] as const;
 export const SERVICE_TYPES = [
   'AIR_TICKET', 'VISA', 'HOTEL', 'TOUR', 'INSURANCE', 'TRANSFER',

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LookupValidationService } from '../master-data/lookup-validation.service';
+import { validateStatusTransition } from '../../common/utils/status-transitions';
 import { CreateContractDto, UpdateContractDto, SignContractDto } from './dto/contract.dto';
 
 @Injectable()
@@ -75,7 +76,13 @@ export class ContractService {
   }
 
   async update(tenantId: string, id: string, dto: UpdateContractDto) {
-    await this.findOne(tenantId, id);
+    const current = await this.findOne(tenantId, id);
+    if (dto.status && dto.status !== current.status) {
+      const check = validateStatusTransition('contract', current.status, dto.status);
+      if (!check.valid) {
+        throw new BadRequestException(`Cannot transition from ${current.status} to ${dto.status}. Allowed: ${check.allowed.join(', ') || 'none'}`);
+      }
+    }
     await this.lookup.validateMultiple(tenantId, [
       { categoryCode: 'contract-status', code: dto.status },
     ].filter((v) => v.code));

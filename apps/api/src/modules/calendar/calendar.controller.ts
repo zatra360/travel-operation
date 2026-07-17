@@ -21,7 +21,7 @@ export class CalendarController {
   }
 
   @Post('events')
-  @RequirePermissions('DASHBOARD_READ')
+  @RequirePermissions('SETTINGS_UPDATE')
   @ApiOperation({ summary: 'Create an event' })
   async createEvent(@TenantCtx() ctx: TenantContext, @Body() dto: any) {
     return this.prisma.event.create({
@@ -35,13 +35,13 @@ export class CalendarController {
     });
   }
 
-  @Put('events/:id') @RequirePermissions('DASHBOARD_READ')
+  @Put('events/:id') @RequirePermissions('SETTINGS_UPDATE')
   async updateEvent(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: any) {
     await this.prisma.event.findFirstOrThrow({ where: { id, tenantId: ctx.tenantId } });
     return this.prisma.event.update({ where: { id }, data: dto });
   }
 
-  @Delete('events/:id') @RequirePermissions('DASHBOARD_READ')
+  @Delete('events/:id') @RequirePermissions('SETTINGS_UPDATE')
   async deleteEvent(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
     return this.prisma.event.delete({ where: { id } });
   }
@@ -53,11 +53,11 @@ export class CalendarController {
   }
 
   @Post('holidays')
-  @RequirePermissions('DASHBOARD_READ')
+  @RequirePermissions('SETTINGS_UPDATE')
   async createHoliday(@TenantCtx() ctx: TenantContext, @Body() dto: any) {
     return this.prisma.holiday.create({ data: { tenantId: ctx.tenantId, name: dto.name, date: new Date(dto.date) } });
   }
 
-  @Delete('holidays/:id') @RequirePermissions('DASHBOARD_READ')
+  @Delete('holidays/:id') @RequirePermissions('SETTINGS_UPDATE')
   async deleteHoliday(@Param('id') id: string) { return this.prisma.holiday.delete({ where: { id } }); }
 }

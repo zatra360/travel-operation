@@ -3,16 +3,18 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { enforceBranchScope } from '../../common/utils/scope';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
 import { AuditService } from '../audit/audit.service';
+import { ActivityService } from '../activity/activity.service';
 import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
 import { GLPostingService } from '../accounting/gl-posting.service';
+import { NotificationService } from '../notification/notification.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { QueryExpenseDto } from './dto/query-expense.dto';
 
 @Injectable()
 export class ExpenseService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly lookup: LookupValidationService, private readonly numberGen: NumberGeneratorService, private readonly glPosting: GLPostingService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly lookup: LookupValidationService, private readonly numberGen: NumberGeneratorService, private readonly glPosting: GLPostingService, private readonly notification: NotificationService, private readonly activity: ActivityService) {}
 
   async create(tenantId: string, actorId: string, dto: CreateExpenseDto) {
     await this.lookup.validateMultiple(tenantId, [
@@ -30,6 +32,7 @@ export class ExpenseService {
       },
     });
     await this.audit.logMutation(actorId, tenantId, 'EXPENSE', 'Expense', expense.id, 'CREATE', { expenseNumber: expense.expenseNumber }, expense.branchId ?? undefined);
+    await this.activity.log(tenantId, actorId, 'EXPENSE_CREATED', `Expense ${expense.expenseNumber} created`, 'Expense', expense.id, expense.branchId);
     return expense;
   }
 
@@ -60,6 +63,9 @@ export class ExpenseService {
       if (!check.valid) {
         throw new BadRequestException(`Cannot transition from ${current.status} to ${dto.status}. Allowed: ${check.allowed.join(', ') || 'none'}`);
       }
+      if ((dto.status === 'APPROVED' || dto.status === 'REJECTED') && current.createdById === actorId) {
+        throw new BadRequestException(`Cannot ${dto.status.toLowerCase()} your own expense. A different user must approve or reject.`);
+      }
     }
     const becomingApproved = dto.status === 'APPROVED' && current.status !== 'APPROVED';
     const becomingPaid = dto.status === 'PAID' && current.status !== 'PAID';
@@ -89,6 +95,14 @@ export class ExpenseService {
       return exp;
     });
     await this.audit.logMutation(actorId, tenantId, 'EXPENSE', 'Expense', expense.id, 'UPDATE', { changes: dto }, expense.branchId ?? undefined);
+    await this.activity.log(tenantId, actorId, 'EXPENSE_UPDATED', `Expense ${expense.expenseNumber} updated to ${expense.status}`, 'Expense', expense.id, expense.branchId);
+    if (dto.status === 'APPROVED' || dto.status === 'REJECTED') {
+      this.notification.notify({
+        tenantId, userId: actorId,
+        title: `Expense ${expense.expenseNumber} ${dto.status.toLowerCase()}`,
+        body: `Expense ${expense.expenseNumber} (${expense.amount} ${expense.currencyCode}) has been ${dto.status.toLowerCase()}.`,
+      }).catch(() => {});
+    }
     return expense;
   }
 

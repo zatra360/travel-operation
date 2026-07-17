@@ -5,9 +5,10 @@ import { ActivityModule } from '../activity/activity.module';
 import { MasterDataModule } from '../master-data/master-data.module';
 import { ClientModule } from '../client/client.module';
 import { AccountingModule } from '../accounting/accounting.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [ActivityModule, MasterDataModule, ClientModule, AccountingModule],
+  imports: [ActivityModule, MasterDataModule, ClientModule, AccountingModule, NotificationModule],
   controllers: [PaymentController],
   providers: [PaymentService],
   exports: [PaymentService],

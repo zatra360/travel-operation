@@ -74,10 +74,17 @@ export class PublicQuotationController {
 
   @Post(':hash/accept')
   @ApiOperation({ summary: 'Accept a quotation via public hash' })
-  async accept(@Param('hash') hash: string) {
-    const quotation = await this.prisma.quotation.findUnique({ where: { publicHash: hash } });
+  async accept(@Param('hash') hash: string, @Req() req: any) {
+    const quotation = await this.prisma.quotation.findUnique({
+      where: { publicHash: hash },
+      include: { sign: true },
+    });
     if (!quotation || quotation.deletedAt) throw new Error('Quotation not found');
     if (quotation.status !== 'SENT') throw new Error('Quotation is not in a sendable state');
+
+    if (quotation.signatureRequired && !quotation.sign) {
+      throw new Error('Signature is required before accepting this quotation');
+    }
 
     await this.prisma.quotation.update({
       where: { id: quotation.id },

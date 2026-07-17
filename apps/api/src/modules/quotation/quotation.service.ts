@@ -554,7 +554,7 @@ export class QuotationService {
   async convertToBooking(tenantId: string, actorId: string, quotationId: string) {
     const quotation = await this.prisma.quotation.findFirst({
       where: { id: quotationId, tenantId, deletedAt: null },
-      include: { lineItems: true, client: { select: { displayName: true } } },
+      include: { lineItems: true, client: { select: { displayName: true } }, lead: { select: { preferredTravelDate: true } } },
     });
     if (!quotation) throw new NotFoundException('Quotation not found');
     if (quotation.status !== 'ACCEPTED') {
@@ -577,7 +577,7 @@ export class QuotationService {
         leadId: quotation.leadId,
         assignedToId: quotation.assignedToId,
         notes: `Created from quotation ${quotation.quoteNumber}`,
-        travelStart: quotation.validUntil ?? undefined,
+        travelStart: quotation.lead?.preferredTravelDate ? new Date(quotation.lead.preferredTravelDate) : null,
         createdById: actorId,
       },
     });

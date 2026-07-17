@@ -10,6 +10,7 @@ import { NumberGeneratorService } from '../../common/services/number-generator.s
 import { validateStatusTransition } from '../../common/utils/status-transitions';
 import { ClientScoringService } from '../client/client-scoring.service';
 import { GLPostingService } from '../accounting/gl-posting.service';
+import { NotificationService } from '../notification/notification.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { QueryPaymentDto } from './dto/query-payment.dto';
@@ -25,6 +26,7 @@ export class PaymentService {
     private readonly numberGen: NumberGeneratorService,
     private readonly scoring: ClientScoringService,
     private readonly glPosting: GLPostingService,
+    private readonly notification: NotificationService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreatePaymentDto) {
@@ -182,6 +184,11 @@ export class PaymentService {
       await this.activity.log(tenantId, actorId, 'PAYMENT_RECEIVED', `Payment of ${updated.amount} ${updated.currencyCode} received`, 'Payment', updated.id);
       await this.activity.log(tenantId, actorId, 'RECEIPT_CREATED', `Receipt #${receiptNumber} generated`, 'Receipt', receipt.id, updated.branchId);
       await this.activity.log(tenantId, actorId, 'LEDGER_ENTRY_CREATED', `Ledger entry for payment ${updated.id}`, 'LedgerEntry', updated.id, updated.branchId);
+      this.notification.notify({
+        tenantId, userId: actorId,
+        title: `Payment received: ${updated.amount} ${updated.currencyCode}`,
+        body: `Payment of ${updated.amount} ${updated.currencyCode} has been received (ref: ${updated.reference || receiptNumber}).`,
+      }).catch(() => {});
     }
 
     this.scoring.refreshInBackground(tenantId, updated.clientId);

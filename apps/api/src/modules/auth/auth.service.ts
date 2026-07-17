@@ -156,7 +156,7 @@ export class AuthService {
       if (!user) throw new BadRequestException('User not found');
       const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
       if (!valid) throw new BadRequestException('Current password is incorrect');
-      data.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+      data.passwordHash = await bcrypt.hash(dto.newPassword, 12);
     }
 
     return this.prisma.user.update({

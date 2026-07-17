@@ -102,6 +102,15 @@ const transitions: Record<string, Record<string, string[]>> = {
     REJECTED: ['PENDING'],
     PAID: [],
   },
+  contract: {
+    DRAFT: ['SENT', 'CANCELLED'],
+    SENT: ['SIGNED', 'REJECTED', 'EXPIRED', 'CANCELLED'],
+    SIGNED: ['TERMINATED', 'EXPIRED'],
+    REJECTED: ['DRAFT'],
+    EXPIRED: ['DRAFT'],
+    CANCELLED: [],
+    TERMINATED: [],
+  },
 };
 
 export function validateStatusTransition(

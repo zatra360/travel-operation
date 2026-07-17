@@ -2,12 +2,13 @@ import { Controller, Post, Param, UseGuards, NotFoundException } from '@nestjs/c
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 
 @ApiTags('Platform - User Security')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PlatformAdminGuard, PermissionsGuard)
 @Controller('platform/user-security')
 export class PlatformUserSecurityController {
   constructor(private readonly prisma: PrismaService) {}

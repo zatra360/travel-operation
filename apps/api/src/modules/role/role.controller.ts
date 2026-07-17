@@ -44,21 +44,21 @@ export class RoleController {
   @Get(':id')
   @RequirePermissions('ROLE_READ')
   @ApiOperation({ summary: 'Get role by ID' })
-  async findById(@Param('id') id: string) {
-    return this.roleService.findById(id);
+  async findById(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.roleService.findById(ctx.tenantId, id);
   }
 
   @Put(':id')
   @RequirePermissions('ROLE_UPDATE')
   @ApiOperation({ summary: 'Update role and permissions' })
-  async update(@Param('id') id: string, @Body() dto: CreateRoleDto) {
-    return this.roleService.update(id, dto);
+  async update(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: CreateRoleDto) {
+    return this.roleService.update(ctx.tenantId, id, dto);
   }
 
   @Delete(':id')
   @RequirePermissions('ROLE_DELETE')
   @ApiOperation({ summary: 'Soft delete role' })
-  async remove(@Param('id') id: string) {
-    return this.roleService.remove(id);
+  async remove(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.roleService.remove(ctx.tenantId, id);
   }
 }

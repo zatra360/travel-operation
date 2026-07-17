@@ -10,7 +10,23 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
 
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"] as readonly string[],
+        connectSrc: ["'self'"] as readonly string[],
+        fontSrc: ["'self'"] as readonly string[],
+        objectSrc: ["'none'"] as readonly string[],
+        frameAncestors: ["'none'"] as readonly string[],
+      },
+    },
+    hsts: { maxAge: 31536000, includeSubDomains: true },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' as const },
+    crossOriginEmbedderPolicy: false,
+  } as any));
   app.use(compression());
 
   app.enableCors({

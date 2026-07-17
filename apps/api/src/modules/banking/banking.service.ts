@@ -40,7 +40,6 @@ export class BankingService {
     if (dto.routingNumber !== undefined) data.routingNumber = dto.routingNumber;
     if (dto.swiftCode !== undefined) data.swiftCode = dto.swiftCode;
     if (dto.currencyCode !== undefined) data.currencyCode = dto.currencyCode;
-    if (dto.currentBalance !== undefined) data.currentBalance = dto.currentBalance;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.isDefault !== undefined) data.isDefault = dto.isDefault;
     if (dto.notes !== undefined) data.notes = dto.notes;
@@ -84,7 +83,6 @@ export class BankingService {
     const data: any = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.currencyCode !== undefined) data.currencyCode = dto.currencyCode;
-    if (dto.currentBalance !== undefined) data.currentBalance = dto.currentBalance;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.notes !== undefined) data.notes = dto.notes;
     const reg = await this.prisma.cashRegister.update({ where: { id }, data });

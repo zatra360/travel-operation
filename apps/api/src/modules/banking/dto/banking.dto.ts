@@ -20,7 +20,6 @@ export class UpdateBankAccountDto {
   @ApiPropertyOptional() @IsOptional() @IsString() routingNumber?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() swiftCode?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() currencyCode?: string;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() currentBalance?: number;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isDefault?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
@@ -37,7 +36,6 @@ export class CreateCashRegisterDto {
 export class UpdateCashRegisterDto {
   @ApiPropertyOptional() @IsOptional() @IsString() name?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() currencyCode?: string;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() currentBalance?: number;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
 }

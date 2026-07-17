@@ -7,6 +7,7 @@ import { RelationshipValidationService } from '../../common/services/relationshi
 import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
+import { NotificationService } from '../notification/notification.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { QueryTicketDto } from './dto/query-ticket.dto';
@@ -20,6 +21,7 @@ export class TicketService {
     private readonly relValidation: RelationshipValidationService,
     private readonly lookup: LookupValidationService,
     private readonly numberGen: NumberGeneratorService,
+    private readonly notification: NotificationService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateTicketDto) {
@@ -208,6 +210,11 @@ export class TicketService {
     await this.prisma.ticketLifecycleEvent.create({
       data: { tenantId, ticketId: id, action: 'ISSUE', category: 'ISSUANCE', ticketCount: 1 },
     });
+    this.notification.notify({
+      tenantId, userId: actorId,
+      title: `Ticket ${updated.ticketNumber} issued`,
+      body: `Ticket ${updated.ticketNumber} has been issued for ${updated.passengerName || 'passenger'}.`,
+    }).catch(() => {});
     return updated;
   }
 

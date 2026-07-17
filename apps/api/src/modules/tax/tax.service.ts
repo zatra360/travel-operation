@@ -7,6 +7,12 @@ export class TaxService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(tenantId: string, dto: CreateTaxRateDto) {
+    if (dto.isDefault) {
+      await this.prisma.taxRate.updateMany({
+        where: { tenantId, isDefault: true },
+        data: { isDefault: false },
+      });
+    }
     return this.prisma.taxRate.create({
       data: { tenantId, name: dto.name, code: dto.code, rate: dto.rate, description: dto.description, countryCode: dto.countryCode, isDefault: dto.isDefault ?? false },
     });
@@ -28,6 +34,12 @@ export class TaxService {
 
   async update(tenantId: string, id: string, dto: UpdateTaxRateDto) {
     await this.findOne(tenantId, id);
+    if ((dto as any).isDefault) {
+      await this.prisma.taxRate.updateMany({
+        where: { tenantId, isDefault: true, id: { not: id } },
+        data: { isDefault: false },
+      });
+    }
     return this.prisma.taxRate.update({ where: { id }, data: dto as any });
   }
 

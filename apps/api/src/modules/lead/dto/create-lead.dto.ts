@@ -45,4 +45,8 @@ export class CreateLeadDto {
   @ApiPropertyOptional() @IsOptional() @IsString() cabinTypeId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() approxBudget?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() returnDate?: string;
+
+  @ApiPropertyOptional({ description: 'Reason for marking lead as lost' })
+  @IsOptional() @IsString() @MaxLength(500)
+  lostReason?: string;
 }

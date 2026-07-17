@@ -3,13 +3,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
+import { NotificationService } from '../notification/notification.service';
 import { CreateLeaveDto } from './dto/create-leave.dto';
 import { UpdateLeaveDto } from './dto/update-leave.dto';
 import { QueryLeaveDto } from './dto/query-leave.dto';
 
 @Injectable()
 export class LeaveService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly lookup: LookupValidationService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly lookup: LookupValidationService, private readonly notification: NotificationService) {}
 
   async create(tenantId: string, actorId: string, dto: CreateLeaveDto) {
     await this.lookup.validateMultiple(tenantId, [
@@ -42,6 +43,13 @@ export class LeaveService {
     }
     const leave = await this.prisma.leave.update({ where: { id }, data: { ...(dto.leaveType !== undefined && { leaveType: dto.leaveType }), ...(dto.status !== undefined && { status: dto.status }), ...(dto.reason !== undefined && { reason: dto.reason }), ...(dto.startDate !== undefined && { startDate: new Date(dto.startDate) }), ...(dto.endDate !== undefined && { endDate: new Date(dto.endDate) }), ...(dto.employeeId !== undefined && { employeeId: dto.employeeId }) } });
     await this.audit.logMutation(actorId, tenantId, 'LEAVE', 'Leave', leave.id, 'UPDATE', { changes: dto });
+    if (dto.status === 'APPROVED' || dto.status === 'REJECTED') {
+      this.notification.notify({
+        tenantId, userId: actorId,
+        title: `Leave request ${dto.status.toLowerCase()}`,
+        body: `Your leave request (${leave.leaveType}) has been ${dto.status.toLowerCase()}.`,
+      }).catch(() => {});
+    }
     return leave;
   }
 }

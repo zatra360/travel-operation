@@ -162,6 +162,9 @@ export class LeadService {
       if (!check.valid) {
         throw new BadRequestException(`Invalid lead transition from ${current.status} to ${dto.status}. Allowed: ${check.allowed.join(', ') || 'none'}`);
       }
+      if (dto.status === 'LOST' && !(dto as any).lostReason) {
+        throw new BadRequestException('Lost reason is required when marking a lead as lost');
+      }
     }
 
     const newStatus = dto.status ?? current.status;
@@ -173,8 +176,8 @@ export class LeadService {
       data.serviceTypeId = ref.id;
     }
     const lead = await this.prisma.lead.update({ where: { id }, data: { ...data, slaDueAt } });
-    await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'UPDATE', { changes: dto }, lead.branchId ?? undefined);
-    await this.activity.log(tenantId, actorId, 'LEAD_UPDATED', `Lead updated: ${lead.fullName}`, 'Lead', lead.id, lead.branchId);
+    await this.audit.logMutation(actorId, tenantId, 'LEAD', 'Lead', lead.id, 'UPDATE', { changes: dto, lostReason: (dto as any).lostReason }, lead.branchId ?? undefined);
+    await this.activity.log(tenantId, actorId, dto.status === 'LOST' ? 'LEAD_MARKED_LOST' : 'LEAD_UPDATED', `Lead updated: ${lead.fullName}${(dto as any).lostReason ? ` (reason: ${(dto as any).lostReason})` : ''}`, 'Lead', lead.id, lead.branchId);
     this.search.indexLeads(tenantId, [lead]).catch(() => {});
     if (dto.status === 'CONTACTED' && current.status !== 'CONTACTED') {
       this.scheduleContactFollowUp(tenantId, actorId, lead, slaDueAt).catch(() => {});
@@ -229,6 +232,8 @@ export class LeadService {
             passportNumber: lead.passportNationalityId,
             fullName: lead.fullName,
             expiryDate: new Date(Date.now() + 5 * 365 * 24 * 60 * 60 * 1000),
+            status: 'DRAFT',
+            isVerified: false,
             nationality: lead.nationalityId,
           },
         });
@@ -270,13 +275,13 @@ export class LeadService {
 
     if (safePhone) {
       const client = await this.prisma.client.findFirst({
-        where: { tenantId, deletedAt: null, OR: [{ phone: { contains: safePhone } }, { whatsapp: { contains: safePhone } }] },
+        where: { tenantId, deletedAt: null, OR: [{ phone: { equals: safePhone } }, { whatsapp: { equals: safePhone } }] },
         select: { id: true, displayName: true, phone: true },
       });
       if (client && !matches.find(m => m.id === client.id)) matches.push({ id: client.id, name: client.displayName, type: 'client', matchOn: 'phone', phone: client.phone });
 
       const lead = await this.prisma.lead.findFirst({
-        where: { tenantId, deletedAt: null, status: { notIn: ['LOST', 'DUPLICATE', 'SPAM'] }, ...(excludeId ? { id: { not: excludeId } } : {}), OR: [{ primaryMobile: { contains: safePhone } }, { secondaryMobile: { contains: safePhone } }, { whatsappNumber: { contains: safePhone } }] },
+        where: { tenantId, deletedAt: null, status: { notIn: ['LOST', 'DUPLICATE', 'SPAM'] }, ...(excludeId ? { id: { not: excludeId } } : {}), OR: [{ primaryMobile: { equals: safePhone } }, { secondaryMobile: { equals: safePhone } }, { whatsappNumber: { equals: safePhone } }] },
         select: { id: true, fullName: true, primaryMobile: true },
       });
       if (lead && !matches.find(m => m.id === lead.id)) matches.push({ id: lead.id, name: lead.fullName, type: 'lead', matchOn: 'phone', phone: lead.primaryMobile });

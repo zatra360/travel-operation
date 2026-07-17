@@ -4,9 +4,10 @@ import { InvoiceService } from './invoice.service';
 import { ActivityModule } from '../activity/activity.module';
 import { MasterDataModule } from '../master-data/master-data.module';
 import { AccountingModule } from '../accounting/accounting.module';
+import { TaxModule } from '../tax/tax.module';
 
 @Module({
-  imports: [ActivityModule, MasterDataModule, AccountingModule],
+  imports: [ActivityModule, MasterDataModule, AccountingModule, TaxModule],
   controllers: [InvoiceController],
   providers: [InvoiceService],
   exports: [InvoiceService],

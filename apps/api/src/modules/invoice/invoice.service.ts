@@ -8,6 +8,7 @@ import { LookupValidationService } from '../master-data/lookup-validation.servic
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
 import { GLPostingService } from '../accounting/gl-posting.service';
+import { TaxService } from '../tax/tax.service';
 import { resolveServiceTypeRef } from '../service-ops/service-type-map';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
@@ -23,6 +24,7 @@ export class InvoiceService {
     private readonly lookup: LookupValidationService,
     private readonly numberGen: NumberGeneratorService,
     private readonly glPosting: GLPostingService,
+    private readonly taxService: TaxService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateInvoiceDto) {
@@ -138,9 +140,7 @@ export class InvoiceService {
           ...(dto.subtotal !== undefined && { subtotal: dto.subtotal }),
           ...(dto.taxAmount !== undefined && { taxAmount: dto.taxAmount }),
           ...(dto.discountAmount !== undefined && { discountAmount: dto.discountAmount }),
-          ...(dto.totalAmount !== undefined && { totalAmount: dto.totalAmount, dueAmount: dto.totalAmount }),
-          ...(dto.paidAmount !== undefined && { paidAmount: dto.paidAmount }),
-          ...(dto.dueAmount !== undefined && { dueAmount: dto.dueAmount }),
+          ...(dto.totalAmount !== undefined && { totalAmount: dto.totalAmount, dueAmount: dto.totalAmount - Number(current.paidAmount ?? 0) }),
           ...(dto.issuedAt !== undefined && { issuedAt: dto.issuedAt ? new Date(dto.issuedAt) : null }),
           ...(dto.dueAt !== undefined && { dueAt: dto.dueAt ? new Date(dto.dueAt) : null }),
           ...(dto.notes !== undefined && { notes: dto.notes }),
@@ -189,20 +189,25 @@ export class InvoiceService {
     const invoice = await this.findById(tenantId, invoiceId);
     if (invoice.status !== 'DRAFT') throw new BadRequestException('Can only remove lines from draft invoices');
 
+    await this.audit.logMutation(actorId, tenantId, 'INVOICE', 'InvoiceLine', lineId, 'DELETE', { invoiceId });
     await this.prisma.invoiceLine.delete({ where: { id: lineId } });
     await this.recalculateInvoiceTotals(tenantId, invoiceId);
     return { id: lineId, deleted: true };
   }
 
   private async recalculateInvoiceTotals(tenantId: string, invoiceId: string) {
-    const lines = await this.prisma.invoiceLine.findMany({ where: { tenantId, invoiceId } });
+    const [lines, current] = await Promise.all([
+      this.prisma.invoiceLine.findMany({ where: { tenantId, invoiceId } }),
+      this.prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, select: { paidAmount: true } }),
+    ]);
     const subtotal = lines.reduce((sum, l) => sum + Number(l.lineTotal), 0);
-    const taxAmount = Math.round(subtotal * 0.05 * 100) / 100;
+    const defaultTaxRate = await this.taxService.getDefault(tenantId);
+    const taxAmount = Math.round(subtotal * Number(defaultTaxRate?.rate ?? 0.05) * 100) / 100;
     const totalAmount = subtotal + taxAmount;
 
     await this.prisma.invoice.update({
       where: { id: invoiceId },
-      data: { subtotal, taxAmount, totalAmount, dueAmount: totalAmount },
+      data: { subtotal, taxAmount, totalAmount, dueAmount: totalAmount - Number(current.paidAmount ?? 0) },
     });
   }
 

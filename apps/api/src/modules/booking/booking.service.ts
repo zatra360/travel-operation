@@ -39,6 +39,16 @@ export class BookingService {
 
     const bookingRef = dto.bookingRef || (await this.numberGen.generateBookingRef(tenantId));
 
+    if (dto.pnrLocator) {
+      const existing = await this.prisma.booking.findFirst({
+        where: { tenantId, pnrLocator: dto.pnrLocator, deletedAt: null },
+        select: { id: true, bookingRef: true },
+      });
+      if (existing) {
+        throw new BadRequestException(`PNR ${dto.pnrLocator} is already used by booking ${existing.bookingRef}`);
+      }
+    }
+
     const booking = await this.prisma.booking.create({
       data: {
         tenantId,
@@ -140,6 +150,16 @@ export class BookingService {
 
     const oldStatus = current.status;
 
+    if (dto.pnrLocator !== undefined && dto.pnrLocator && dto.pnrLocator !== current.pnrLocator) {
+      const existing = await this.prisma.booking.findFirst({
+        where: { tenantId, pnrLocator: dto.pnrLocator, deletedAt: null, id: { not: id } },
+        select: { id: true, bookingRef: true },
+      });
+      if (existing) {
+        throw new BadRequestException(`PNR ${dto.pnrLocator} is already used by booking ${existing.bookingRef}`);
+      }
+    }
+
     if (dto.status !== undefined && dto.status !== current.status) {
       const check = validateStatusTransition('booking', current.status, dto.status);
       if (!check.valid) {
@@ -203,6 +223,15 @@ export class BookingService {
 
   async addPassenger(tenantId: string, actorId: string, bookingId: string, dto: any) {
     const booking = await this.findById(tenantId, bookingId);
+
+    if (dto.dateOfBirth) {
+      const dob = new Date(dto.dateOfBirth);
+      const now = new Date();
+      if (dob > now) throw new BadRequestException('Date of birth cannot be in the future');
+      const age = now.getFullYear() - dob.getFullYear();
+      if (age > 150) throw new BadRequestException('Invalid date of birth');
+    }
+
     const passenger = await this.prisma.bookingPassenger.create({
       data: {
         tenantId,

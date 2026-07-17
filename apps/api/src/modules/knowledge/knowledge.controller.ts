@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
-import { JwtAuthGuard, TenantGuard, PermissionsGuard, TenantCtx, TenantContext, CurrentUser, AuthUser } from '../../common';
+import { JwtAuthGuard, TenantGuard, PermissionsGuard, TenantCtx, TenantContext, CurrentUser, AuthUser, RequirePermissions } from '../../common';
 
 @ApiTags('Tenant - Knowledge Hub')
 @ApiBearerAuth()
@@ -11,6 +11,7 @@ export class KnowledgeController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get()
+  @RequirePermissions('DASHBOARD_READ')
   @ApiOperation({ summary: 'List knowledge articles' })
   async list(@TenantCtx() ctx: TenantContext, @Query('category') category?: string) {
     const where: any = { tenantId: ctx.tenantId, deletedAt: null };
@@ -22,6 +23,7 @@ export class KnowledgeController {
   }
 
   @Post()
+  @RequirePermissions('DASHBOARD_READ')
   @ApiOperation({ summary: 'Create knowledge article' })
   async create(@TenantCtx() ctx: TenantContext, @CurrentUser() user: AuthUser, @Body() dto: any) {
     return this.prisma.knowledgeArticle.create({
@@ -34,6 +36,7 @@ export class KnowledgeController {
   }
 
   @Get(':id')
+  @RequirePermissions('DASHBOARD_READ')
   @ApiOperation({ summary: 'Get article by ID' })
   async get(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
     const article = await this.prisma.knowledgeArticle.findFirst({
@@ -45,6 +48,7 @@ export class KnowledgeController {
   }
 
   @Put(':id')
+  @RequirePermissions('DASHBOARD_READ')
   @ApiOperation({ summary: 'Update article' })
   async update(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: any) {
     return this.prisma.knowledgeArticle.update({
@@ -54,6 +58,7 @@ export class KnowledgeController {
   }
 
   @Delete(':id')
+  @RequirePermissions('DASHBOARD_READ')
   @ApiOperation({ summary: 'Delete article' })
   async remove(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
     await this.prisma.knowledgeArticle.update({ where: { id }, data: { deletedAt: new Date() } });
