@@ -93,6 +93,11 @@ export class BookingService {
           },
         }).catch(() => {});
       }
+      this.notification.notify({
+        tenantId, userId: dto.assignedToId,
+        title: `Booking assigned: ${bookingRef}`,
+        body: `You have been assigned booking ${bookingRef}${booking.clientId ? '' : ''}.`,
+      }).catch(() => {});
     }
 
     this.scoring.refreshInBackground(tenantId, booking.clientId);
