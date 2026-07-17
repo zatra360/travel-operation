@@ -312,6 +312,18 @@ export class BookingService {
     const booking = await this.findById(tenantId, bookingId);
     const invoiceNumber = await this.numberGen.generateInvoiceNumber(tenantId);
 
+    const segments = await this.prisma.bookingSegment.findMany({ where: { tenantId, bookingId } });
+    const lineItems = segments.map((s, i) => ({
+      tenantId,
+      serviceType: s.segmentType,
+      description: `${s.flightNumber || s.hotelName || s.segmentType} — ${s.originAirportId || ''} to ${s.destAirportId || ''}`,
+      quantity: 1,
+      unitPrice: 0,
+      lineTotal: 0,
+      sortOrder: i + 1,
+    }));
+
+    const subtotal = dto?.totalAmount ?? 0;
     const invoice = await this.prisma.invoice.create({
       data: {
         tenantId,
@@ -320,20 +332,30 @@ export class BookingService {
         clientId: booking.clientId,
         bookingId,
         currencyCode: dto?.currencyCode ?? 'USD',
-        totalAmount: dto?.totalAmount ?? 0,
-        dueAmount: dto?.totalAmount ?? 0,
+        subtotal,
+        taxAmount: 0,
+        discountAmount: 0,
+        totalAmount: subtotal,
+        dueAmount: subtotal,
         status: 'DRAFT',
-        notes: dto?.notes,
+        notes: dto?.notes || `Generated from booking ${booking.bookingRef}`,
         createdById: actorId,
+        lines: lineItems.length > 0 ? { createMany: { data: lineItems } } : undefined,
       },
     });
 
     await this.audit.logMutation(actorId, tenantId, 'INVOICE', 'Invoice', invoice.id, 'CREATE', { invoiceNumber, bookingRef: booking.bookingRef });
     await this.activity.logEntityEvent({
       tenantId, userId: actorId, type: 'INVOICE_CREATED',
-      subject: `Invoice ${invoiceNumber} created from booking ${booking.bookingRef}`,
+      subject: `Invoice ${invoiceNumber} created from booking ${booking.bookingRef}${lineItems.length ? ` with ${lineItems.length} items` : ''}`,
       entity: 'Booking', entityId: bookingId,
     });
+
+    this.notification.notify({
+      tenantId, userId: actorId,
+      title: `Invoice ${invoiceNumber} created`,
+      body: `Invoice ${invoiceNumber} generated from booking ${booking.bookingRef}.`,
+    }).catch(() => {});
 
     return invoice;
   }
