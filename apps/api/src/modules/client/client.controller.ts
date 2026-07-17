@@ -60,8 +60,8 @@ export class ClientController {
   @Post('check-duplicates')
   @RequirePermissions('CLIENT_CREATE')
   @ApiOperation({ summary: 'Check for duplicate email/phone across clients and leads' })
-  async checkDuplicates(@TenantCtx() ctx: TenantContext, @Body() body: { email?: string; phone?: string; excludeId?: string }) {
-    return this.clientService.checkDuplicates(ctx.tenantId, body.email, body.phone, body.excludeId);
+  async checkDuplicates(@TenantCtx() ctx: TenantContext, @Body() body: { email?: string; phone?: string; passport?: string; excludeId?: string }) {
+    return this.clientService.checkDuplicates(ctx.tenantId, body.email, body.phone, body.excludeId, body.passport);
   }
 
   @Get(':id/score')

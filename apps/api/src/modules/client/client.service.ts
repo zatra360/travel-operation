@@ -117,10 +117,11 @@ export class ClientService {
     return { id, deleted: true };
   }
 
-  async checkDuplicates(tenantId: string, email: string | undefined, phone: string | undefined, excludeId?: string) {
+  async checkDuplicates(tenantId: string, email: string | undefined, phone: string | undefined, excludeId?: string, passport?: string) {
     const matches: any[] = [];
     const safeEmail = email?.trim().toLowerCase();
     const safePhone = phone?.trim();
+    const safePassport = passport?.trim();
 
     if (safeEmail) {
       const client = await this.prisma.client.findFirst({
@@ -138,16 +139,34 @@ export class ClientService {
 
     if (safePhone) {
       const client = await this.prisma.client.findFirst({
-        where: { tenantId, deletedAt: null, ...(excludeId ? { id: { not: excludeId } } : {}), OR: [{ phone: { contains: safePhone } }, { whatsapp: { contains: safePhone } }] },
+        where: { tenantId, deletedAt: null, ...(excludeId ? { id: { not: excludeId } } : {}), OR: [{ phone: { equals: safePhone } }, { whatsapp: { equals: safePhone } }] },
         select: { id: true, displayName: true, phone: true },
       });
       if (client && !matches.find(m => m.id === client.id)) matches.push({ id: client.id, name: client.displayName, type: 'client', matchOn: 'phone', phone: client.phone });
 
       const lead = await this.prisma.lead.findFirst({
-        where: { tenantId, deletedAt: null, status: { notIn: ['LOST', 'DUPLICATE', 'SPAM'] }, OR: [{ primaryMobile: { contains: safePhone } }, { secondaryMobile: { contains: safePhone } }, { whatsappNumber: { contains: safePhone } }] },
+        where: { tenantId, deletedAt: null, status: { notIn: ['LOST', 'DUPLICATE', 'SPAM'] }, OR: [{ primaryMobile: { equals: safePhone } }, { secondaryMobile: { equals: safePhone } }, { whatsappNumber: { equals: safePhone } }] },
         select: { id: true, fullName: true, primaryMobile: true },
       });
       if (lead && !matches.find(m => m.id === lead.id)) matches.push({ id: lead.id, name: lead.fullName, type: 'lead', matchOn: 'phone', phone: lead.primaryMobile });
+    }
+
+    if (safePassport) {
+      const passportClient = await this.prisma.clientPassport.findFirst({
+        where: { tenantId, passportNumber: { equals: safePassport, mode: 'insensitive' } },
+        include: { client: { select: { id: true, displayName: true, phone: true } } },
+      });
+      if (passportClient && !matches.find(m => m.id === passportClient.clientId)) {
+        matches.push({ id: passportClient.clientId, name: passportClient.client.displayName, type: 'client', matchOn: 'passport', phone: passportClient.client.phone });
+      }
+
+      const leadWithPassport = await this.prisma.lead.findFirst({
+        where: { tenantId, passportNationalityId: { equals: safePassport, mode: 'insensitive' }, deletedAt: null },
+        select: { id: true, fullName: true, primaryMobile: true },
+      });
+      if (leadWithPassport && !matches.find(m => m.id === leadWithPassport.id)) {
+        matches.push({ id: leadWithPassport.id, name: leadWithPassport.fullName, type: 'lead', matchOn: 'passport', phone: leadWithPassport.primaryMobile });
+      }
     }
 
     return { duplicates: matches };

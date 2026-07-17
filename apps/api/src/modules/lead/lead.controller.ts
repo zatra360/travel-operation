@@ -52,9 +52,9 @@ export class LeadController {
 
   @Post('check-duplicates')
   @RequirePermissions('LEAD_CREATE')
-  @ApiOperation({ summary: 'Check for duplicate email/phone across clients and leads' })
-  async checkDuplicates(@TenantCtx() ctx: TenantContext, @Body() body: { email?: string; phone?: string; excludeId?: string }) {
-    return this.leadService.checkDuplicates(ctx.tenantId, body.email, body.phone, body.excludeId);
+  @ApiOperation({ summary: 'Check for duplicate email/phone/passport across clients and leads' })
+  async checkDuplicates(@TenantCtx() ctx: TenantContext, @Body() body: { email?: string; phone?: string; passport?: string; excludeId?: string }) {
+    return this.leadService.checkDuplicates(ctx.tenantId, body.email, body.phone, body.excludeId, body.passport);
   }
 
   @Post(':id/convert')

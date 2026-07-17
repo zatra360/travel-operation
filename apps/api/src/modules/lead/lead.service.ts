@@ -263,10 +263,11 @@ export class LeadService {
     return { id, deleted: true };
   }
 
-  async checkDuplicates(tenantId: string, email: string | undefined, phone: string | undefined, excludeId?: string) {
+  async checkDuplicates(tenantId: string, email: string | undefined, phone: string | undefined, excludeId?: string, passport?: string) {
     const matches: any[] = [];
     const safeEmail = email?.trim().toLowerCase();
     const safePhone = phone?.trim();
+    const safePassport = passport?.trim();
 
     if (safeEmail) {
       const client = await this.prisma.client.findFirst({
@@ -294,6 +295,24 @@ export class LeadService {
         select: { id: true, fullName: true, primaryMobile: true },
       });
       if (lead && !matches.find(m => m.id === lead.id)) matches.push({ id: lead.id, name: lead.fullName, type: 'lead', matchOn: 'phone', phone: lead.primaryMobile });
+    }
+
+    if (safePassport) {
+      const passportClient = await this.prisma.clientPassport.findFirst({
+        where: { tenantId, passportNumber: { equals: safePassport, mode: 'insensitive' } },
+        include: { client: { select: { id: true, displayName: true, phone: true } } },
+      });
+      if (passportClient && !matches.find(m => m.id === passportClient.clientId)) {
+        matches.push({ id: passportClient.clientId, name: passportClient.client.displayName, type: 'client', matchOn: 'passport', phone: passportClient.client.phone });
+      }
+
+      const leadWithPassport = await this.prisma.lead.findFirst({
+        where: { tenantId, passportNationalityId: { equals: safePassport, mode: 'insensitive' }, deletedAt: null, ...(excludeId ? { id: { not: excludeId } } : {}) },
+        select: { id: true, fullName: true, primaryMobile: true },
+      });
+      if (leadWithPassport && !matches.find(m => m.id === leadWithPassport.id)) {
+        matches.push({ id: leadWithPassport.id, name: leadWithPassport.fullName, type: 'lead', matchOn: 'passport', phone: leadWithPassport.primaryMobile });
+      }
     }
 
     return { duplicates: matches };
