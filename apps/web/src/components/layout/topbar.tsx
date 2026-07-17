@@ -186,7 +186,7 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
         )}
       </div>
 
-      {!isPlatform && branches.length > 0 && (
+      {!isPlatform && branches.length > 1 && (
         <Select value={activeBranch?.id ?? ALL_BRANCHES} onValueChange={onBranchChange}>
           <SelectTrigger className="hidden h-9 w-44 sm:flex" aria-label="Active branch">
             <div className="flex items-center gap-2 truncate">
