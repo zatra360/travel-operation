@@ -290,9 +290,9 @@ export default function LandingPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-3 max-w-4xl mx-auto">
             {[
-              { name: 'Starter', price: 'Free', period: 'forever', description: 'For small agencies', features: ['5 users · 1 branch', 'Leads & clients', 'Quotations & bookings', 'Invoices & payments', 'Tickets & refunds', 'Email support'], cta: 'Start free', highlight: false },
-              { name: 'Professional', price: '$49', period: '/month', description: 'For growing agencies', features: ['25 users · 5 branches', 'Everything in Starter', 'Passports & visas', 'Contracts & e-sign', 'HR & payroll', 'Priority support'], cta: 'Start trial', highlight: true },
-              { name: 'Enterprise', price: '$149', period: '/month', description: 'For large agencies', features: ['Unlimited users & branches', 'Everything in Pro', 'White-label', 'API access', 'Custom integrations', 'Dedicated support'], cta: 'Contact sales', highlight: false },
+              { name: 'Starter', price: 'Free', period: 'forever', description: 'For small agencies', features: ['5 users · 1 branch', 'Leads & clients', 'Quotations & bookings', 'Invoices & payments', 'Tickets & refunds', 'Email support'], cta: 'Start free', href: '/register', highlight: false },
+              { name: 'Professional', price: '$49', period: '/month', description: 'For growing agencies', features: ['25 users · 5 branches', 'Everything in Starter', 'Passports & visas', 'Contracts & e-sign', 'HR & payroll', 'Priority support'], cta: 'Start trial', href: '/register', highlight: true },
+              { name: 'Enterprise', price: '$149', period: '/month', description: 'For large agencies', features: ['Unlimited users & branches', 'Everything in Pro', 'White-label', 'API access', 'Custom integrations', 'Dedicated support'], cta: 'Contact sales', href: `mailto:${brand.emails.support}?subject=Enterprise%20Plan%20Inquiry`, highlight: false },
             ].map((p) => (
               <div key={p.name} className={`rounded-xl border p-6 text-left ${p.highlight ? 'border-primary ring-2 ring-primary/20 shadow-lg scale-105 bg-card' : 'bg-card'}`}>
                 {p.highlight && <div className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary text-xs font-medium px-3 py-1 mb-3"><Star className="h-3 w-3" />Most popular</div>}
@@ -310,7 +310,7 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/register">
+                <Link href={p.href}>
                   <Button variant={p.highlight ? 'default' : 'outline'} className="w-full">{p.cta}</Button>
                 </Link>
               </div>

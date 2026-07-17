@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
   Users, Plane, FileText, Receipt, TrendingUp, Activity,
-  Ticket, RefreshCw, AlertTriangle, UserCheck, TrendingDown,
+  Ticket, RefreshCw, AlertTriangle, UserCheck, TrendingDown, Settings, UserPlus, X,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -17,6 +17,7 @@ import {
 } from 'recharts';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
+import { brand } from '@/lib/brand';
 import { formatDateTime, formatMoney } from '@/lib/utils';
 import { DashboardOverview } from '@/lib/crm';
 
@@ -101,6 +102,22 @@ export default function DashboardPage() {
   ];
 
   const isNewTenant = stats && stats.leads.total === 0 && stats.clients.total === 0 && stats.bookings.total === 0;
+  const [dismissedOnboarding, setDismissedOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!activeTenant) return;
+    api.get('/api/v1/tenant/settings/dashboard_onboarding_dismissed', { tenantId: activeTenant.id })
+      .then((d: any) => { if (d === true) setDismissedOnboarding(true); })
+      .catch(() => {});
+  }, [activeTenant]);
+
+  const dismissOnboarding = async () => {
+    if (!activeTenant) return;
+    setDismissedOnboarding(true);
+    api.put('/api/v1/tenant/settings/dashboard_onboarding_dismissed', { value: true }, { tenantId: activeTenant.id }).catch(() => {});
+  };
+
+  const showOnboarding = isNewTenant && !dismissedOnboarding;
 
   const alerts: { label: string; value: number; tone: 'warning' | 'destructive'; href: string }[] = [];
   if ((stats?.leads.slaBreached ?? 0) > 0) alerts.push({ label: 'SLA breached leads', value: stats!.leads.slaBreached, tone: 'destructive', href: '/leads' });
@@ -129,16 +146,22 @@ export default function DashboardPage() {
         <p className="text-sm text-muted-foreground">{activeTenant?.name}{activeBranch ? ` · ${activeBranch.name}` : ''}</p>
       </motion.div>
 
-      {isNewTenant && (
+      {showOnboarding && (
         <motion.div variants={item}>
           <Card className="border-primary/20 bg-primary/5 rounded-xl">
             <CardContent className="py-6">
-              <h3 className="text-base font-semibold mb-4">🚀 Getting Started</h3>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold">Welcome to {brand?.name || 'ZATRA360'}</h3>
+                <button onClick={dismissOnboarding} className="text-muted-foreground hover:text-foreground p-1 rounded"><X className="h-4 w-4" /></button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-5">Complete these steps to get your agency up and running.</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 {[
-                  { step: '1', title: 'Add your first lead', desc: 'Capture a travel inquiry', href: '/leads/new', icon: Users },
-                  { step: '2', title: 'Create a quotation', desc: 'Build multi-option quotes', href: '/quotations/new', icon: FileText },
-                  { step: '3', title: 'Manage bookings', desc: 'Track PNRs and issue tickets', href: '/bookings', icon: Plane },
+                  { step: '1', title: 'Settings', desc: 'Configure company profile', href: '/settings', icon: Settings },
+                  { step: '2', title: 'Team', desc: 'Invite your employees', href: '/employees', icon: UserPlus },
+                  { step: '3', title: 'First lead', desc: 'Capture a travel inquiry', href: '/leads/new', icon: Users },
+                  { step: '4', title: 'Quotation', desc: 'Build multi-option quotes', href: '/quotations/new', icon: FileText },
+                  { step: '5', title: 'Booking', desc: 'Track PNRs and issue tickets', href: '/bookings', icon: Plane },
                 ].map((s) => (
                   <Link key={s.step} href={s.href} className="flex items-start gap-3 rounded-lg border bg-card p-4 hover:shadow-sm transition-shadow">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">{s.step}</div>
