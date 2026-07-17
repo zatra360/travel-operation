@@ -309,6 +309,48 @@ export class AuthService {
     }
   }
 
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, status: true },
+    });
+
+    if (user && user.status === 'ACTIVE') {
+      const payload = { sub: user.id, email: user.email, purpose: 'password-reset' };
+      const token = this.jwtService.sign(payload, { expiresIn: '15m' });
+      return { success: true, message: 'Reset token generated', resetToken: token };
+    }
+
+    return { success: true, message: 'If the email exists, a reset link has been sent.' };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(token, { ignoreExpiration: false });
+    } catch {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    if (payload.purpose !== 'password-reset') {
+      throw new BadRequestException('Invalid token purpose');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub }, select: { id: true, status: true } });
+    if (!user || user.status !== 'ACTIVE') {
+      throw new BadRequestException('User not found or inactive');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+
+    await this.prisma.securityEvent.create({
+      data: { userId: user.id, type: 'PASSWORD_RESET', details: 'Password reset via email token' },
+    });
+
+    return { success: true, message: 'Password has been reset successfully. You can now log in.' };
+  }
+
   async getPreferences(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
