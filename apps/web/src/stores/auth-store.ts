@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { api } from '@/lib/api';
 
 interface User {
   id: string;
@@ -15,6 +16,7 @@ interface TenantInfo {
   slug: string;
   logo?: string;
   role: string;
+  settings?: { defaultCurrency?: string; dateFormat?: string; timezone?: string };
 }
 
 interface BranchInfo {
@@ -30,11 +32,56 @@ interface AuthState {
   activeTenant: TenantInfo | null;
   activeBranch: BranchInfo | null;
   isAuthenticated: boolean;
+  permissions: string[];
+  isPlatformSuperAdmin: boolean;
+  defaultCurrency: string;
 
-  setAuth: (user: User, token: string, tenants: TenantInfo[]) => void;
+  setAuth: (user: User, accessToken: string, refreshToken: string, tenants: TenantInfo[]) => void;
+  setAccessToken: (token: string) => void;
   setActiveTenant: (tenant: TenantInfo) => void;
-  setActiveBranch: (branch: BranchInfo) => void;
+  setActiveBranch: (branch: BranchInfo | null) => void;
+  setPermissions: (permissions: string[], isPlatformSuperAdmin: boolean) => void;
   logout: () => void;
+}
+
+let _refreshToken: string | null = null;
+
+export function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return _refreshToken || localStorage.getItem('refreshToken');
+}
+
+function setRefreshToken(token: string) {
+  _refreshToken = token;
+  localStorage.setItem('refreshToken', token);
+}
+
+function clearRefreshToken() {
+  _refreshToken = null;
+  localStorage.removeItem('refreshToken');
+}
+
+async function loadDefaultCurrency(tenantId: string) {
+  try {
+    const data = await api.get<{ code: string }>('/api/v1/tenant/currencies/default', { tenantId });
+    if (data?.code) {
+      useAuthStore.setState({ defaultCurrency: data.code });
+    }
+  } catch { /* leave at USD */ }
+}
+
+async function loadTenantLogo(tenantId: string) {
+  try {
+    const data = await api.get<any>('/api/v1/tenant/settings/branding', { tenantId });
+    if (data?.logoUrl) {
+      const state = useAuthStore.getState();
+      if (state.activeTenant) {
+        useAuthStore.setState({
+          activeTenant: { ...state.activeTenant, logo: data.logoUrl as string },
+        });
+      }
+    }
+  } catch { /* no logo set */ }
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -46,25 +93,48 @@ export const useAuthStore = create<AuthState>()(
       activeTenant: null,
       activeBranch: null,
       isAuthenticated: false,
+  permissions: [],
+  isPlatformSuperAdmin: false,
+  defaultCurrency: 'USD',
 
-      setAuth: (user, accessToken, tenants) => {
+      setAuth: (user, accessToken, refreshToken, tenants) => {
         localStorage.setItem('accessToken', accessToken);
+        setRefreshToken(refreshToken);
         set({
           user,
           accessToken,
           tenants,
           isAuthenticated: true,
           activeTenant: tenants.length > 0 ? tenants[0] : null,
+          isPlatformSuperAdmin: user.isPlatformSuperAdmin,
         });
+        if (tenants.length > 0) {
+          loadDefaultCurrency(tenants[0].id).catch(() => {});
+          loadTenantLogo(tenants[0].id).catch(() => {});
+        }
       },
 
-      setActiveTenant: (tenant) => set({ activeTenant: tenant, activeBranch: null }),
+      setAccessToken: (accessToken) => {
+        localStorage.setItem('accessToken', accessToken);
+        set({ accessToken });
+      },
+
+      setActiveTenant: (tenant) => {
+        set({ activeTenant: tenant, activeBranch: null, permissions: [] });
+        if (tenant) {
+          loadDefaultCurrency(tenant.id).catch(() => {});
+          loadTenantLogo(tenant.id).catch(() => {});
+        }
+      },
 
       setActiveBranch: (branch) => set({ activeBranch: branch }),
+
+      setPermissions: (permissions, isPlatformSuperAdmin) => set({ permissions, isPlatformSuperAdmin }),
 
       logout: () => {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('travelo-auth');
+        clearRefreshToken();
         set({
           user: null,
           accessToken: null,
@@ -72,6 +142,8 @@ export const useAuthStore = create<AuthState>()(
           activeTenant: null,
           activeBranch: null,
           isAuthenticated: false,
+          permissions: [],
+          isPlatformSuperAdmin: false,
         });
         window.location.href = '/login';
       },
@@ -85,7 +157,26 @@ export const useAuthStore = create<AuthState>()(
         activeTenant: state.activeTenant,
         activeBranch: state.activeBranch,
         isAuthenticated: state.isAuthenticated,
+        permissions: state.permissions,
+        isPlatformSuperAdmin: state.isPlatformSuperAdmin,
+        defaultCurrency: state.defaultCurrency,
       }),
     },
   ),
 );
+
+/**
+ * Convenience helper: check whether the current user holds a given permission.
+ * Reads from the store's persistent state so it is safe to call outside React.
+ */
+export function hasPermission(permission: string): boolean {
+  const { permissions, isPlatformSuperAdmin, activeTenant } = useAuthStore.getState();
+  if (isPlatformSuperAdmin || permissions.includes('*')) return true;
+  // Tenant Owner / Admin can do everything inside their company.
+  if (activeTenant?.role === 'OWNER' || activeTenant?.role === 'ADMIN') return true;
+  return permissions.includes(permission);
+}
+
+export function getDefaultCurrency(): string {
+  return useAuthStore.getState().defaultCurrency || 'USD';
+}

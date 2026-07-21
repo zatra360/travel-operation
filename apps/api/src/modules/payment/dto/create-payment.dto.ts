@@ -24,6 +24,14 @@ export class CreatePaymentDto {
   @IsOptional() @IsString() @MaxLength(10)
   currencyCode?: string;
 
+  @ApiPropertyOptional({ description: 'Rate to convert transaction currency to base currency', default: 1 })
+  @IsOptional() @IsNumber()
+  exchangeRate?: number;
+
+  @ApiPropertyOptional({ description: 'Tenant base/reporting currency (defaults to transaction currency)' })
+  @IsOptional() @IsString() @MaxLength(10)
+  baseCurrencyCode?: string;
+
   @ApiPropertyOptional()
   @IsOptional() @IsString() @MaxLength(30)
   paymentMethod?: string;
@@ -39,6 +47,10 @@ export class CreatePaymentDto {
   @ApiPropertyOptional()
   @IsOptional() @IsString()
   idempotencyKey?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsString()
+  bankAccountId?: string;
 
   @ApiPropertyOptional()
   @IsOptional() @IsString()

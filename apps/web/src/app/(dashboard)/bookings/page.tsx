@@ -3,30 +3,49 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { TableToolbar } from '@/components/ui/table-toolbar';
+import { Pagination } from '@/components/ui/pagination';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
-import { Booking, Paginated, BOOKING_STATUSES, bookingStatusVariant } from '@/lib/crm';
-import { TableSkeleton } from '@/components/ui/skeleton';
+import { Booking, Paginated, BOOKING_STATUSES } from '@/lib/crm';
 import { BookingFormDialog } from './booking-form-dialog';
+
+const ALL = '__all__';
+const PAGE_SIZE = 25;
+
+function travelDates(b: Booking): string {
+  if (b.travelStart && b.travelEnd) return `${formatDate(b.travelStart)} – ${formatDate(b.travelEnd)}`;
+  if (b.travelStart) return `From ${formatDate(b.travelStart)}`;
+  return '—';
+}
 
 export default function BookingsPage() {
   const [items, setItems] = useState<Booking[]>([]);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Booking | null>(null);
   const [deleting, setDeleting] = useState<Booking | null>(null);
-  const { activeTenant } = useAuthStore();
+  const { activeTenant, activeBranch } = useAuthStore();
 
   const load = useCallback(() => {
     if (!activeTenant) return;
@@ -35,20 +54,36 @@ export default function BookingsPage() {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (status) params.set('status', status);
+    params.set('page', String(page));
+    params.set('limit', String(PAGE_SIZE));
     api
       .get<Paginated<Booking>>(`/api/v1/tenant/bookings?${params.toString()}`, {
         tenantId: activeTenant.id,
+        branchId: activeBranch?.id,
       })
-      .then((res) => setItems(res.data))
+      .then((res) => {
+        setItems(res.data);
+        setMeta({ page: res.page, totalPages: res.totalPages, total: res.total });
+      })
       .catch((err) => setError(err.message || 'Failed to load bookings'))
       .finally(() => setLoading(false));
-  }, [activeTenant, search, status]);
+  }, [activeTenant, activeBranch, search, status, page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  useEffect(() => {
+    setPage(1);
+  }, [search, status]);
 
-  const openCreate = () => { setEditing(null); setFormOpen(true); };
-  const openEdit = (b: Booking) => { setEditing(b); setFormOpen(true); };
-
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+  const openEdit = (b: Booking) => {
+    setEditing(b);
+    setFormOpen(true);
+  };
   const handleDelete = async () => {
     if (!activeTenant || !deleting) return;
     try {
@@ -60,92 +95,140 @@ export default function BookingsPage() {
     }
   };
 
+  const hasFilters = search !== '' || status !== '';
+
+  const getHoldTtl = (b: Booking): { label: string; variant: 'destructive' | 'warning' | 'default' | 'secondary' } | null => {
+    if (!b.holdExpiresAt || b.status !== 'HELD') return null;
+    const now = Date.now(); const exp = new Date(b.holdExpiresAt).getTime();
+    const hours = (exp - now) / 3600000;
+    if (now > exp) return { label: 'Expired', variant: 'destructive' };
+    if (hours < 2) return { label: `${Math.round(hours * 60)}m left`, variant: 'destructive' };
+    if (hours < 6) return { label: `${Math.round(hours)}h left`, variant: 'warning' };
+    return { label: `${Math.round(hours)}h`, variant: 'default' };
+  };
+
+  const columns: DataTableColumn<Booking>[] = [
+    {
+      key: 'bookingRef',
+      header: 'Booking',
+      cell: (b) => (
+        <div>
+          <Link href={`/bookings/${b.id}`} className="font-medium hover:underline">{b.bookingRef}</Link>
+          {b.pnrLocator && <span className="ml-2 font-mono text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{b.pnrLocator}</span>}
+        </div>
+      ),
+    },
+    {
+      key: 'contact', header: 'Lead / Client', hideOnMobile: true,
+      cell: (b) => b.lead ? <Link href={`/leads/${b.leadId}`} className="text-sm text-primary hover:underline">{b.lead.fullName}</Link>
+        : b.client ? <Link href={`/clients/${b.clientId}`} className="text-sm text-primary hover:underline">{b.client.displayName}</Link>
+        : <span className="text-muted-foreground text-sm">—</span>,
+    },
+    { key: 'status', header: 'Status', cell: (b) => <StatusBadge status={b.status} /> },
+    {
+      key: 'hold', header: 'Hold', hideOnMobile: true,
+      cell: (b) => {
+        const ttl = getHoldTtl(b);
+        if (!ttl) return <span className="text-muted-foreground text-xs">—</span>;
+        return <Badge variant={ttl.variant} className="text-[10px] flex items-center gap-1">{ttl.variant === 'destructive' && <AlertTriangle className="h-2.5 w-2.5" />}{ttl.label}</Badge>;
+      },
+    },
+    { key: 'travel', header: 'Travel', hideOnMobile: true, cell: (b) => <span className="text-muted-foreground text-xs">{travelDates(b)}</span> },
+    { key: 'created', header: 'Created', hideOnMobile: true, cell: (b) => <span className="text-muted-foreground text-sm">{formatDate(b.createdAt)}</span> },
+    {
+      key: 'actions',
+      header: '',
+      align: 'right',
+      cell: (b) => (
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(b)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" title="Delete" onClick={() => setDeleting(b)}>
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Bookings"
         subtitle="Track PNRs, issue tickets, and manage passenger bookings"
         actions={
           <Button size="sm" onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-2" />New Booking
+            <Plus className="mr-2 h-4 w-4" />
+            New Booking
           </Button>
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search booking ref or PNR..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
-        </div>
-        <div className="flex flex-wrap gap-1">
-          <Button variant={status === '' ? 'default' : 'outline'} size="sm" onClick={() => setStatus('')}>All</Button>
-          {BOOKING_STATUSES.map((s) => (
-            <Button key={s} variant={status === s ? 'default' : 'outline'} size="sm" onClick={() => setStatus(s)}>{s}</Button>
-          ))}
-        </div>
-      </div>
+      <TableToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search booking ref or PNR…"
+        hasActiveFilters={hasFilters}
+        onReset={() => {
+          setSearch('');
+          setStatus('');
+        }}
+        filters={
+          <Select value={status || ALL} onValueChange={(v) => setStatus(v === ALL ? '' : v)}>
+            <SelectTrigger className="h-9 w-44" aria-label="Filter by status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All statuses</SelectItem>
+              {BOOKING_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <Card>
-        <CardHeader><CardTitle>All Bookings</CardTitle></CardHeader>
-        <CardContent>
-          {loading ? (
-            <TableSkeleton />
-          ) : error ? (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
-          ) : items.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-muted-foreground">No bookings found.</p>
-              <Button size="sm" variant="outline" className="mt-3" onClick={openCreate}>
-                <Plus className="h-4 w-4 mr-2" />Create your first booking
-              </Button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="pb-3 font-medium">Booking Ref</th>
-                    <th className="pb-3 font-medium">PNR</th>
-                    <th className="pb-3 font-medium">Status</th>
-                    <th className="pb-3 font-medium">Travel Dates</th>
-                    <th className="pb-3 font-medium">Created</th>
-                    <th className="pb-3 font-medium text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((b) => (
-                    <tr key={b.id} className="border-b last:border-0">
-                      <td className="py-3 font-medium"><Link href={`/bookings/${b.id}`} className="hover:underline text-primary">{b.bookingRef}</Link></td>
-                      <td className="py-3 text-muted-foreground">{b.pnrLocator || '--'}</td>
-                      <td className="py-3">
-                        <Badge variant={bookingStatusVariant[b.status] || 'secondary'}>{b.status}</Badge>
-                      </td>
-                      <td className="py-3 text-muted-foreground">
-                        {b.travelStart && b.travelEnd
-                          ? `${formatDate(b.travelStart)} – ${formatDate(b.travelEnd)}`
-                          : b.travelStart
-                            ? `From ${formatDate(b.travelStart)}`
-                            : '--'}
-                      </td>
-                      <td className="py-3 text-muted-foreground">{formatDate(b.createdAt)}</td>
-                      <td className="py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(b)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" title="Delete" onClick={() => setDeleting(b)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {error ? (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            data={items}
+            rowKey={(b) => b.id}
+            loading={loading}
+            emptyTitle="No bookings found"
+            emptyDescription={hasFilters ? 'Try adjusting your filters.' : 'Create your first booking to get started.'}
+            emptyAction={
+              !hasFilters ? (
+                <Button size="sm" variant="outline" onClick={openCreate}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create your first booking
+                </Button>
+              ) : undefined
+            }
+            mobileCard={(b) => (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <Link href={`/bookings/${b.id}`} className="font-medium text-primary hover:underline">
+                    {b.bookingRef}
+                  </Link>
+                  <StatusBadge status={b.status} />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  PNR <span className="font-mono">{b.pnrLocator || '—'}</span> · {travelDates(b)}
+                </p>
+              </div>
+            )}
+          />
+          {!loading && items.length > 0 && (
+            <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total} limit={PAGE_SIZE} onPageChange={setPage} />
           )}
-        </CardContent>
-      </Card>
+        </>
+      )}
 
       <BookingFormDialog open={formOpen} onOpenChange={setFormOpen} booking={editing} onSaved={load} />
       <ConfirmDialog

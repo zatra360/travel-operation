@@ -6,26 +6,15 @@ export interface Paginated<T> {
   totalPages: number;
 }
 
-export const LEAD_STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'WON', 'LOST'] as const;
+export const LEAD_STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'QUOTATION_SENT', 'NEGOTIATION', 'WON', 'LOST', 'DUPLICATE', 'SPAM'] as const;
 export const LEAD_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
 export const LEAD_SOURCES = [
-  'WEBSITE',
-  'REFERRAL',
-  'WALK_IN',
-  'PHONE',
-  'SOCIAL',
-  'PARTNER',
-  'OTHER',
+  'WEBSITE', 'FACEBOOK', 'WHATSAPP', 'REFERRAL', 'WALK_IN', 'PHONE', 'SOCIAL', 'PARTNER',
+  'EMAIL', 'EVENT', 'ADVERTISEMENT', 'CORPORATE', 'API', 'OTHER',
 ] as const;
 export const SERVICE_TYPES = [
-  'FLIGHT',
-  'HOTEL',
-  'VISA',
-  'UMRAH',
-  'HAJJ',
-  'PACKAGE',
-  'INSURANCE',
-  'OTHER',
+  'AIR_TICKET', 'VISA', 'HOTEL', 'TOUR', 'INSURANCE', 'TRANSFER',
+  'UMRAH', 'HAJJ', 'MEDICAL_TOURISM', 'STUDENT_VISA', 'MANPOWER', 'CRUISE', 'OTHER',
 ] as const;
 
 export const CLIENT_TYPES = ['PERSON', 'COMPANY'] as const;
@@ -41,12 +30,16 @@ export interface Lead {
   whatsappNumber?: string | null; status: string; priority: string;
   source?: string | null; serviceType?: string | null; notes?: string | null;
   assignedToId?: string | null; clientId?: string | null; branchId?: string | null;
-  travelCategory?: string | null; isDomestic?: boolean; departureCity?: string | null;
-  destinationCity?: string | null; numAdults?: number; numChildren?: number; numInfants?: number;
+  countryId?: string | null; travelCategory?: string | null; isDomestic?: boolean;
+  departureCity?: string | null; departureAirportId?: string | null;
+  destinationCity?: string | null; destinationAirportId?: string | null;
+  numAdults?: number; numChildren?: number; numInfants?: number;
   preferredTravelDate?: string | null; tripType?: string | null;
+  returnDate?: string | null; preferredAirlineIds?: string | null;
   sourcePlatform?: string | null; campaignName?: string | null; referralSource?: string | null;
   leadScore?: number | null; conversionProbability?: number | null;
-  potentialRevenue?: number; urgencyLevel?: string | null;
+  potentialRevenue?: number; approxBudget?: string | null; urgencyLevel?: string | null;
+  slaDueAt?: string | null; slaStatus?: string | null;
   createdAt: string; updatedAt: string;
 }
 
@@ -58,6 +51,7 @@ export interface Client {
   nationalityId?: string | null; nationalityLabel?: string | null;
   address?: string | null; city?: string | null; country?: string | null;
   preferredCommunication?: string | null; preferredPaymentMethod?: string | null;
+  preferredAirlines?: string | null; preferredRoutes?: string | null;
   loyaltyStatus?: string | null; riskScore?: number | null;
   currencyCode?: string | null; outstandingBalance?: number;
   creditLimit?: number; refundAmountTotal?: number;
@@ -65,7 +59,15 @@ export interface Client {
   refundFrequency?: string | null;
   phoneVerified?: boolean; emailVerified?: boolean;
   leadSource?: string | null; lastActivityAt?: string | null; lastBookingAt?: string | null;
+  language?: string | null; timezone?: string | null;
+  b2bCreditStatus?: string | null;
   branchId?: string | null; notes?: string | null; metadata?: any;
+  activityScore?: number | null;
+  lifetimeValue?: number;
+  totalBookings?: number;
+  totalPayments?: number;
+  totalSpent?: number;
+  lastScoredAt?: string | null;
   createdAt: string; updatedAt: string;
 }
 
@@ -78,8 +80,11 @@ export interface FollowUp {
   description?: string | null;
   outcome?: string | null;
   leadId?: string | null;
+  lead?: { id: string; fullName: string } | null;
   clientId?: string | null;
+  client?: { id: string; displayName: string } | null;
   assignedToId?: string | null;
+  assignedTo?: { id: string; firstName: string; lastName: string } | null;
   branchId?: string | null;
   completedAt?: string | null;
   createdAt: string;
@@ -154,9 +159,89 @@ export interface DocumentItem {
   } | null;
 }
 
-export const QUOTATION_STATUSES = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED'] as const;
+export const QUOTATION_STATUSES = ['DRAFT', 'SENT', 'VIEWED', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'CANCELLED', 'BOOKING_CREATED'] as const;
 export const BOOKING_STATUSES = ['HELD', 'CONFIRMED', 'TICKETED', 'CANCELLED', 'REFUNDED', 'VOIDED'] as const;
-export const TICKET_STATUSES = ['PENDING', 'ISSUED', 'VOIDED', 'REFUNDED', 'REISSUED'] as const;
+export const TICKET_STATUSES = ['PENDING', 'APPROVED', 'ISSUED', 'VOIDED', 'REFUNDED', 'REISSUED'] as const;
+
+export interface QuotationLineItem {
+  id: string;
+  tenantId: string;
+  quotationId: string;
+  serviceType?: string | null;
+  title?: string | null;
+  description?: string | null;
+  quantity: number;
+  unitPrice: number;
+  taxAmount?: number;
+  discountAmount?: number;
+  lineTotal: number;
+  airlineId?: string | null;
+  originAirportId?: string | null;
+  destAirportId?: string | null;
+  routeId?: string | null;
+  metadata?: any;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QuotationStatusLog {
+  id: string;
+  tenantId: string;
+  quotationId: string;
+  fromStatus?: string | null;
+  toStatus: string;
+  note?: string | null;
+  actorId?: string | null;
+  createdAt: string;
+}
+
+export interface QuotationClientSummary {
+  id: string;
+  displayName: string;
+  email?: string | null;
+  phone?: string | null;
+}
+
+export interface QuotationLeadSummary {
+  id: string;
+  fullName: string;
+  status: string;
+}
+
+export interface QuotationUserSummary {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+export interface QuotationBranchSummary {
+  id: string;
+  name: string;
+}
+
+export interface QuotationRevision {
+  id: string;
+  tenantId: string;
+  quotationId: string;
+  revisionNumber: number;
+  summary?: string | null;
+  snapshot: any;
+  pdfAssetKey?: string | null;
+  createdById?: string | null;
+  createdAt: string;
+}
+
+export interface QuotationDetail extends Quotation {
+  lineItems: QuotationLineItem[];
+  revisions: QuotationRevision[];
+  statusLogs: QuotationStatusLog[];
+  client?: QuotationClientSummary | null;
+  lead?: QuotationLeadSummary | null;
+  assignedTo?: QuotationUserSummary | null;
+  branch?: QuotationBranchSummary | null;
+}
 
 export interface Quotation {
   id: string;
@@ -164,17 +249,20 @@ export interface Quotation {
   status: string;
   title?: string | null;
   clientId?: string | null;
+  client?: { displayName: string } | null;
+  lead?: { fullName: string } | null;
   leadId?: string | null;
   assignedToId?: string | null;
   currencyCode: string;
-  subtotal: number;
-  taxTotal: number;
-  discountTotal: number;
-  grandTotal: number;
+  subtotal: number | string;
+  taxTotal: number | string;
+  discountTotal: number | string;
+  grandTotal: number | string;
   validUntil?: string | null;
   notes?: string | null;
   terms?: string | null;
   branchId?: string | null;
+  currentRevision?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -185,6 +273,8 @@ export interface Booking {
   pnrLocator?: string | null;
   status: string;
   clientId?: string | null;
+  client?: { displayName: string } | null;
+  lead?: { fullName: string } | null;
   quotationId?: string | null;
   leadId?: string | null;
   assignedToId?: string | null;
@@ -200,7 +290,10 @@ export interface Booking {
 export interface Ticket {
   id: string; ticketNumber: string; bookingId: string;
   passengerName?: string | null; passengerId?: string | null;
-  airlineId?: string | null; status: string;
+  airlineId?: string | null;
+  airline?: { name: string; iataCode: string } | null;
+  booking?: { bookingRef: string; client?: { displayName: string } | null; lead?: { fullName: string } | null } | null;
+  status: string;
   issuedAt?: string | null; voidedAt?: string | null;
   refundedAt?: string | null; reissuedAt?: string | null;
   notes?: string | null; branchId?: string | null;
@@ -208,7 +301,7 @@ export interface Ticket {
 }
 
 export const quotationStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
-  DRAFT: 'secondary', SENT: 'default', ACCEPTED: 'success', REJECTED: 'destructive', EXPIRED: 'warning',
+  DRAFT: 'secondary', SENT: 'default', VIEWED: 'default', ACCEPTED: 'success', REJECTED: 'destructive', EXPIRED: 'warning', CANCELLED: 'destructive', BOOKING_CREATED: 'success',
 };
 
 export const bookingStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
@@ -216,7 +309,7 @@ export const bookingStatusVariant: Record<string, 'default' | 'secondary' | 'suc
 };
 
 export const ticketStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
-  PENDING: 'secondary', ISSUED: 'success', VOIDED: 'destructive', REFUNDED: 'warning', REISSUED: 'default',
+  PENDING: 'secondary', APPROVED: 'warning', ISSUED: 'success', VOIDED: 'destructive', REFUNDED: 'warning', REISSUED: 'default',
 };
 
 export const INVOICE_STATUSES = ['DRAFT', 'SENT', 'PAID', 'PARTIALLY_PAID', 'OVERDUE', 'CANCELLED'] as const;
@@ -225,9 +318,11 @@ export const EXPENSE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'PAID'] as c
 
 export interface Invoice {
   id: string; invoiceNumber: string; status: string;
-  clientId?: string | null; bookingId?: string | null;
-  currencyCode: string; subtotal: number; taxAmount: number;
-  discountAmount: number; totalAmount: number; paidAmount: number; dueAmount: number;
+  clientId?: string | null;
+  client?: { displayName: string } | null;
+  bookingId?: string | null;
+  currencyCode: string; subtotal: number | string; taxAmount: number | string;
+  discountAmount: number | string; totalAmount: number | string; paidAmount: number | string; dueAmount: number | string;
   issuedAt?: string | null; dueAt?: string | null; notes?: string | null;
   branchId?: string | null; createdAt: string; updatedAt: string;
 }
@@ -235,22 +330,152 @@ export interface Invoice {
 export interface Receipt {
   id: string; receiptNumber: string;
   invoiceId?: string | null; paymentMethod?: string | null;
-  amount: number; currencyCode: string; reference?: string | null;
+  amount: number | string; currencyCode: string; reference?: string | null;
   notes?: string | null; receivedAt?: string | null;
   branchId?: string | null; createdAt: string; updatedAt: string;
 }
 
 export interface Payment {
   id: string; bookingId?: string | null; invoiceId?: string | null;
-  amount: number; currencyCode: string; paymentMethod?: string | null;
+  amount: number | string; currencyCode: string; paymentMethod?: string | null;
   status: string; reference?: string | null; idempotencyKey?: string | null;
   notes?: string | null; receivedAt?: string | null; branchId?: string | null;
   createdAt: string; updatedAt: string;
 }
+export const PROJECT_STATUSES = ['PLANNING', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED'] as const;
+
+export const PROJECT_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
+
+export const PROJECT_STATUS_TRANSITIONS: Record<string, string[]> = {
+  PLANNING: ['IN_PROGRESS', 'CANCELLED'],
+  IN_PROGRESS: ['ON_HOLD', 'COMPLETED', 'CANCELLED'],
+  ON_HOLD: ['IN_PROGRESS', 'CANCELLED'],
+  COMPLETED: [],
+  CANCELLED: ['PLANNING'],
+};
+export const TASK_STATUSES = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'] as const;
+export const TASK_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
+
+export interface Project {
+  id: string;
+  projectNumber: string;
+  name: string;
+  description?: string | null;
+  status: string;
+  priority: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  clientId?: string | null;
+  assignedToId?: string | null;
+  budget: number | string;
+  actualCost: number | string;
+  currencyCode: string;
+  notes?: string | null;
+  branchId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  assignedTo?: { id: string; firstName: string; lastName: string; email: string } | null;
+  client?: { id: string; displayName: string } | null;
+  _count?: { tasks: number; members: number; timeLogs: number };
+  members?: ProjectMember[];
+}
+
+export interface ProjectMember {
+  id: string;
+  projectId: string;
+  userId: string;
+  role: string;
+  hourlyRate?: number | null;
+  createdAt: string;
+  user: { id: string; firstName: string; lastName: string; email: string };
+}
+
+export interface TaskItem {
+  id: string;
+  projectId: string;
+  parentTaskId?: string | null;
+  title: string;
+  description?: string | null;
+  status: string;
+  priority: string;
+  kanbanOrder: number;
+  isMilestone: boolean;
+  estimatedHours?: number | null;
+  actualHours?: number | null;
+  startDate?: string | null;
+  dueDate?: string | null;
+  assignedToId?: string | null;
+  branchId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  assignedTo?: { id: string; firstName: string; lastName: string; email: string } | null;
+  project?: { id: string; name: string; projectNumber: string } | null;
+  checklists?: ChecklistItem[];
+  subTasks?: TaskItem[];
+  timeLogs?: TimeLogEntry[];
+  dependencies?: { id: string; dependsOn: { id: string; title: string; status: string; startDate?: string | null; dueDate?: string | null; isMilestone: boolean } }[];
+  _count?: { subTasks: number; timeLogs: number };
+}
+
+export interface ChecklistItem {
+  id: string;
+  taskId: string;
+  title: string;
+  isCompleted: boolean;
+  completedById?: string | null;
+  completedAt?: string | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface TimeLogEntry {
+  id: string;
+  projectId: string;
+  taskId?: string | null;
+  userId: string;
+  description?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  duration: number;
+  billable: boolean;
+  hourlyRate?: number | null;
+  createdAt: string;
+  user?: { id: string; firstName: string; lastName: string } | null;
+  task?: { id: string; title: string } | null;
+}
+
+export const projectStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+  PLANNING: 'secondary',
+  IN_PROGRESS: 'default',
+  ON_HOLD: 'warning',
+  COMPLETED: 'success',
+  CANCELLED: 'destructive',
+};
+
+export const projectPriorityVariant: Record<string, 'secondary' | 'warning' | 'destructive'> = {
+  LOW: 'secondary',
+  MEDIUM: 'secondary',
+  HIGH: 'warning',
+  URGENT: 'destructive',
+};
+
+export const taskStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+  TODO: 'secondary',
+  IN_PROGRESS: 'default',
+  REVIEW: 'warning',
+  DONE: 'success',
+};
+
+export const taskPriorityVariant: Record<string, 'secondary' | 'warning' | 'destructive'> = {
+  LOW: 'secondary',
+  MEDIUM: 'secondary',
+  HIGH: 'warning',
+  URGENT: 'destructive',
+};
 
 export interface Expense {
   id: string; expenseNumber: string; category?: string | null;
-  vendorName?: string | null; amount: number; currencyCode: string;
+  vendorName?: string | null; amount: number | string; currencyCode: string;
   status: string; description?: string | null; expenseDate?: string | null;
   branchId?: string | null; createdAt: string; updatedAt: string;
 }
@@ -367,7 +592,8 @@ export interface BookingStatusLog {
 }
 
 export interface DashboardOverview {
-  leads: { total: number; new: number; won: number };
+  leads: { total: number; new: number; won: number; slaBreached: number };
+  leadPipeline?: { stage: string; count: number }[];
   clients: { total: number; active: number };
   quotations: { total: number; pending: number };
   bookings: { total: number; held: number; confirmed: number; ticketed: number };
@@ -376,6 +602,7 @@ export interface DashboardOverview {
   refunds: { total: number; pending: number };
   employees: { total: number; active: number };
   recentActivity: TimelineEvent[];
+  revenue?: { monthly: { name: string; revenue: number; count: number }[]; totalRevenue: number; totalInvoices: number };
 }
 
 export interface RefundRequest {

@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { RelationshipValidationService } from '../../common/services/relationship-validation.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
+import { NotificationService } from '../notification/notification.service';
 import { CreateCommissionDto } from './dto/create-commission.dto';
 import { UpdateCommissionDto } from './dto/update-commission.dto';
 import { QueryCommissionDto } from './dto/query-commission.dto';
@@ -15,6 +17,7 @@ export class CommissionService {
     private readonly audit: AuditService,
     private readonly activity: ActivityService,
     private readonly relValidation: RelationshipValidationService,
+    private readonly notification: NotificationService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateCommissionDto) {
@@ -50,7 +53,7 @@ export class CommissionService {
     return commission;
   }
 
-  async findAll(tenantId: string, query: QueryCommissionDto) {
+  async findAll(tenantId: string, query: QueryCommissionDto, activeBranchId?: string) {
     const page = query.page ?? 1; const limit = query.limit ?? 50; const skip = (page - 1) * limit;
     const where: any = { tenantId };
     if (query.status) where.status = query.status;
@@ -63,6 +66,7 @@ export class CommissionService {
         { notes: { contains: query.search, mode: 'insensitive' } },
       ];
     }
+    enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
       this.prisma.commission.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
       this.prisma.commission.count({ where }),
@@ -115,6 +119,13 @@ export class CommissionService {
         subject: `Commission ${dto.employeeId}: ${oldStatus} -> ${dto.status}`,
         entity: 'Commission', entityId: id, branchId: commission.branchId,
       });
+      if (dto.status === 'APPROVED' || dto.status === 'PAID') {
+        this.notification.notify({
+          tenantId, userId: actorId,
+          title: `Commission ${dto.status.toLowerCase()}`,
+          body: `Commission of ${commission.amount} ${commission.currencyCode} has been ${dto.status.toLowerCase()}.`,
+        }).catch(() => {});
+      }
     }
 
     await this.audit.logMutation(actorId, tenantId, 'COMMISSION', 'Commission', id, dto.status !== oldStatus ? 'STATUS_CHANGE' : 'UPDATE', { changes: dto }, commission.branchId ?? undefined);

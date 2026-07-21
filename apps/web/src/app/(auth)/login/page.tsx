@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Plane, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,8 +27,8 @@ export default function LoginPage() {
 
     try {
       const response = await api.post<any>('/api/v1/auth/login', { email, password });
-      const { accessToken, user, tenants } = response;
-      setAuth(user, accessToken, tenants);
+      const { accessToken, refreshToken, user, tenants } = response;
+      setAuth(user, accessToken, refreshToken, tenants);
 
       if (user.isPlatformSuperAdmin) {
         router.push('/platform');
@@ -95,7 +96,17 @@ export default function LoginPage() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
+          <div className="text-center">
+            <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Forgot password?</Link>
+          </div>
         </form>
+        <div className="mt-4 text-center text-sm text-muted-foreground">
+          Don&apos;t have an account?{' '}
+          <Link href="/register" className="text-primary hover:underline font-medium">Start free trial</Link>
+        </div>
+        <div className="mt-2 text-center">
+          <Link href="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Back to home</Link>
+        </div>
       </CardContent>
     </Card>
   );

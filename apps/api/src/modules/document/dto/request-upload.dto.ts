@@ -26,6 +26,20 @@ export const DOCUMENT_CATEGORIES = [
 
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
+const SAFE_MIME_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/csv',
+  'text/plain',
+] as const;
+
 export class RequestUploadDto {
   @ApiProperty({ example: 'passport-john.pdf' })
   @IsString()
@@ -37,6 +51,7 @@ export class RequestUploadDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(150)
+  @IsIn(SAFE_MIME_TYPES, { message: 'Unsupported file type. Allowed: PDF, images, Office documents, CSV, text' })
   mimeType!: string;
 
   @ApiProperty({ enum: DOCUMENT_CATEGORIES })

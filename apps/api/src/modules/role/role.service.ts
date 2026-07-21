@@ -32,7 +32,7 @@ export class RoleService {
       });
     }
 
-    return this.findById(role.id);
+    return this.findById(tenantId, role.id);
   }
 
   async findAll(tenantId: string) {
@@ -48,9 +48,9 @@ export class RoleService {
     });
   }
 
-  async findById(id: string) {
+  async findById(tenantId: string, id: string) {
     const role = await this.prisma.role.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, tenantId, deletedAt: null },
       include: {
         permissions: {
           include: { permission: true },
@@ -62,8 +62,8 @@ export class RoleService {
     return role;
   }
 
-  async update(id: string, data: { name?: string; description?: string; permissionIds?: string[] }) {
-    await this.findById(id);
+  async update(tenantId: string, id: string, data: { name?: string; description?: string; permissionIds?: string[] }) {
+    await this.findById(tenantId, id);
 
     if (data.permissionIds) {
       await this.prisma.rolePermission.deleteMany({ where: { roleId: id } });
@@ -86,8 +86,8 @@ export class RoleService {
     });
   }
 
-  async remove(id: string) {
-    await this.findById(id);
+  async remove(tenantId: string, id: string) {
+    await this.findById(tenantId, id);
     return this.prisma.role.update({
       where: { id },
       data: { deletedAt: new Date() },

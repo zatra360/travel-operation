@@ -2,9 +2,9 @@ import { IsString, IsNotEmpty, IsOptional, IsNumber, IsDateString, MaxLength } f
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateReceiptDto {
-  @ApiProperty({ example: 'RCP-2026-0001' })
-  @IsString() @IsNotEmpty() @MaxLength(50)
-  receiptNumber!: string;
+  @ApiPropertyOptional({ example: 'RCP-2026-0001' })
+  @IsOptional() @IsString() @MaxLength(50)
+  receiptNumber?: string;
 
   @ApiPropertyOptional()
   @IsOptional() @IsString()

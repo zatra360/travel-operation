@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
+import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { StorageModule } from './common/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -15,9 +17,22 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { LeadModule } from './modules/lead/lead.module';
 import { ClientModule } from './modules/client/client.module';
+import { PassportModule } from './modules/passport/passport.module';
+import { VisaModule } from './modules/visa/visa.module';
 import { FollowUpModule } from './modules/follow-up/follow-up.module';
 import { DocumentModule } from './modules/document/document.module';
 import { QuotationModule } from './modules/quotation/quotation.module';
+import { ContractModule } from './modules/contract/contract.module';
+import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.module';
+import { TaxModule } from './modules/tax/tax.module';
+import { CurrencyModule } from './modules/currency-settings/currency.module';
+import { OrderModule } from './modules/order/order.module';
+import { PackageController, SubscriptionController } from './modules/platform/subscription.controller';
+import { PlatformModule } from './modules/platform/platform.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { ImportExportModule } from './modules/import-export/import-export.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
+import { SupportModule } from './modules/support/support.module';
 import { BookingModule } from './modules/booking/booking.module';
 import { TicketModule } from './modules/ticket/ticket.module';
 import { InvoiceModule } from './modules/invoice/invoice.module';
@@ -37,6 +52,15 @@ import { CommissionModule } from './modules/commission/commission.module';
 import { SalaryRunModule } from './modules/salary-run/salary-run.module';
 import { ReissueModule } from './modules/reissue/reissue.module';
 import { CancellationModule } from './modules/cancellation/cancellation.module';
+import { ProjectModule } from './modules/project/project.module';
+import { VendorModule } from './modules/vendor/vendor.module';
+import { InsuranceModule } from './modules/insurance/insurance.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
+import { BankingModule } from './modules/banking/banking.module';
+import { SearchModule } from './modules/search/search.module';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
+import { AccountingModule } from './modules/accounting/accounting.module';
+import { ServiceOpsModule } from './modules/service-ops/service-ops.module';
 import { HealthController } from './health.controller';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -46,6 +70,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    ScheduleModule.forRoot(),
     PrismaModule,
     StorageModule,
     AuthModule,
@@ -59,9 +84,21 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     DashboardModule,
     LeadModule,
     ClientModule,
+    PassportModule,
+    VisaModule,
     FollowUpModule,
     DocumentModule,
     QuotationModule,
+    ContractModule,
+    ServiceCatalogModule,
+    TaxModule,
+    CurrencyModule,
+    OrderModule,
+    PlatformModule,
+    ReportsModule,
+    ImportExportModule,
+    CalendarModule,
+    SupportModule,
     BookingModule,
     TicketModule,
     InvoiceModule,
@@ -81,9 +118,22 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     SalaryRunModule,
     ReissueModule,
     CancellationModule,
+    ProjectModule,
+    VendorModule,
+    InsuranceModule,
+    FeedbackModule,
+    BankingModule,
+    SearchModule,
+    KnowledgeModule,
+    AccountingModule,
+    ServiceOpsModule,
   ],
   controllers: [HealthController],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: TenantContextInterceptor,

@@ -29,7 +29,7 @@ export class SalaryRunController {
   @RequirePermissions('SALARY_RUN_READ')
   @ApiOperation({ summary: 'List salary runs' })
   async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QuerySalaryRunDto) {
-    return this.salaryRunService.findAll(ctx.tenantId, query);
+    return this.salaryRunService.findAll(ctx.tenantId, query, ctx.branchId);
   }
 
   @Get(':id')

@@ -1,10 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { RelationshipValidationService } from '../../common/services/relationship-validation.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
+import { NotificationService } from '../notification/notification.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { QueryTicketDto } from './dto/query-ticket.dto';
@@ -16,11 +19,16 @@ export class TicketService {
     private readonly audit: AuditService,
     private readonly activity: ActivityService,
     private readonly relValidation: RelationshipValidationService,
+    private readonly lookup: LookupValidationService,
     private readonly numberGen: NumberGeneratorService,
+    private readonly notification: NotificationService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateTicketDto) {
     await this.relValidation.validateLinkedEntities({ tenantId, bookingId: dto.bookingId, branchId: dto.branchId });
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'ticket-status', code: dto.status ?? 'PENDING' },
+    ].filter((v) => v.code));
 
     const ticketNumber = dto.ticketNumber || (await this.numberGen.generateTicketNumber(tenantId));
 
@@ -44,17 +52,42 @@ export class TicketService {
       data: { tenantId, ticketId: ticket.id, toStatus: ticket.status, actorId, note: 'Ticket created' },
     });
 
+    await this.prisma.ticketLifecycleEvent.create({
+      data: { tenantId, ticketId: ticket.id, action: 'CREATE', category: 'CREATION', ticketCount: ticket.status === 'ISSUED' ? 1 : 0 },
+    });
+
     await this.audit.logMutation(actorId, tenantId, 'TICKET', 'Ticket', ticket.id, 'CREATE', { ticketNumber, passengerName: ticket.passengerName });
     await this.activity.logEntityEvent({ tenantId, userId: actorId, type: 'TICKET_CREATED', subject: `Ticket ${ticketNumber} created`, entity: 'Ticket', entityId: ticket.id, branchId: ticket.branchId });
 
     if (ticket.status === 'ISSUED') {
       await this.syncBookingStatusToTicketed(tenantId, dto.bookingId, actorId);
+
+      const booking = await this.prisma.booking.findFirst({
+        where: { id: dto.bookingId, tenantId },
+        select: { assignedToId: true, bookingRef: true },
+      });
+      if (booking?.assignedToId) {
+        const employee = await this.prisma.employee.findFirst({
+          where: { tenantId, userId: booking.assignedToId },
+          select: { id: true },
+        });
+        if (employee) {
+          await this.prisma.commission.create({
+            data: {
+              tenantId, employeeId: employee.id,
+              sourceType: 'TICKET', sourceId: ticket.id,
+              amount: 0, currencyCode: 'USD',
+              status: 'PENDING', notes: `Commission for ticket ${ticketNumber}`,
+            },
+          }).catch(() => {});
+        }
+      }
     }
 
     return ticket;
   }
 
-  async findAll(tenantId: string, query: QueryTicketDto) {
+  async findAll(tenantId: string, query: QueryTicketDto, activeBranchId?: string) {
     const page = query.page ?? 1; const limit = query.limit ?? 50; const skip = (page - 1) * limit;
     const where: any = { tenantId };
     if (query.status) where.status = query.status;
@@ -66,8 +99,9 @@ export class TicketService {
         { passengerName: { contains: query.search, mode: 'insensitive' } },
       ];
     }
+    enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
-      this.prisma.ticket.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      this.prisma.ticket.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { booking: { select: { bookingRef: true, client: { select: { displayName: true } }, lead: { select: { fullName: true } } } }, airline: { select: { name: true, iataCode: true } } } }),
       this.prisma.ticket.count({ where }),
     ]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
@@ -94,6 +128,7 @@ export class TicketService {
     const oldStatus = current.status;
 
     if (dto.status && dto.status !== current.status) {
+      await this.lookup.validate(tenantId, 'ticket-status', dto.status);
       const check = validateStatusTransition('ticket', current.status, dto.status);
       if (!check.valid) {
         throw new BadRequestException(`Invalid ticket status transition from ${current.status} to ${dto.status}. Allowed: ${check.allowed.join(', ')}`);
@@ -168,19 +203,52 @@ export class TicketService {
     }
   }
 
+  async approveTicket(tenantId: string, actorId: string, id: string) {
+    const ticket = await this.findById(tenantId, id);
+    if (ticket.status !== 'PENDING') throw new BadRequestException('Only pending tickets can be approved');
+    if (ticket.createdById === actorId) throw new BadRequestException('Cannot approve a ticket you created. A different user must approve.');
+    const updated = await this.update(tenantId, actorId, id, { status: 'APPROVED' } as any);
+    this.notification.notify({
+      tenantId, userId: actorId,
+      title: `Ticket ${updated.ticketNumber} approved`,
+      body: `Ticket ${updated.ticketNumber} has been approved and is ready for issuance.`,
+    }).catch(() => {});
+    return updated;
+  }
+
   async issueTicket(tenantId: string, actorId: string, id: string) {
-    await this.findById(tenantId, id);
-    return this.update(tenantId, actorId, id, { status: 'ISSUED', issuedAt: new Date().toISOString() } as any);
+    const ticket = await this.findById(tenantId, id);
+    if (ticket.status !== 'APPROVED' && ticket.status !== 'PENDING') throw new BadRequestException('Ticket must be in PENDING or APPROVED status to be issued');
+    const updated = await this.update(tenantId, actorId, id, { status: 'ISSUED', issuedAt: new Date().toISOString() } as any);
+    await this.prisma.ticketLifecycleEvent.create({
+      data: { tenantId, ticketId: id, action: 'ISSUE', category: 'ISSUANCE', ticketCount: 1 },
+    });
+    this.notification.notify({
+      tenantId, userId: actorId,
+      title: `Ticket ${updated.ticketNumber} issued`,
+      body: `Ticket ${updated.ticketNumber} has been issued for ${updated.passengerName || 'passenger'}.`,
+    }).catch(() => {});
+    return updated;
   }
 
   async voidTicket(tenantId: string, actorId: string, id: string) {
-    await this.findById(tenantId, id);
-    return this.update(tenantId, actorId, id, { status: 'VOIDED', voidAt: new Date().toISOString() } as any);
+    const ticket = await this.findById(tenantId, id);
+    if (ticket.status === 'VOIDED') throw new BadRequestException('Ticket already voided');
+    const updated = await this.update(tenantId, actorId, id, { status: 'VOIDED', voidAt: new Date().toISOString() } as any);
+    await this.prisma.ticketLifecycleEvent.create({
+      data: { tenantId, ticketId: id, action: 'VOID', category: 'CANCELLATION', ticketCount: -1 },
+    });
+    return updated;
   }
 
   async refundTicket(tenantId: string, actorId: string, id: string) {
-    await this.findById(tenantId, id);
-    return this.update(tenantId, actorId, id, { status: 'REFUNDED' } as any);
+    const ticket = await this.findById(tenantId, id);
+    if (ticket.status === 'REFUNDED') throw new BadRequestException('Ticket already refunded');
+    const updated = await this.update(tenantId, actorId, id, { status: 'REFUNDED' } as any);
+    await this.prisma.ticketLifecycleEvent.create({
+      data: { tenantId, ticketId: id, action: 'REFUND', category: 'REFUND', ticketCount: -1 },
+    });
+    return updated;
   }
 
   async remove(tenantId: string, actorId: string, id: string) {

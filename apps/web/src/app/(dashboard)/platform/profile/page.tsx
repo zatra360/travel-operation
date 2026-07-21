@@ -70,10 +70,10 @@ export default function PlatformProfilePage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2"><Label>First name</Label><Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Last name</Label><Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Email</Label><Input value={profile?.email || ''} disabled className="opacity-60" /></div>
-            <div className="space-y-2"><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+            <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">First name</Label><Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} /></div>
+            <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last name</Label><Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} /></div>
+            <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email</Label><Input value={profile?.email || ''} disabled className="opacity-60" /></div>
+            <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />Joined {profile?.createdAt ? formatDate(profile.createdAt) : '--'}</span>
@@ -85,8 +85,8 @@ export default function PlatformProfilePage() {
       <Card>
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><KeyRound className="h-5 w-5" />Change Password</CardTitle><CardDescription>Update your account password</CardDescription></CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-2"><Label>Current password</Label><Input type="password" value={passwords.current} onChange={(e) => setPasswords({ ...passwords, current: e.target.value })} /></div>
-          <div className="space-y-2"><Label>New password</Label><Input type="password" value={passwords.new} onChange={(e) => setPasswords({ ...passwords, new: e.target.value })} /></div>
+          <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Current password</Label><Input type="password" value={passwords.current} onChange={(e) => setPasswords({ ...passwords, current: e.target.value })} /></div>
+          <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">New password</Label><Input type="password" value={passwords.new} onChange={(e) => setPasswords({ ...passwords, new: e.target.value })} /></div>
           <div className="space-y-2 flex flex-col justify-end"><Button onClick={handlePasswordChange} disabled={saving} variant="outline">Change password</Button></div>
         </CardContent>
       </Card>

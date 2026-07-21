@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -10,6 +10,14 @@ export class BranchService {
       where: { tenantId_code: { tenantId, code: data.code } },
     });
     if (existing) throw new ConflictException('Branch code already exists for this tenant');
+
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { maxBranches: true } });
+    if (tenant?.maxBranches) {
+      const count = await this.prisma.branch.count({ where: { tenantId, deletedAt: null } });
+      if (count >= tenant.maxBranches) {
+        throw new BadRequestException(`Branch limit reached (${tenant.maxBranches}). Upgrade your plan to add more branches.`);
+      }
+    }
 
     return this.prisma.branch.create({
       data: { ...data, tenantId, status: 'ACTIVE' },
@@ -23,21 +31,21 @@ export class BranchService {
     });
   }
 
-  async findById(id: string) {
+  async findById(tenantId: string, id: string) {
     const branch = await this.prisma.branch.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, tenantId, deletedAt: null },
     });
     if (!branch) throw new NotFoundException('Branch not found');
     return branch;
   }
 
-  async update(id: string, data: { name?: string; address?: string; phone?: string; email?: string }) {
-    await this.findById(id);
+  async update(tenantId: string, id: string, data: { name?: string; address?: string; phone?: string; email?: string }) {
+    await this.findById(tenantId, id);
     return this.prisma.branch.update({ where: { id }, data });
   }
 
-  async remove(id: string) {
-    await this.findById(id);
+  async remove(tenantId: string, id: string) {
+    await this.findById(tenantId, id);
     return this.prisma.branch.update({
       where: { id },
       data: { deletedAt: new Date(), status: 'CLOSED' as any },

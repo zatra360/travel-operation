@@ -33,21 +33,21 @@ export class BranchController {
   @Get(':id')
   @RequirePermissions('BRANCH_READ')
   @ApiOperation({ summary: 'Get branch by ID' })
-  async findById(@Param('id') id: string) {
-    return this.branchService.findById(id);
+  async findById(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.branchService.findById(ctx.tenantId, id);
   }
 
   @Put(':id')
   @RequirePermissions('BRANCH_UPDATE')
   @ApiOperation({ summary: 'Update branch' })
-  async update(@Param('id') id: string, @Body() dto: { name?: string; address?: string; phone?: string; email?: string }) {
-    return this.branchService.update(id, dto);
+  async update(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: { name?: string; address?: string; phone?: string; email?: string }) {
+    return this.branchService.update(ctx.tenantId, id, dto);
   }
 
   @Delete(':id')
   @RequirePermissions('BRANCH_DELETE')
   @ApiOperation({ summary: 'Soft delete branch' })
-  async remove(@Param('id') id: string) {
-    return this.branchService.remove(id);
+  async remove(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.branchService.remove(ctx.tenantId, id);
   }
 }

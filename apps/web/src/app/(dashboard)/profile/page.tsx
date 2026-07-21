@@ -78,19 +78,19 @@ export default function ProfilePage() {
         <CardContent className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>First name</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">First name</Label>
               <Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Last name</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last name</Label>
               <Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Email</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email</Label>
               <Input value={profile?.email || ''} disabled className="opacity-60" />
             </div>
             <div className="space-y-2">
-              <Label>Phone</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Phone</Label>
               <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 234 567 8900" />
             </div>
           </div>
@@ -109,11 +109,11 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
-            <Label>Current password</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Current password</Label>
             <Input type="password" value={passwords.current} onChange={(e) => setPasswords({ ...passwords, current: e.target.value })} />
           </div>
           <div className="space-y-2">
-            <Label>New password</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">New password</Label>
             <Input type="password" value={passwords.new} onChange={(e) => setPasswords({ ...passwords, new: e.target.value })} />
           </div>
           <div className="space-y-2 flex flex-col justify-end">

@@ -21,7 +21,7 @@ export class ExpenseController {
   async create(@TenantCtx() ctx: TenantContext, @Body() dto: CreateExpenseDto) { return this.expenseService.create(ctx.tenantId, ctx.userId, dto); }
 
   @Get() @RequirePermissions('EXPENSE_READ') @ApiOperation({ summary: 'List expenses' })
-  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryExpenseDto) { return this.expenseService.findAll(ctx.tenantId, query); }
+  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryExpenseDto) { return this.expenseService.findAll(ctx.tenantId, query, ctx.branchId); }
 
   @Get(':id') @RequirePermissions('EXPENSE_READ') @ApiOperation({ summary: 'Get expense' })
   async findById(@TenantCtx() ctx: TenantContext, @Param('id') id: string) { return this.expenseService.findById(ctx.tenantId, id); }

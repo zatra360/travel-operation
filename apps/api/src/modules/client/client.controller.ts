@@ -29,7 +29,7 @@ export class ClientController {
   @RequirePermissions('CLIENT_READ')
   @ApiOperation({ summary: 'List clients for current tenant' })
   async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryClientDto) {
-    return this.clientService.findAll(ctx.tenantId, query);
+    return this.clientService.findAll(ctx.tenantId, query, ctx.branchId);
   }
 
   @Get(':id')
@@ -55,5 +55,26 @@ export class ClientController {
   @ApiOperation({ summary: 'Soft delete client' })
   async remove(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
     return this.clientService.remove(ctx.tenantId, ctx.userId, id);
+  }
+
+  @Post('check-duplicates')
+  @RequirePermissions('CLIENT_CREATE')
+  @ApiOperation({ summary: 'Check for duplicate email/phone across clients and leads' })
+  async checkDuplicates(@TenantCtx() ctx: TenantContext, @Body() body: { email?: string; phone?: string; passport?: string; excludeId?: string }) {
+    return this.clientService.checkDuplicates(ctx.tenantId, body.email, body.phone, body.excludeId, body.passport);
+  }
+
+  @Get(':id/score')
+  @RequirePermissions('CLIENT_READ')
+  @ApiOperation({ summary: 'Calculate client activity score' })
+  async calculateScore(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.clientService.calculateActivityScore(ctx.tenantId, id);
+  }
+
+  @Get(':id/timeline')
+  @RequirePermissions('CLIENT_READ')
+  @ApiOperation({ summary: 'Get client activity timeline' })
+  async getTimeline(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.clientService.getTimeline(ctx.tenantId, id);
   }
 }

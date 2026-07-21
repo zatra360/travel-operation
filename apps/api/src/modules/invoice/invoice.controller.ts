@@ -24,7 +24,7 @@ export class InvoiceController {
   @RequirePermissions('INVOICE_READ')
   @ApiOperation({ summary: 'List invoices' })
   async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryInvoiceDto) {
-    return this.invoiceService.findAll(ctx.tenantId, query);
+    return this.invoiceService.findAll(ctx.tenantId, query, ctx.branchId);
   }
 
   @Get(':id')

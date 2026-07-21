@@ -1,7 +1,9 @@
 import { IsString, IsOptional, IsIn, IsNumber, IsDateString, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
-export const QUOTATION_STATUSES = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED'] as const;
+export const QUOTATION_STATUSES = [
+  'DRAFT', 'SENT', 'VIEWED', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'CANCELLED', 'BOOKING_CREATED',
+] as const;
 
 export class CreateQuotationDto {
   @ApiPropertyOptional({ example: 'QTN-2026-0001' })

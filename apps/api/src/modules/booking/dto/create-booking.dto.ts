@@ -4,11 +4,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export const BOOKING_STATUSES = ['HELD', 'CONFIRMED', 'TICKETED', 'CANCELLED', 'REFUNDED', 'VOIDED'] as const;
 
 export class CreateBookingDto {
-  @ApiProperty({ example: 'BK-2026-0001' })
+  @ApiPropertyOptional({ example: 'BK-2026-0001' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(50)
-  bookingRef!: string;
+  bookingRef?: string;
 
   @ApiPropertyOptional({ example: 'ABC123' })
   @IsOptional()
@@ -16,7 +16,7 @@ export class CreateBookingDto {
   @MaxLength(20)
   pnrLocator?: string;
 
-  @ApiPropertyOptional({ enum: BOOKING_STATUSES, default: 'PENDING' })
+  @ApiPropertyOptional({ enum: BOOKING_STATUSES, default: 'HELD' })
   @IsOptional()
   @IsIn(BOOKING_STATUSES)
   status?: string;

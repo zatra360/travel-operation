@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RoleService } from './role.service';
+import { PermissionService } from '../permission/permission.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
@@ -14,7 +15,17 @@ import { TenantContext } from '../../common/interceptors/tenant-context.intercep
 @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 @Controller('tenant/roles')
 export class RoleController {
-  constructor(private readonly roleService: RoleService) {}
+  constructor(
+    private readonly roleService: RoleService,
+    private readonly permissionService: PermissionService,
+  ) {}
+
+  @Get('permissions')
+  @RequirePermissions('ROLE_READ')
+  @ApiOperation({ summary: 'List all permissions grouped by module' })
+  async getPermissions() {
+    return this.permissionService.findAll();
+  }
 
   @Post()
   @RequirePermissions('ROLE_CREATE')
@@ -33,21 +44,21 @@ export class RoleController {
   @Get(':id')
   @RequirePermissions('ROLE_READ')
   @ApiOperation({ summary: 'Get role by ID' })
-  async findById(@Param('id') id: string) {
-    return this.roleService.findById(id);
+  async findById(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.roleService.findById(ctx.tenantId, id);
   }
 
   @Put(':id')
   @RequirePermissions('ROLE_UPDATE')
   @ApiOperation({ summary: 'Update role and permissions' })
-  async update(@Param('id') id: string, @Body() dto: CreateRoleDto) {
-    return this.roleService.update(id, dto);
+  async update(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: CreateRoleDto) {
+    return this.roleService.update(ctx.tenantId, id, dto);
   }
 
   @Delete(':id')
   @RequirePermissions('ROLE_DELETE')
   @ApiOperation({ summary: 'Soft delete role' })
-  async remove(@Param('id') id: string) {
-    return this.roleService.remove(id);
+  async remove(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.roleService.remove(ctx.tenantId, id);
   }
 }

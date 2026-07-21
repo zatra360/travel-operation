@@ -39,4 +39,24 @@ export class SettingsService {
     if (!setting) throw new NotFoundException('Setting not found');
     await this.prisma.tenantSetting.delete({ where: { id: setting.id } });
   }
+
+  async getCustomFields(tenantId: string) {
+    const setting = await this.prisma.tenantSetting.findUnique({ where: { tenantId_key: { tenantId, key: 'custom_fields' } } });
+    return (setting?.value as any[]) || [];
+  }
+
+  async addCustomField(tenantId: string, field: any) {
+    const fields = await this.getCustomFields(tenantId);
+    const newField = { id: Date.now().toString(36), ...field };
+    fields.push(newField);
+    await this.set(tenantId, 'custom_fields', fields);
+    return newField;
+  }
+
+  async removeCustomField(tenantId: string, id: string) {
+    const fields = await this.getCustomFields(tenantId);
+    const updated = fields.filter((f: any) => f.id !== id);
+    await this.set(tenantId, 'custom_fields', updated);
+    return { success: true };
+  }
 }

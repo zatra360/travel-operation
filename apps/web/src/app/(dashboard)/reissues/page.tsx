@@ -1,59 +1,146 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { TableToolbar } from '@/components/ui/table-toolbar';
+import { Pagination } from '@/components/ui/pagination';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { Money } from '@/components/travel/money';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
-import { formatDateTime } from '@/lib/utils';
-import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
+import { formatDate } from '@/lib/utils';
+
+const ALL = '__all__';
+const PAGE_SIZE = 25;
+const STATUSES = ['REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'PROCESSED'];
+
+interface ReissueRow {
+  id: string;
+  reissueNumber?: string;
+  fareDifference?: number | string;
+  serviceCharge?: number | string;
+  totalCharge?: number | string;
+  currencyCode?: string;
+  status: string;
+  createdAt: string;
+}
 
 export default function ReissuesPage() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<ReissueRow[]>([]);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
-  const { activeTenant } = useAuthStore();
+  const [page, setPage] = useState(1);
+  const { activeTenant, activeBranch } = useAuthStore();
 
   const load = useCallback(() => {
     if (!activeTenant) return;
-    setLoading(true); setError('');
+    setLoading(true);
+    setError('');
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (status) params.set('status', status);
-    api.get<any>(`/api/v1/tenant/reissues?${params.toString()}`, { tenantId: activeTenant.id })
-      .then((res) => setItems(res.data || []))
+    params.set('page', String(page));
+    params.set('limit', String(PAGE_SIZE));
+    api
+      .get<{ data: ReissueRow[]; page: number; totalPages: number; total: number }>(
+        `/api/v1/tenant/reissues?${params.toString()}`,
+        { tenantId: activeTenant.id, branchId: activeBranch?.id },
+      )
+      .then((res) => {
+        setItems(res.data || []);
+        setMeta({ page: res.page ?? 1, totalPages: res.totalPages ?? 1, total: res.total ?? 0 });
+      })
       .catch((err) => setError(err.message || 'Failed'))
       .finally(() => setLoading(false));
-  }, [activeTenant, search, status]);
+  }, [activeTenant, activeBranch, search, status, page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  useEffect(() => {
+    setPage(1);
+  }, [search, status]);
 
-  const statuses = ['REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'PROCESSED'];
-  const variant = (s: string) => s === 'APPROVED' ? 'success' : s === 'PROCESSED' ? 'default' : s === 'REJECTED' ? 'destructive' : 'secondary';
+  const columns: DataTableColumn<ReissueRow>[] = [
+    { key: 'number', header: 'Reissue #', cell: (r: any) => <span className="font-medium">{r.reissueNumber || r.id}</span> },
+    { key: 'oldTicket', header: 'Old Ticket', cell: (r: any) => <span className="text-muted-foreground">{r.oldTicket?.ticketNumber || '—'}</span> },
+    { key: 'newTicket', header: 'New Ticket', cell: (r: any) => <span className="text-muted-foreground">{r.newTicket?.ticketNumber || '—'}</span> },
+    { key: 'booking', header: 'Booking', hideOnMobile: true, cell: (r: any) => <span className="text-muted-foreground">{r.booking?.bookingRef || '—'}</span> },
+    { key: 'total', header: 'Total', align: 'right', cell: (r) => <Money amount={r.totalCharge} currency={r.currencyCode || 'USD'} className="font-medium" /> },
+    { key: 'status', header: 'Status', cell: (r) => <StatusBadge status={r.status} /> },
+    { key: 'created', header: 'Created', hideOnMobile: true, cell: (r) => <span className="text-muted-foreground">{formatDate(r.createdAt)}</span> },
+  ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader title="Reissues" subtitle="Handle ticket reissue requests with fare differences" />
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" /></div>
-        {statuses.map((s) => (<Button key={s} variant={status === s ? 'default' : 'outline'} size="sm" onClick={() => setStatus(s)}>{s}</Button>))}
-        <Button variant={status === '' ? 'default' : 'outline'} size="sm" onClick={() => setStatus('')}>All</Button>
-      </div>
-      <Card><CardContent className="pt-6">
-        {loading ? <TableSkeleton /> :
-         error ? <p className="text-sm text-destructive">{error}</p> :
-         items.length === 0 ? <p className="text-muted-foreground">No reissues found. Reissue requests appear here when ticket changes are needed.</p> : (
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3">Reissue #</th><th className="pb-3">Fare Diff</th><th className="pb-3">Service Charge</th><th className="pb-3">Total</th><th className="pb-3">Status</th><th className="pb-3">Created</th></tr></thead><tbody>
-            {items.map((r) => (<tr key={r.id} className="border-b last:border-0"><td className="py-3 font-medium">{r.reissueNumber || r.id}</td><td className="py-3">${Number(r.fareDifference || 0).toFixed(2)}</td><td className="py-3">${Number(r.serviceCharge || 0).toFixed(2)}</td><td className="py-3">${Number(r.totalCharge || 0).toFixed(2)}</td><td className="py-3"><Badge variant={variant(r.status)}>{r.status}</Badge></td><td className="py-3 text-muted-foreground">{formatDateTime(r.createdAt)}</td></tr>))}
-          </tbody></table></div>
-        )}
-      </CardContent></Card>
+
+      <TableToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search reissue #…"
+        hasActiveFilters={search !== '' || status !== ''}
+        onReset={() => {
+          setSearch('');
+          setStatus('');
+        }}
+        filters={
+          <Select value={status || ALL} onValueChange={(v) => setStatus(v === ALL ? '' : v)}>
+            <SelectTrigger className="h-9 w-44" aria-label="Filter by status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All statuses</SelectItem>
+              {STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+
+      {error ? (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            data={items}
+            rowKey={(r) => r.id}
+            loading={loading}
+            emptyTitle="No reissues found"
+            emptyDescription="Reissue requests appear here when ticket changes are needed."
+            mobileCard={(r) => (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">{r.reissueNumber || r.id}</span>
+                  <StatusBadge status={r.status} />
+                </div>
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span className="text-muted-foreground">Total</span>
+                  <Money amount={r.totalCharge} currency={r.currencyCode || 'USD'} className="font-semibold" />
+                </div>
+              </div>
+            )}
+          />
+          {!loading && items.length > 0 && (
+            <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total} limit={PAGE_SIZE} onPageChange={setPage} />
+          )}
+        </>
+      )}
     </div>
   );
 }

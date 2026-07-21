@@ -30,7 +30,8 @@ const transitions: Record<string, Record<string, string[]>> = {
     VOIDED: [],
   },
   ticket: {
-    PENDING: ['ISSUED', 'VOIDED'],
+    PENDING: ['APPROVED', 'VOIDED'],
+    APPROVED: ['ISSUED', 'VOIDED'],
     ISSUED: ['VOIDED', 'REFUNDED', 'REISSUED'],
     VOIDED: [],
     REFUNDED: [],
@@ -101,6 +102,15 @@ const transitions: Record<string, Record<string, string[]>> = {
     APPROVED: ['PAID'],
     REJECTED: ['PENDING'],
     PAID: [],
+  },
+  contract: {
+    DRAFT: ['SENT', 'CANCELLED'],
+    SENT: ['SIGNED', 'REJECTED', 'EXPIRED', 'CANCELLED'],
+    SIGNED: ['TERMINATED', 'EXPIRED'],
+    REJECTED: ['DRAFT'],
+    EXPIRED: ['DRAFT'],
+    CANCELLED: [],
+    TERMINATED: [],
   },
 };
 

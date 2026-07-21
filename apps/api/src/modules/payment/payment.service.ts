@@ -1,10 +1,16 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { RelationshipValidationService } from '../../common/services/relationship-validation.service';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
+import { ClientScoringService } from '../client/client-scoring.service';
+import { GLPostingService } from '../accounting/gl-posting.service';
+import { NotificationService } from '../notification/notification.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { QueryPaymentDto } from './dto/query-payment.dto';
@@ -16,7 +22,11 @@ export class PaymentService {
     private readonly audit: AuditService,
     private readonly activity: ActivityService,
     private readonly relValidation: RelationshipValidationService,
+    private readonly lookup: LookupValidationService,
     private readonly numberGen: NumberGeneratorService,
+    private readonly scoring: ClientScoringService,
+    private readonly glPosting: GLPostingService,
+    private readonly notification: NotificationService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreatePaymentDto) {
@@ -34,32 +44,65 @@ export class PaymentService {
       invoiceId: dto.invoiceId,
       branchId: dto.branchId,
     });
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'payment-method', code: dto.paymentMethod },
+    ].filter((v) => v.code));
 
-    const payment = await this.prisma.payment.create({
-      data: {
-        tenantId,
-        branchId: dto.branchId,
-        bookingId: dto.bookingId,
-        invoiceId: dto.invoiceId,
-        clientId: dto.clientId,
-        amount: dto.amount,
-        currencyCode: dto.currencyCode ?? 'USD',
-        paymentMethod: dto.paymentMethod,
-        status: 'PENDING',
-        reference: dto.reference,
-        idempotencyKey: dto.idempotencyKey,
-        notes: dto.notes,
-        createdById: actorId,
-      },
-    });
+    const currencyCode = dto.currencyCode ?? 'USD';
+    const exchangeRate = dto.exchangeRate ?? 1;
+    const baseCurrencyCode = dto.baseCurrencyCode ?? currencyCode;
+    const baseAmount = Number(dto.amount ?? 0) * Number(exchangeRate);
+
+    const payment = await this.prisma.payment
+      .create({
+        data: {
+          tenantId,
+          branchId: dto.branchId,
+          bookingId: dto.bookingId,
+          invoiceId: dto.invoiceId,
+          clientId: dto.clientId,
+          amount: dto.amount,
+          currencyCode,
+          exchangeRate,
+          baseCurrencyCode,
+          baseAmount,
+          paymentMethod: dto.paymentMethod,
+          status: 'PENDING',
+          reference: dto.reference,
+          idempotencyKey: dto.idempotencyKey,
+          notes: dto.notes,
+          bankAccountId: dto.bankAccountId ?? null,
+          createdById: actorId,
+        },
+      })
+      .catch((err) => {
+        // Unique violation on (tenantId, idempotencyKey): a concurrent request
+        // already created this payment. Treat as a duplicate rather than a 500.
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          throw new BadRequestException('Duplicate payment detected via idempotency key');
+        }
+        throw err;
+      });
 
     await this.audit.logMutation(actorId, tenantId, 'PAYMENT', 'Payment', payment.id, 'CREATE', { amount: dto.amount });
     await this.activity.log(tenantId, actorId, 'PAYMENT_CREATED', `Payment of ${dto.amount} ${dto.currencyCode} recorded`, 'Payment', payment.id, dto.branchId);
 
+    // Log payment gateway attempt
+    await this.prisma.transactionLog.create({
+      data: {
+        tenantId, paymentId: payment.id,
+        gateway: dto.paymentMethod ?? 'manual',
+        gatewayRef: dto.reference ?? null,
+        amount: dto.amount ?? 0, currencyCode,
+        status: 'PENDING', attemptedAt: new Date(),
+      },
+    });
+
+    this.scoring.refreshInBackground(tenantId, payment.clientId);
     return payment;
   }
 
-  async findAll(tenantId: string, query: QueryPaymentDto) {
+  async findAll(tenantId: string, query: QueryPaymentDto, activeBranchId?: string) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;
     const skip = (page - 1) * limit;
@@ -72,6 +115,7 @@ export class PaymentService {
       where.reference = { contains: query.search, mode: 'insensitive' };
     }
 
+    enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
       this.prisma.payment.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
       this.prisma.payment.count({ where }),
@@ -95,32 +139,70 @@ export class PaymentService {
       }
     }
 
-    const updated = await this.prisma.payment.update({
-      where: { id },
-      data: {
-        ...(dto.paymentMethod !== undefined && { paymentMethod: dto.paymentMethod }),
-        ...(dto.status !== undefined && { status: dto.status }),
-        ...(dto.reference !== undefined && { reference: dto.reference }),
-        ...(dto.amount !== undefined && { amount: dto.amount }),
-        ...(dto.receivedAt !== undefined && { receivedAt: new Date(dto.receivedAt) }),
-        ...(dto.notes !== undefined && { notes: dto.notes }),
-      },
+    const willReceive = dto.status === 'RECEIVED' && payment.status !== 'RECEIVED';
+    const receiptNumber = willReceive ? await this.numberGen.generateReceiptNumber(tenantId) : undefined;
+
+    // Marking a payment RECEIVED posts a receipt, a ledger credit and
+    // recalculates the invoice balance. These must commit together or not at
+    // all, so they run inside a single transaction with the status update.
+    const { updated, receipt } = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.payment.update({
+        where: { id },
+        data: {
+          ...(dto.paymentMethod !== undefined && { paymentMethod: dto.paymentMethod }),
+          ...(dto.status !== undefined && { status: dto.status }),
+          ...(dto.reference !== undefined && { reference: dto.reference }),
+          ...(dto.bankAccountId !== undefined && { bankAccountId: dto.bankAccountId }),
+          ...(dto.amount !== undefined && { amount: dto.amount }),
+          ...(dto.receivedAt !== undefined && { receivedAt: new Date(dto.receivedAt) }),
+          ...(dto.notes !== undefined && { notes: dto.notes }),
+        },
+      });
+
+      let createdReceipt: { id: string } | undefined;
+      if (willReceive) {
+        createdReceipt = await this.processReceivedPayment(tx, tenantId, actorId, u, receiptNumber!);
+        await this.glPosting.postPaymentReceived(tx, tenantId, actorId, u);
+      }
+      return { updated: u, receipt: createdReceipt };
     });
 
     await this.audit.logMutation(actorId, tenantId, 'PAYMENT', 'Payment', id, 'STATUS_CHANGE', { from: payment.status, to: updated.status });
     await this.activity.log(tenantId, actorId, 'PAYMENT_UPDATED', `Payment status: ${payment.status} -> ${updated.status}`, 'Payment', id, payment.branchId);
 
-    if (dto.status === 'RECEIVED' && payment.status !== 'RECEIVED') {
-      await this.processReceivedPayment(tenantId, actorId, updated);
+    if (dto.status !== undefined && dto.status !== payment.status) {
+      await this.prisma.transactionLog.updateMany({
+        where: { paymentId: id, status: 'PENDING' },
+        data: {
+          status: dto.status === 'RECEIVED' ? 'SUCCESS' : dto.status === 'FAILED' ? 'FAILED' : dto.status,
+          completedAt: new Date(),
+        },
+      });
     }
 
+    if (willReceive && receipt) {
+      await this.activity.log(tenantId, actorId, 'PAYMENT_RECEIVED', `Payment of ${updated.amount} ${updated.currencyCode} received`, 'Payment', updated.id);
+      await this.activity.log(tenantId, actorId, 'RECEIPT_CREATED', `Receipt #${receiptNumber} generated`, 'Receipt', receipt.id, updated.branchId);
+      await this.activity.log(tenantId, actorId, 'LEDGER_ENTRY_CREATED', `Ledger entry for payment ${updated.id}`, 'LedgerEntry', updated.id, updated.branchId);
+      this.notification.notify({
+        tenantId, userId: actorId,
+        title: `Payment received: ${updated.amount} ${updated.currencyCode}`,
+        body: `Payment of ${updated.amount} ${updated.currencyCode} has been received (ref: ${updated.reference || receiptNumber}).`,
+      }).catch(() => {});
+    }
+
+    this.scoring.refreshInBackground(tenantId, updated.clientId);
     return updated;
   }
 
-  private async processReceivedPayment(tenantId: string, actorId: string, payment: any) {
-    const receiptNumber = await this.numberGen.generateReceiptNumber(tenantId);
-
-    const receipt = await this.prisma.receipt.create({
+  private async processReceivedPayment(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    payment: any,
+    receiptNumber: string,
+  ) {
+    const receipt = await tx.receipt.create({
       data: {
         tenantId,
         branchId: payment.branchId,
@@ -136,7 +218,7 @@ export class PaymentService {
       },
     });
 
-    await this.prisma.ledgerEntry.create({
+    await tx.ledgerEntry.create({
       data: {
         tenantId,
         branchId: payment.branchId,
@@ -144,6 +226,9 @@ export class PaymentService {
         referenceId: payment.id,
         direction: 'CREDIT',
         currencyCode: payment.currencyCode,
+        exchangeRate: payment.exchangeRate ?? 1,
+        baseCurrencyCode: payment.baseCurrencyCode ?? payment.currencyCode,
+        baseAmount: payment.baseAmount ?? payment.amount,
         amount: payment.amount,
         description: `Payment received: ${payment.reference ?? receiptNumber}`,
         createdById: actorId,
@@ -151,23 +236,32 @@ export class PaymentService {
     });
 
     if (payment.invoiceId) {
-      await this.updateInvoiceBalances(tenantId, payment.invoiceId);
+      await this.updateInvoiceBalances(tx, tenantId, payment.invoiceId);
     }
 
-    await this.activity.log(tenantId, actorId, 'PAYMENT_RECEIVED', `Payment of ${payment.amount} ${payment.currencyCode} received`, 'Payment', payment.id);
-    await this.activity.log(tenantId, actorId, 'RECEIPT_CREATED', `Receipt #${receiptNumber} generated`, 'Receipt', receipt.id, payment.branchId);
-    await this.activity.log(tenantId, actorId, 'LEDGER_ENTRY_CREATED', `Ledger entry for payment ${payment.id}`, 'LedgerEntry', payment.id, payment.branchId);
+    if (payment.bankAccountId) {
+      await tx.bankAccount.update({
+        where: { id: payment.bankAccountId },
+        data: { currentBalance: { increment: Number(payment.amount) } },
+      });
+    }
+
+    return receipt;
   }
 
-  private async updateInvoiceBalances(tenantId: string, invoiceId: string) {
-    const payments = await this.prisma.payment.aggregate({
+  private async updateInvoiceBalances(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    invoiceId: string,
+  ) {
+    const payments = await tx.payment.aggregate({
       where: { tenantId, invoiceId, status: 'RECEIVED' },
       _sum: { amount: true },
     });
 
     const paidAmount = Number(payments._sum.amount ?? 0);
 
-    const invoice = await this.prisma.invoice.findFirst({
+    const invoice = await tx.invoice.findFirst({
       where: { id: invoiceId, tenantId },
     });
 
@@ -181,7 +275,7 @@ export class PaymentService {
       newStatus = 'PARTIALLY_PAID';
     }
 
-    await this.prisma.invoice.update({
+    await tx.invoice.update({
       where: { id: invoiceId },
       data: { paidAmount: paidAmount, dueAmount: dueAmount, status: newStatus },
     });
@@ -194,6 +288,7 @@ export class PaymentService {
     }
     await this.prisma.payment.delete({ where: { id } });
     await this.audit.logMutation(actorId, tenantId, 'PAYMENT', 'Payment', id, 'DELETE', { reference: payment.reference });
+    this.scoring.refreshInBackground(tenantId, payment.clientId);
     return { id, deleted: true };
   }
 }

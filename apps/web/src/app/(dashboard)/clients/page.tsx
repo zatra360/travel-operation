@@ -3,30 +3,43 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { Plus, Search, Pencil, Trash2, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
+import { ImportExportButtons } from '@/components/import-export-buttons';
 import { PageHeader } from '@/components/ui/page-header';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { TableToolbar } from '@/components/ui/table-toolbar';
+import { Pagination } from '@/components/ui/pagination';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { Badge } from '@/components/ui/badge';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
-import { Client, Paginated, clientStatusVariant } from '@/lib/crm';
-import { TableSkeleton } from '@/components/ui/skeleton';
-import { ClientFormDialog } from './client-form-dialog';
+import { humanizeStatus } from '@/lib/status';
+import { Client, Paginated } from '@/lib/crm';
+
+const ALL = '__all__';
+const PAGE_SIZE = 25;
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Client | null>(null);
+  const [sortBy, setSortBy] = useState('');
+  const [page, setPage] = useState(1);
   const [deleting, setDeleting] = useState<Client | null>(null);
-  const { activeTenant } = useAuthStore();
+  const { activeTenant, activeBranch } = useAuthStore();
 
   const load = useCallback(() => {
     if (!activeTenant) return;
@@ -35,28 +48,28 @@ export default function ClientsPage() {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (type) params.set('type', type);
+    if (sortBy) params.set('sortBy', sortBy);
+    params.set('page', String(page));
+    params.set('limit', String(PAGE_SIZE));
     api
       .get<Paginated<Client>>(`/api/v1/tenant/clients?${params.toString()}`, {
         tenantId: activeTenant.id,
+        branchId: activeBranch?.id,
       })
-      .then((res) => setClients(res.data))
+      .then((res) => {
+        setClients(res.data);
+        setMeta({ page: res.page, totalPages: res.totalPages, total: res.total });
+      })
       .catch((err) => setError(err.message || 'Failed to load clients'))
       .finally(() => setLoading(false));
-  }, [activeTenant, search, type]);
+  }, [activeTenant, activeBranch, search, type, sortBy, page]);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  const openCreate = () => {
-    setEditing(null);
-    setFormOpen(true);
-  };
-
-  const openEdit = (client: Client) => {
-    setEditing(client);
-    setFormOpen(true);
-  };
+  useEffect(() => {
+    setPage(1);
+  }, [search, type, sortBy]);
 
   const handleDelete = async () => {
     if (!activeTenant || !deleting) return;
@@ -69,144 +82,139 @@ export default function ClientsPage() {
     }
   };
 
+  const hasFilters = search !== '' || type !== '' || sortBy !== '';
+
+  const columns: DataTableColumn<Client>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      cell: (c) => (
+        <Link href={`/clients/${c.id}`} className="font-medium hover:underline">
+          {c.displayName}
+        </Link>
+      ),
+    },
+    { key: 'type', header: 'Type', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{humanizeStatus(c.type)}</span> },
+    { key: 'contact', header: 'Contact', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{c.email || c.phone || '—'}</span> },
+    { key: 'company', header: 'Company', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{c.companyName || '—'}</span> },
+    { key: 'status', header: 'Status', cell: (c) => <StatusBadge status={c.status} /> },
+    { key: 'score', header: 'Activity', cell: (c) => {
+      const s = c.activityScore;
+      if (s == null) return <span className="text-muted-foreground text-xs">—</span>;
+      return <Badge variant={s >= 60 ? 'success' : s >= 30 ? 'warning' : 'destructive'} className="text-[11px]">{s}</Badge>;
+    } },
+    { key: 'created', header: 'Created', hideOnMobile: true, cell: (c) => <span className="text-muted-foreground">{formatDate(c.createdAt)}</span> },
+    {
+      key: 'actions',
+      header: '',
+      align: 'right',
+      cell: (c) => (
+        <div className="flex items-center justify-end gap-1">
+          <Button asChild variant="ghost" size="icon" title="View">
+            <Link href={`/clients/${c.id}`}>
+              <Eye className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="icon" title="Edit">
+            <Link href={`/clients/${c.id}/edit`}>
+              <Pencil className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button variant="ghost" size="icon" title="Delete" onClick={() => setDeleting(c)}>
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Clients"
         subtitle="Manage customer profiles, bookings, and payment history"
         actions={
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Client
-          </Button>
+          <div className="flex items-center gap-2">
+            <ImportExportButtons type="clients" onImported={load} />
+            <Button size="sm" asChild><Link href="/clients/new"><Plus className="mr-2 h-4 w-4" />New Client</Link></Button>
+          </div>
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search name, email, phone, or company..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-        <div className="flex gap-1">
-          <Button
-            variant={type === '' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setType('')}
-          >
-            All
-          </Button>
-          <Button
-            variant={type === 'PERSON' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setType('PERSON')}
-          >
-            Person
-          </Button>
-          <Button
-            variant={type === 'COMPANY' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setType('COMPANY')}
-          >
-            Company
-          </Button>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>All Clients</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <TableSkeleton />
-          ) : error ? (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
-          ) : clients.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-muted-foreground">No clients found.</p>
-              <Button size="sm" variant="outline" className="mt-3" onClick={openCreate}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create your first client
-              </Button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="pb-3 font-medium">Name</th>
-                    <th className="pb-3 font-medium">Type</th>
-                    <th className="pb-3 font-medium">Contact</th>
-                    <th className="pb-3 font-medium">Company</th>
-                    <th className="pb-3 font-medium">Status</th>
-                    <th className="pb-3 font-medium">Created</th>
-                    <th className="pb-3 font-medium text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {clients.map((client) => (
-                    <tr key={client.id} className="border-b last:border-0">
-                      <td className="py-3 font-medium">
-                        <Link href={`/clients/${client.id}`} className="hover:underline">
-                          {client.displayName}
-                        </Link>
-                      </td>
-                      <td className="py-3 text-muted-foreground">{client.type}</td>
-                      <td className="py-3 text-muted-foreground">
-                        {client.email || client.phone || '--'}
-                      </td>
-                      <td className="py-3 text-muted-foreground">{client.companyName || '--'}</td>
-                      <td className="py-3">
-                        <Badge variant={clientStatusVariant[client.status] || 'secondary'}>
-                          {client.status}
-                        </Badge>
-                      </td>
-                      <td className="py-3 text-muted-foreground">{formatDate(client.createdAt)}</td>
-                      <td className="py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button asChild variant="ghost" size="icon" title="View">
-                            <Link href={`/clients/${client.id}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Edit"
-                            onClick={() => openEdit(client)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Delete"
-                            onClick={() => setDeleting(client)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <ClientFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        client={editing}
-        onSaved={load}
+      <TableToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search name, email, phone, or company…"
+        hasActiveFilters={hasFilters}
+        onReset={() => {
+          setSearch('');
+          setType('');
+          setSortBy('');
+        }}
+        filters={
+          <>
+            <Select value={type || ALL} onValueChange={(v) => setType(v === ALL ? '' : v)}>
+              <SelectTrigger className="h-9 w-36" aria-label="Filter by type">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All types</SelectItem>
+                <SelectItem value="PERSON">Person</SelectItem>
+                <SelectItem value="COMPANY">Company</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy || 'createdAt'} onValueChange={(v) => setSortBy(v === 'createdAt' ? '' : v)}>
+              <SelectTrigger className="h-9 w-40" aria-label="Sort clients">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="createdAt">Newest first</SelectItem>
+                <SelectItem value="activityScore">Sort by Activity</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        }
       />
+
+      {error ? (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            data={clients}
+            rowKey={(c) => c.id}
+            loading={loading}
+            emptyTitle="No clients found"
+            emptyDescription={hasFilters ? 'Try adjusting your filters.' : 'Create your first client to get started.'}
+            emptyAction={
+              !hasFilters ? (
+                <Button size="sm" variant="outline" asChild>
+                  <Link href="/clients/new"><Plus className="mr-2 h-4 w-4" />Create your first client</Link>
+                </Button>
+              ) : undefined
+            }
+            mobileCard={(c) => (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <Link href={`/clients/${c.id}`} className="font-medium hover:underline">
+                    {c.displayName}
+                  </Link>
+                  <div className="flex items-center gap-2">
+                    {c.activityScore != null && <Badge variant={c.activityScore >= 60 ? 'success' : c.activityScore >= 30 ? 'warning' : 'destructive'} className="text-[10px]">{c.activityScore}</Badge>}
+                    <StatusBadge status={c.status} />
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">{c.email || c.phone || c.companyName || '—'}</p>
+              </div>
+            )}
+          />
+          {!loading && clients.length > 0 && (
+            <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total} limit={PAGE_SIZE} onPageChange={setPage} />
+          )}
+        </>
+      )}
+
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}

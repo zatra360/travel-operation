@@ -20,10 +20,14 @@ jobs:
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @travelo/database generate
       - run: pnpm --filter @travelo/database exec prisma validate
+      - run: pnpm --filter @travelo/api exec tsc -p tsconfig.build.json --noEmit
+      - run: pnpm --filter @travelo/web exec tsc --noEmit
+      - run: pnpm --filter @travelo/api lint
+      - run: pnpm --filter @travelo/web lint
       - run: pnpm --filter @travelo/api build
       - run: pnpm --filter @travelo/web build
-      - run: pnpm --filter @travelo/api lint
 
   test:
     runs-on: ubuntu-latest

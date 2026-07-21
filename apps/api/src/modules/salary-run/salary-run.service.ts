@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
@@ -52,7 +53,7 @@ export class SalaryRunService {
     return salaryRun;
   }
 
-  async findAll(tenantId: string, query: QuerySalaryRunDto) {
+  async findAll(tenantId: string, query: QuerySalaryRunDto, activeBranchId?: string) {
     const page = query.page ?? 1; const limit = query.limit ?? 50; const skip = (page - 1) * limit;
     const where: any = { tenantId };
     if (query.status) where.status = query.status;
@@ -64,6 +65,7 @@ export class SalaryRunService {
         { notes: { contains: query.search, mode: 'insensitive' } },
       ];
     }
+    enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
       this.prisma.salaryRun.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
       this.prisma.salaryRun.count({ where }),

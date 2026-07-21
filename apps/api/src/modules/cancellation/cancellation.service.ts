@@ -1,10 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { RelationshipValidationService } from '../../common/services/relationship-validation.service';
 import { NumberGeneratorService } from '../../common/services/number-generator.service';
 import { validateStatusTransition } from '../../common/utils/status-transitions';
+import { LookupValidationService } from '../master-data/lookup-validation.service';
+import { ClientScoringService } from '../client/client-scoring.service';
 import { CreateCancellationDto } from './dto/create-cancellation.dto';
 import { UpdateCancellationDto } from './dto/update-cancellation.dto';
 import { QueryCancellationDto } from './dto/query-cancellation.dto';
@@ -16,7 +19,9 @@ export class CancellationService {
     private readonly audit: AuditService,
     private readonly activity: ActivityService,
     private readonly relValidation: RelationshipValidationService,
+    private readonly lookup: LookupValidationService,
     private readonly numberGen: NumberGeneratorService,
+    private readonly scoring: ClientScoringService,
   ) {}
 
   async create(tenantId: string, actorId: string, dto: CreateCancellationDto) {
@@ -27,6 +32,9 @@ export class CancellationService {
       clientId: dto.clientId,
       branchId: dto.branchId,
     });
+    await this.lookup.validateMultiple(tenantId, [
+      { categoryCode: 'cancellation-reason', code: dto.reason },
+    ].filter((v) => v.code));
 
     const cancellationNumber = await this.numberGen.generateCancellationNumber(tenantId);
 
@@ -51,10 +59,11 @@ export class CancellationService {
     await this.audit.logMutation(actorId, tenantId, 'CANCELLATION', 'CancellationRequest', cancellation.id, 'CREATE', { cancellationNumber });
     await this.activity.log(tenantId, actorId, 'CANCELLATION_REQUESTED', `Cancellation #${cancellationNumber} requested`, 'CancellationRequest', cancellation.id, dto.branchId);
 
+    this.scoring.refreshInBackground(tenantId, cancellation.clientId);
     return cancellation;
   }
 
-  async findAll(tenantId: string, query: QueryCancellationDto) {
+  async findAll(tenantId: string, query: QueryCancellationDto, activeBranchId?: string) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;
     const skip = (page - 1) * limit;
@@ -69,8 +78,12 @@ export class CancellationService {
       ];
     }
 
+    enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
-      this.prisma.cancellationRequest.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      this.prisma.cancellationRequest.findMany({
+        where, orderBy: { createdAt: 'desc' }, skip, take: limit,
+        include: { ticket: { select: { ticketNumber: true, passengerName: true } }, booking: { select: { bookingRef: true } }, client: { select: { displayName: true } } },
+      }),
       this.prisma.cancellationRequest.count({ where }),
     ]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
@@ -171,51 +184,68 @@ export class CancellationService {
       throw new BadRequestException(`Invalid status transition: ${cancellation.status} -> PROCESSED. Allowed: ${allowed.join(', ')}`);
     }
 
-    const updated = await this.prisma.cancellationRequest.update({
-      where: { id },
-      data: {
-        status: 'PROCESSED',
-        processedById: actorId,
-        processedAt: new Date(),
-      },
-    });
+    const postsLedger =
+      cancellation.refundableAmount && Number(cancellation.refundableAmount) > 0;
+    const currencyCode = (cancellation.booking as any)?.currencyCode ?? 'USD';
 
-    if (cancellation.refundableAmount && Number(cancellation.refundableAmount) > 0) {
-      await this.prisma.ledgerEntry.create({
+    // Status change, reversal posting, booking and ticket updates must be atomic.
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.cancellationRequest.update({
+        where: { id },
         data: {
-          tenantId,
-          branchId: cancellation.branchId,
-          referenceType: 'CANCELLATION',
-          referenceId: cancellation.id,
-          direction: 'DEBIT',
-          currencyCode: 'USD',
-          amount: cancellation.refundableAmount,
-          description: `Cancellation reversal: ${cancellation.cancellationNumber}`,
-          createdById: actorId,
+          status: 'PROCESSED',
+          processedById: actorId,
+          processedAt: new Date(),
         },
       });
+
+      if (postsLedger) {
+        await tx.ledgerEntry.create({
+          data: {
+            tenantId,
+            branchId: cancellation.branchId,
+            referenceType: 'CANCELLATION',
+            referenceId: cancellation.id,
+            direction: 'DEBIT',
+            currencyCode,
+            amount: cancellation.refundableAmount,
+            description: `Cancellation reversal: ${cancellation.cancellationNumber}`,
+            createdById: actorId,
+          },
+        });
+      }
+
+      if (cancellation.bookingId) {
+        await tx.booking.update({
+          where: { id: cancellation.bookingId },
+          data: { status: 'CANCELLED' },
+        });
+      }
+
+      if (cancellation.ticketId) {
+        await tx.ticket.update({
+          where: { id: cancellation.ticketId },
+          data: { status: 'VOIDED' },
+        });
+      }
+
+      return result;
+    });
+
+    if (postsLedger) {
       await this.activity.log(tenantId, actorId, 'LEDGER_ENTRY_CREATED', `Reversal ledger entry for cancellation ${cancellation.cancellationNumber}`, 'CancellationRequest', id, cancellation.branchId);
     }
-
     if (cancellation.bookingId) {
-      await this.prisma.booking.update({
-        where: { id: cancellation.bookingId },
-        data: { status: 'CANCELLED' },
-      });
       await this.activity.log(tenantId, actorId, 'BOOKING_CANCELLED', `Booking ${cancellation.bookingId} status updated to CANCELLED`, 'Booking', cancellation.bookingId, cancellation.branchId);
     }
-
     if (cancellation.ticketId) {
-      await this.prisma.ticket.update({
-        where: { id: cancellation.ticketId },
-        data: { status: 'VOIDED' },
-      });
       await this.activity.log(tenantId, actorId, 'TICKET_VOIDED', `Ticket ${cancellation.ticketId} status updated to VOIDED`, 'Ticket', cancellation.ticketId, cancellation.branchId);
     }
 
     await this.audit.logMutation(actorId, tenantId, 'CANCELLATION', 'CancellationRequest', id, 'PROCESS', {});
     await this.activity.log(tenantId, actorId, 'CANCELLATION_PROCESSED', `Cancellation #${cancellation.cancellationNumber} processed`, 'CancellationRequest', id, cancellation.branchId);
 
+    this.scoring.refreshInBackground(tenantId, cancellation.clientId);
     return updated;
   }
 
@@ -231,6 +261,7 @@ export class CancellationService {
     }
     await this.prisma.cancellationRequest.delete({ where: { id } });
     await this.audit.logMutation(actorId, tenantId, 'CANCELLATION', 'CancellationRequest', id, 'DELETE', { cancellationNumber: cancellation.cancellationNumber });
+    this.scoring.refreshInBackground(tenantId, cancellation.clientId);
     return { id, deleted: true };
   }
 }

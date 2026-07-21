@@ -3,30 +3,42 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Printer } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { TableToolbar } from '@/components/ui/table-toolbar';
+import { Pagination } from '@/components/ui/pagination';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatDate } from '@/lib/utils';
-import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
-import { Ticket, Paginated, TICKET_STATUSES, ticketStatusVariant } from '@/lib/crm';
+import { Ticket, Paginated, TICKET_STATUSES } from '@/lib/crm';
 import { TicketFormDialog } from './ticket-form-dialog';
+
+const ALL = '__all__';
+const PAGE_SIZE = 25;
 
 export default function TicketsPage() {
   const [items, setItems] = useState<Ticket[]>([]);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Ticket | null>(null);
   const [deleting, setDeleting] = useState<Ticket | null>(null);
-  const { activeTenant } = useAuthStore();
+  const { activeTenant, activeBranch } = useAuthStore();
 
   const load = useCallback(() => {
     if (!activeTenant) return;
@@ -35,20 +47,36 @@ export default function TicketsPage() {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (status) params.set('status', status);
+    params.set('page', String(page));
+    params.set('limit', String(PAGE_SIZE));
     api
       .get<Paginated<Ticket>>(`/api/v1/tenant/tickets?${params.toString()}`, {
         tenantId: activeTenant.id,
+        branchId: activeBranch?.id,
       })
-      .then((res) => setItems(res.data))
+      .then((res) => {
+        setItems(res.data);
+        setMeta({ page: res.page, totalPages: res.totalPages, total: res.total });
+      })
       .catch((err) => setError(err.message || 'Failed to load tickets'))
       .finally(() => setLoading(false));
-  }, [activeTenant, search, status]);
+  }, [activeTenant, activeBranch, search, status, page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  useEffect(() => {
+    setPage(1);
+  }, [search, status]);
 
-  const openCreate = () => { setEditing(null); setFormOpen(true); };
-  const openEdit = (t: Ticket) => { setEditing(t); setFormOpen(true); };
-
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+  const openEdit = (t: Ticket) => {
+    setEditing(t);
+    setFormOpen(true);
+  };
   const handleDelete = async () => {
     if (!activeTenant || !deleting) return;
     try {
@@ -60,82 +88,125 @@ export default function TicketsPage() {
     }
   };
 
+  const hasFilters = search !== '' || status !== '';
+
+  const columns: DataTableColumn<Ticket>[] = [
+    {
+      key: 'number',
+      header: 'Ticket #',
+      cell: (t) => (
+        <Link href={`/tickets/${t.id}`} className="font-medium text-primary hover:underline">
+          {t.ticketNumber}
+        </Link>
+      ),
+    },
+    { key: 'passenger', header: 'Passenger', cell: (t: any) => <span className="text-muted-foreground">{t.passengerName || '—'}</span> },
+    { key: 'booking', header: 'Booking', hideOnMobile: true, cell: (t: any) => <span className="text-muted-foreground text-sm">{t.booking?.bookingRef || '—'}</span> },
+    {
+      key: 'contact', header: 'Client', hideOnMobile: true,
+      cell: (t: any) => t.booking?.client?.displayName ? <Link href={`/clients/${t.booking.clientId || ''}`} className="text-sm text-primary hover:underline">{t.booking.client.displayName}</Link>
+        : t.booking?.lead?.fullName ? <span className="text-sm text-muted-foreground">Lead: {t.booking.lead.fullName}</span>
+        : <span className="text-muted-foreground text-sm">—</span>,
+    },
+    { key: 'airline', header: 'Airline', hideOnMobile: true, cell: (t: any) => <span className="text-muted-foreground text-sm">{t.airline?.iataCode || t.airline?.name || '—'}</span> },
+    { key: 'status', header: 'Status', cell: (t) => <StatusBadge status={t.status} /> },
+    { key: 'issued', header: 'Issued', hideOnMobile: true, cell: (t) => <span className="text-muted-foreground">{t.issuedAt ? formatDate(t.issuedAt) : '—'}</span> },
+    { key: 'created', header: 'Created', hideOnMobile: true, cell: (t) => <span className="text-muted-foreground">{formatDate(t.createdAt)}</span> },
+    {
+      key: 'actions',
+      header: '',
+      align: 'right',
+      cell: (t) => (
+        <div className="flex items-center justify-end gap-1">
+          <Button asChild variant="ghost" size="icon" title="Print">
+            <Link href={`/tickets/${t.id}/print`} target="_blank"><Printer className="h-4 w-4" /></Link>
+          </Button>
+          <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(t)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" title="Delete" onClick={() => setDeleting(t)}>
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Tickets"
         subtitle="Issue, void, refund and reissue flight tickets"
-        actions={<Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />New Ticket</Button>}
+        actions={
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Ticket
+          </Button>
+        }
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search ticket number or passenger..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
-        </div>
-        <div className="flex flex-wrap gap-1">
-          <Button variant={status === '' ? 'default' : 'outline'} size="sm" onClick={() => setStatus('')}>All</Button>
-          {TICKET_STATUSES.map((s) => (
-            <Button key={s} variant={status === s ? 'default' : 'outline'} size="sm" onClick={() => setStatus(s)}>{s}</Button>
-          ))}
-        </div>
-      </div>
+      <TableToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search ticket number or passenger…"
+        hasActiveFilters={hasFilters}
+        onReset={() => {
+          setSearch('');
+          setStatus('');
+        }}
+        filters={
+          <Select value={status || ALL} onValueChange={(v) => setStatus(v === ALL ? '' : v)}>
+            <SelectTrigger className="h-9 w-44" aria-label="Filter by status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All statuses</SelectItem>
+              {TICKET_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <Card>
-        <CardHeader><CardTitle>All Tickets</CardTitle></CardHeader>
-        <CardContent>
-          {loading ? (
-            <TableSkeleton />
-          ) : error ? (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
-          ) : items.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-muted-foreground">No tickets found.</p>
-              <Button size="sm" variant="outline" className="mt-3" onClick={openCreate}>
-                <Plus className="h-4 w-4 mr-2" />Issue your first ticket
-              </Button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="pb-3 font-medium">Ticket #</th>
-                    <th className="pb-3 font-medium">Passenger</th>
-                    <th className="pb-3 font-medium">Status</th>
-                    <th className="pb-3 font-medium">Issued</th>
-                    <th className="pb-3 font-medium">Created</th>
-                    <th className="pb-3 font-medium text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((t) => (
-                    <tr key={t.id} className="border-b last:border-0">
-                      <td className="py-3 font-medium"><Link href={`/tickets/${t.id}`} className="hover:underline text-primary">{t.ticketNumber}</Link></td>
-                      <td className="py-3 text-muted-foreground">{t.passengerName || '--'}</td>
-                      <td className="py-3">
-                        <Badge variant={ticketStatusVariant[t.status] || 'secondary'}>{t.status}</Badge>
-                      </td>
-                      <td className="py-3 text-muted-foreground">{t.issuedAt ? formatDate(t.issuedAt) : '--'}</td>
-                      <td className="py-3 text-muted-foreground">{formatDate(t.createdAt)}</td>
-                      <td className="py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(t)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" title="Delete" onClick={() => setDeleting(t)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {error ? (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            data={items}
+            rowKey={(t) => t.id}
+            loading={loading}
+            emptyTitle="No tickets found"
+            emptyDescription={hasFilters ? 'Try adjusting your filters.' : 'Issue your first ticket to get started.'}
+            emptyAction={
+              !hasFilters ? (
+                <Button size="sm" variant="outline" onClick={openCreate}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Issue your first ticket
+                </Button>
+              ) : undefined
+            }
+            mobileCard={(t) => (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <Link href={`/tickets/${t.id}`} className="font-medium text-primary hover:underline">
+                    {t.ticketNumber}
+                  </Link>
+                  <StatusBadge status={t.status} />
+                </div>
+                <p className="text-sm text-muted-foreground">{t.passengerName || '—'}</p>
+              </div>
+            )}
+          />
+          {!loading && items.length > 0 && (
+            <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total} limit={PAGE_SIZE} onPageChange={setPage} />
           )}
-        </CardContent>
-      </Card>
+        </>
+      )}
 
       <TicketFormDialog open={formOpen} onOpenChange={setFormOpen} ticket={editing} onSaved={load} />
       <ConfirmDialog

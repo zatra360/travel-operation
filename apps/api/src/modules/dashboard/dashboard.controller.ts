@@ -4,6 +4,7 @@ import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { TenantCtx } from '../../common/decorators/tenant-context.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -23,11 +24,25 @@ export class DashboardController {
   async getStats(@TenantCtx() ctx: TenantContext) {
     return this.dashboardService.getTenantStats(ctx.tenantId, ctx.branchId);
   }
+
+  @Get('expiries')
+  @RequirePermissions('DASHBOARD_READ')
+  @ApiOperation({ summary: 'Get expiring documents (passports, visas, contracts, quotations)' })
+  async getExpiries(@TenantCtx() ctx: TenantContext) {
+    return this.dashboardService.getExpiries(ctx.tenantId);
+  }
+
+  @Get('performance')
+  @RequirePermissions('DASHBOARD_READ')
+  @ApiOperation({ summary: 'Get employee performance metrics (commission, bookings, leads)' })
+  async getPerformance(@TenantCtx() ctx: TenantContext) {
+    return this.dashboardService.getPerformanceMetrics(ctx.tenantId);
+  }
 }
 
 @ApiTags('Platform - Dashboard')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PlatformAdminGuard, PermissionsGuard)
 @Controller('platform/dashboard')
 export class PlatformDashboardController {
   constructor(private readonly dashboardService: DashboardService) {}

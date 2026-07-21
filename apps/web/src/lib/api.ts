@@ -1,5 +1,33 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3900';
 
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const payload = data?.data || data;
+    const newToken = payload?.accessToken;
+    if (newToken) {
+      localStorage.setItem('accessToken', newToken);
+      if (payload?.refreshToken) {
+        localStorage.setItem('refreshToken', payload.refreshToken);
+      }
+    }
+    return newToken;
+  } catch {
+    return null;
+  }
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -41,6 +69,25 @@ export async function apiRequest<T = unknown>(
   });
 
   if (!response.ok) {
+    if (response.status === 429 && typeof window !== 'undefined') {
+      import('sonner').then(({ toast }) => {
+        toast.error('Too many requests. Please wait a moment and try again.');
+      }).catch(() => {});
+    }
+    if (response.status === 401) {
+      if (!refreshPromise) {
+        refreshPromise = refreshAccessToken().finally(() => { refreshPromise = null; });
+      }
+      const newToken = await refreshPromise;
+      if (newToken) {
+        headers['Authorization'] = `Bearer ${newToken}`;
+        const retryResponse = await fetch(`${API_URL}${path}`, { ...fetchConfig, headers });
+        if (retryResponse.ok) {
+          const retryData = await retryResponse.json();
+          return retryData?.data !== undefined ? retryData.data : retryData;
+        }
+      }
+    }
     const error = await response.json().catch(() => ({ message: 'Request failed' }));
     throw new ApiError(
       response.status,

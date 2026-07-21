@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../../common/storage/storage.service';
+import { ActivityService } from '../activity/activity.service';
 import { RequestUploadDto } from './dto/request-upload.dto';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { QueryDocumentDto } from './dto/query-document.dto';
@@ -14,6 +16,7 @@ export class DocumentService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly storage: StorageService,
+    private readonly activity: ActivityService,
   ) {}
 
   async requestUpload(tenantId: string, dto: RequestUploadDto) {
@@ -26,6 +29,9 @@ export class DocumentService {
   }
 
   async create(tenantId: string, actorId: string, dto: CreateDocumentDto) {
+    if (dto.entity && dto.entityId) {
+      await this.validateEntity(tenantId, dto.entity, dto.entityId);
+    }
     const doc = await this.prisma.document.create({
       data: {
         tenantId,
@@ -55,10 +61,11 @@ export class DocumentService {
       doc.branchId ?? undefined,
     );
 
+    await this.activity.log(tenantId, actorId, 'DOCUMENT_CREATED', `Document ${dto.fileName} uploaded`, 'Document', doc.id, doc.branchId);
     return doc;
   }
 
-  async findAll(tenantId: string, query: QueryDocumentDto) {
+  async findAll(tenantId: string, query: QueryDocumentDto, activeBranchId?: string) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;
     const skip = (page - 1) * limit;
@@ -70,6 +77,7 @@ export class DocumentService {
     if (query.branchId) where.branchId = query.branchId;
     if (query.search) where.fileName = { contains: query.search, mode: 'insensitive' };
 
+    enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
       this.prisma.document.findMany({
         where,
@@ -141,5 +149,15 @@ export class DocumentService {
     );
 
     return { id, deleted: true };
+  }
+
+  private async validateEntity(tenantId: string, entity: string, entityId: string) {
+    const table = entity.charAt(0).toLowerCase() + entity.slice(1);
+    const exists = await (this.prisma as any)[table]?.findFirst({
+      where: { id: entityId, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+    if (exists === undefined) return;
+    if (!exists) throw new BadRequestException(`${entity} not found`);
   }
 }

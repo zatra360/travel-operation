@@ -14,7 +14,8 @@ interface Props { open: boolean; onOpenChange: (o: boolean) => void; invoice?: I
 
 interface FormState { invoiceNumber: string; status: string; currencyCode: string; subtotal: string; taxAmount: string; discountAmount: string; totalAmount: string; paidAmount: string; dueAmount: string; issuedAt: string; dueAt: string; notes: string; }
 
-const empty: FormState = { invoiceNumber: '', status: 'DRAFT', currencyCode: 'USD', subtotal: '0', taxAmount: '0', discountAmount: '0', totalAmount: '0', paidAmount: '0', dueAmount: '0', issuedAt: '', dueAt: '', notes: '' };
+import { getDefaultCurrency } from '@/stores/auth-store';
+const empty: FormState = { invoiceNumber: '', status: 'DRAFT', currencyCode: getDefaultCurrency(), subtotal: '0', taxAmount: '0', discountAmount: '0', totalAmount: '0', paidAmount: '0', dueAmount: '0', issuedAt: '', dueAt: '', notes: '' };
 
 export function InvoiceFormDialog({ open, onOpenChange, invoice, onSaved }: Props) {
   const { activeTenant } = useAuthStore();
@@ -31,9 +32,8 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice, onSaved }: Prop
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); if (!activeTenant) return;
-    if (!form.invoiceNumber.trim()) { setError('Invoice number is required'); return; }
     setSaving(true); setError('');
-    const payload = { invoiceNumber: form.invoiceNumber.trim(), status: form.status, currencyCode: form.currencyCode, subtotal: Number(form.subtotal) || 0, taxAmount: Number(form.taxAmount) || 0, discountAmount: Number(form.discountAmount) || 0, totalAmount: Number(form.totalAmount) || 0, paidAmount: Number(form.paidAmount) || 0, dueAmount: Number(form.dueAmount) || 0, issuedAt: form.issuedAt || undefined, dueAt: form.dueAt || undefined, notes: form.notes.trim() || undefined };
+    const payload = { ...(form.invoiceNumber.trim() ? { invoiceNumber: form.invoiceNumber.trim() } : {}), status: form.status, currencyCode: form.currencyCode, subtotal: Number(form.subtotal) || 0, taxAmount: Number(form.taxAmount) || 0, discountAmount: Number(form.discountAmount) || 0, totalAmount: Number(form.totalAmount) || 0, paidAmount: Number(form.paidAmount) || 0, dueAmount: Number(form.dueAmount) || 0, issuedAt: form.issuedAt || undefined, dueAt: form.dueAt || undefined, notes: form.notes.trim() || undefined };
     try {
       if (isEdit && invoice) { await api.put(`/api/v1/tenant/invoices/${invoice.id}`, payload, { tenantId: activeTenant.id }); toast.success('Invoice updated'); }
       else { await api.post('/api/v1/tenant/invoices', payload, { tenantId: activeTenant.id }); toast.success('Invoice created'); }
@@ -45,10 +45,10 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice, onSaved }: Prop
   return (<Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-xl"><DialogHeader><DialogTitle>{isEdit ? 'Edit Invoice' : 'New Invoice'}</DialogTitle><DialogDescription>{isEdit ? 'Update invoice details.' : 'Create a new invoice.'}</DialogDescription></DialogHeader>
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-      <div className="space-y-2"><Label htmlFor="invNo">Invoice # <span className="text-destructive">*</span></Label><Input id="invNo" value={form.invoiceNumber} onChange={(e) => set('invoiceNumber', e.target.value)} placeholder="INV-2026-0001" required /></div>
+      <div className="space-y-2"><Label htmlFor="invNo">Invoice # <span className="text-[10px] font-normal text-muted-foreground">(auto-generated if blank)</span></Label><Input id="invNo" value={form.invoiceNumber} onChange={(e) => set('invoiceNumber', e.target.value)} placeholder="Leave blank to auto-generate" /></div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-2"><Label>Status</Label><Select value={form.status} onValueChange={(v) => set('status', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{INVOICE_STATUSES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
-        <div className="space-y-2"><Label>Currency</Label><Select value={form.currencyCode} onValueChange={(v) => set('currencyCode', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="USD">USD</SelectItem><SelectItem value="EUR">EUR</SelectItem><SelectItem value="GBP">GBP</SelectItem><SelectItem value="JPY">JPY</SelectItem><SelectItem value="AUD">AUD</SelectItem><SelectItem value="INR">INR</SelectItem><SelectItem value="AED">AED</SelectItem><SelectItem value="SAR">SAR</SelectItem></SelectContent></Select></div>
+        <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</Label><Select value={form.status} onValueChange={(v) => set('status', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{INVOICE_STATUSES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
+        <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Currency</Label><Select value={form.currencyCode} onValueChange={(v) => set('currencyCode', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="USD">USD</SelectItem><SelectItem value="EUR">EUR</SelectItem><SelectItem value="GBP">GBP</SelectItem><SelectItem value="JPY">JPY</SelectItem><SelectItem value="AUD">AUD</SelectItem><SelectItem value="INR">INR</SelectItem><SelectItem value="AED">AED</SelectItem><SelectItem value="SAR">SAR</SelectItem></SelectContent></Select></div>
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {(['subtotal','taxAmount','discountAmount','totalAmount','paidAmount','dueAmount'] as const).map((k) => (<div key={k} className="space-y-2"><Label htmlFor={k}>{k.replace(/([A-Z])/g,' $1').replace(/^./, s => s.toUpperCase())}</Label><Input id={k} type="number" value={form[k]} onChange={(e) => set(k, e.target.value)} /></div>))}

@@ -21,7 +21,7 @@ export class CancellationController {
   async create(@TenantCtx() ctx: TenantContext, @Body() dto: CreateCancellationDto) { return this.cancellationService.create(ctx.tenantId, ctx.userId, dto); }
 
   @Get() @RequirePermissions('CANCELLATION_READ') @ApiOperation({ summary: 'List cancellation requests' })
-  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryCancellationDto) { return this.cancellationService.findAll(ctx.tenantId, query); }
+  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryCancellationDto) { return this.cancellationService.findAll(ctx.tenantId, query, ctx.branchId); }
 
   @Get(':id') @RequirePermissions('CANCELLATION_READ') @ApiOperation({ summary: 'Get cancellation request' })
   async findById(@TenantCtx() ctx: TenantContext, @Param('id') id: string) { return this.cancellationService.findById(ctx.tenantId, id); }

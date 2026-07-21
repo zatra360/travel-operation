@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceBranchScope } from '../../common/utils/scope';
 import { AuditService } from '../audit/audit.service';
 import { ActivityService } from '../activity/activity.service';
 import { RelationshipValidationService } from '../../common/services/relationship-validation.service';
@@ -64,7 +65,7 @@ export class ReissueService {
     return reissue;
   }
 
-  async findAll(tenantId: string, query: QueryReissueDto) {
+  async findAll(tenantId: string, query: QueryReissueDto, activeBranchId?: string) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;
     const skip = (page - 1) * limit;
@@ -79,8 +80,12 @@ export class ReissueService {
       ];
     }
 
+    enforceBranchScope(where, activeBranchId);
     const [data, total] = await Promise.all([
-      this.prisma.reissueRequest.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      this.prisma.reissueRequest.findMany({
+        where, orderBy: { createdAt: 'desc' }, skip, take: limit,
+        include: { oldTicket: { select: { ticketNumber: true, passengerName: true } }, newTicket: { select: { ticketNumber: true } }, booking: { select: { bookingRef: true } }, client: { select: { displayName: true } } },
+      }),
       this.prisma.reissueRequest.count({ where }),
     ]);
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
@@ -194,28 +199,38 @@ export class ReissueService {
       throw new BadRequestException(`Invalid status transition: ${reissue.status} -> PROCESSED. Allowed: ${allowed.join(', ')}`);
     }
 
-    const updated = await this.prisma.reissueRequest.update({
-      where: { id },
-      data: {
-        status: 'PROCESSED',
-        processedById: actorId,
-        processedAt: new Date(),
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.reissueRequest.update({
+        where: { id },
+        data: {
+          status: 'PROCESSED',
+          processedById: actorId,
+          processedAt: new Date(),
+        },
+      });
+
+      if (reissue.newTicketId) {
+        await tx.ticket.update({
+          where: { id: reissue.newTicketId },
+          data: { status: 'ISSUED' },
+        });
+      }
+
+      if (reissue.oldTicketId) {
+        await tx.ticket.update({
+          where: { id: reissue.oldTicketId },
+          data: { status: 'REISSUED' },
+        });
+      }
+
+      return result;
     });
 
     if (reissue.newTicketId) {
-      await this.prisma.ticket.update({
-        where: { id: reissue.newTicketId },
-        data: { status: 'ISSUED' },
-      });
       await this.activity.log(tenantId, actorId, 'TICKET_ISSUED', `New ticket ${reissue.newTicketId} issued for reissue #${reissue.reissueNumber}`, 'Ticket', reissue.newTicketId, reissue.branchId);
     }
 
     if (reissue.oldTicketId) {
-      await this.prisma.ticket.update({
-        where: { id: reissue.oldTicketId },
-        data: { status: 'REISSUED' },
-      });
       await this.activity.log(tenantId, actorId, 'TICKET_REISSUED', `Old ticket ${reissue.oldTicketId} status updated to REISSUED for reissue #${reissue.reissueNumber}`, 'Ticket', reissue.oldTicketId, reissue.branchId);
     }
 

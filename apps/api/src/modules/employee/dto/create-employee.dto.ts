@@ -4,9 +4,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export const EMPLOYEE_STATUSES = ['ACTIVE', 'INACTIVE', 'TERMINATED', 'ON_LEAVE'] as const;
 
 export class CreateEmployeeDto {
-  @ApiProperty({ example: 'EMP-001' })
-  @IsString() @IsNotEmpty() @MaxLength(50)
-  employeeCode!: string;
+  @ApiPropertyOptional({ example: 'EMP-001' })
+  @IsOptional() @IsString() @MaxLength(50)
+  employeeCode?: string;
 
   @ApiPropertyOptional()
   @IsOptional() @IsString()

@@ -1,18 +1,25 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../../prisma/prisma.service';
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 
 @ApiTags('Platform - Tenants')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PlatformAdminGuard, PermissionsGuard)
 @Controller('platform/tenants')
 export class TenantController {
-  constructor(private readonly tenantService: TenantService) {}
+  constructor(
+    private readonly tenantService: TenantService,
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   @Post()
   @RequirePermissions('TENANT_CREATE')
@@ -47,5 +54,13 @@ export class TenantController {
   @ApiOperation({ summary: 'Soft delete tenant' })
   async remove(@Param('id') id: string) {
     return this.tenantService.remove(id);
+  }
+
+  @Post(':tenantId/impersonate/:userId')
+  @ApiOperation({ summary: 'Impersonate a tenant user (platform admin only)' })
+  async impersonate(@Param('tenantId') tenantId: string, @Param('userId') userId: string) {
+    const user = await this.prisma.user.findFirstOrThrow({ where: { id: userId } });
+    const token = this.jwtService.sign({ sub: user.id, email: user.email, isPlatformSuperAdmin: false });
+    return { accessToken: token, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } };
   }
 }

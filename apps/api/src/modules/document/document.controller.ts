@@ -36,7 +36,7 @@ export class DocumentController {
   @RequirePermissions('DOCUMENT_READ')
   @ApiOperation({ summary: 'List documents for current tenant' })
   async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryDocumentDto) {
-    return this.documentService.findAll(ctx.tenantId, query);
+    return this.documentService.findAll(ctx.tenantId, query, ctx.branchId);
   }
 
   @Get(':id')

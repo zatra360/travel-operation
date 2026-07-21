@@ -1,7 +1,7 @@
 import { IsString, IsNotEmpty, IsOptional, IsIn, IsDateString, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export const TICKET_STATUSES = ['ISSUED', 'VOIDED', 'REFUNDED', 'EXCHANGED'] as const;
+export const TICKET_STATUSES = ['PENDING', 'APPROVED', 'ISSUED', 'VOIDED', 'REFUNDED', 'REISSUED'] as const;
 
 export class CreateTicketDto {
   @ApiPropertyOptional({ example: 'TKT-2026-0001' })
@@ -31,7 +31,7 @@ export class CreateTicketDto {
   @IsString()
   airlineId?: string;
 
-  @ApiPropertyOptional({ enum: TICKET_STATUSES, default: 'ISSUED' })
+  @ApiPropertyOptional({ enum: TICKET_STATUSES, default: 'PENDING' })
   @IsOptional()
   @IsIn(TICKET_STATUSES)
   status?: string;

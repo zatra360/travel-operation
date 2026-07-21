@@ -21,7 +21,7 @@ export class RefundController {
   async create(@TenantCtx() ctx: TenantContext, @Body() dto: CreateRefundDto) { return this.refundService.create(ctx.tenantId, ctx.userId, dto); }
 
   @Get() @RequirePermissions('REFUND_READ') @ApiOperation({ summary: 'List refund requests' })
-  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryRefundDto) { return this.refundService.findAll(ctx.tenantId, query); }
+  async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryRefundDto) { return this.refundService.findAll(ctx.tenantId, query, ctx.branchId); }
 
   @Get(':id') @RequirePermissions('REFUND_READ') @ApiOperation({ summary: 'Get refund request' })
   async findById(@TenantCtx() ctx: TenantContext, @Param('id') id: string) { return this.refundService.findById(ctx.tenantId, id); }

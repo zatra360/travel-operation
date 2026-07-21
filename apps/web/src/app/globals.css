@@ -2,65 +2,89 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --font-sans: var(--font-instrument), 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
 :root {
-  --background: oklch(0.985 0.002 250);
-  --foreground: oklch(0.18 0.02 250);
+  --background: oklch(0.99 0.002 260);
+  --foreground: oklch(0.18 0.01 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 250);
+  --card-foreground: oklch(0.18 0.01 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 250);
-  --primary: oklch(0.35 0.06 255);
+  --popover-foreground: oklch(0.18 0.01 260);
+
+  /* Zenith-style indigo primary */
+  --primary: oklch(0.45 0.15 265);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.955 0.005 250);
-  --secondary-foreground: oklch(0.35 0.06 255);
-  --muted: oklch(0.965 0.005 250);
-  --muted-foreground: oklch(0.5 0.02 250);
-  --accent: oklch(0.95 0.02 250);
-  --accent-foreground: oklch(0.35 0.06 255);
-  --destructive: oklch(0.55 0.22 25);
+
+  --secondary: oklch(0.96 0.005 260);
+  --secondary-foreground: oklch(0.35 0.05 265);
+  --muted: oklch(0.97 0.003 260);
+  --muted-foreground: oklch(0.48 0.02 260);
+  --accent: oklch(0.96 0.01 260);
+  --accent-foreground: oklch(0.35 0.05 265);
+
+  --destructive: oklch(0.55 0.25 22);
   --destructive-foreground: oklch(0.99 0 0);
-  --success: oklch(0.6 0.15 160);
+  --success: oklch(0.58 0.18 155);
   --success-foreground: oklch(0.99 0 0);
-  --warning: oklch(0.7 0.15 85);
-  --warning-foreground: oklch(0.25 0.05 50);
-  --info: oklch(0.55 0.12 240);
+  --warning: oklch(0.72 0.18 85);
+  --warning-foreground: oklch(0.2 0.05 40);
+  --info: oklch(0.52 0.14 240);
   --info-foreground: oklch(0.99 0 0);
-  --border: oklch(0.91 0.005 250);
-  --input: oklch(0.91 0.005 250);
-  --ring: oklch(0.35 0.06 255);
+
+  --border: oklch(0.92 0.004 260);
+  --input: oklch(0.92 0.004 260);
+  --ring: oklch(0.45 0.15 265);
   --radius: 0.625rem;
-  --sidebar: oklch(0.22 0.04 255);
-  --sidebar-foreground: oklch(0.95 0.005 250);
-  --sidebar-accent: oklch(0.28 0.04 255);
-  --sidebar-accent-foreground: oklch(0.99 0 0);
-  --sidebar-border: oklch(0.28 0.04 255);
+
+  /* Light indigo sidebar matching Zenith */
+  --sidebar: oklch(0.97 0.003 260);
+  --sidebar-foreground: oklch(0.35 0.02 260);
+  --sidebar-accent: oklch(0.93 0.01 265);
+  --sidebar-accent-foreground: oklch(0.45 0.15 265);
+  --sidebar-border: oklch(0.88 0.005 260);
+
 }
 
 .dark {
-  --background: oklch(0.15 0.02 250);
-  --foreground: oklch(0.95 0.005 250);
-  --card: oklch(0.18 0.02 250);
-  --card-foreground: oklch(0.95 0.005 250);
-  --popover: oklch(0.18 0.02 250);
-  --popover-foreground: oklch(0.95 0.005 250);
-  --primary: oklch(0.75 0.08 250);
-  --primary-foreground: oklch(0.15 0.02 250);
-  --secondary: oklch(0.22 0.02 250);
-  --secondary-foreground: oklch(0.95 0.005 250);
-  --muted: oklch(0.22 0.02 250);
-  --muted-foreground: oklch(0.62 0.02 250);
-  --accent: oklch(0.22 0.02 250);
-  --accent-foreground: oklch(0.95 0.005 250);
-  --destructive: oklch(0.55 0.22 25);
+  --background: oklch(0.145 0.01 260);
+  --foreground: oklch(0.95 0.003 260);
+  --card: oklch(0.18 0.01 260);
+  --card-foreground: oklch(0.95 0.003 260);
+  --popover: oklch(0.18 0.01 260);
+  --popover-foreground: oklch(0.95 0.003 260);
+
+  --primary: oklch(0.7 0.15 265);
+  --primary-foreground: oklch(0.15 0.02 260);
+  --secondary: oklch(0.22 0.02 260);
+  --secondary-foreground: oklch(0.95 0.003 260);
+  --muted: oklch(0.22 0.02 260);
+  --muted-foreground: oklch(0.6 0.02 260);
+  --accent: oklch(0.22 0.02 260);
+  --accent-foreground: oklch(0.95 0.003 260);
+
+  --destructive: oklch(0.55 0.25 22);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.22 0.02 250);
-  --input: oklch(0.22 0.02 250);
-  --ring: oklch(0.55 0.06 250);
-  --sidebar: oklch(0.13 0.03 255);
-  --sidebar-foreground: oklch(0.92 0.005 250);
-  --sidebar-accent: oklch(0.18 0.03 255);
-  --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(0.18 0.03 255);
+  --success: oklch(0.65 0.18 155);
+  --success-foreground: oklch(0.15 0.02 260);
+  --warning: oklch(0.78 0.18 85);
+  --warning-foreground: oklch(0.2 0.05 40);
+  --info: oklch(0.62 0.12 240);
+  --info-foreground: oklch(0.15 0.02 260);
+
+  --border: oklch(0.22 0.02 260);
+  --input: oklch(0.22 0.02 260);
+  --ring: oklch(0.55 0.1 265);
+
+  /* Light sidebar for dark mode */
+  --sidebar: oklch(0.18 0.01 260);
+  --sidebar-foreground: oklch(0.93 0.003 260);
+  --sidebar-accent: oklch(0.24 0.02 265);
+  --sidebar-accent-foreground: oklch(0.9 0.05 265);
+  --sidebar-border: oklch(0.24 0.02 260);
+
 }
 
 @theme inline {
@@ -105,19 +129,52 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-instrument), 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-::selection {
-  background-color: oklch(0.35 0.06 255 / 0.15);
-  color: oklch(0.18 0.02 250);
-}
+::selection { background-color: var(--primary); color: var(--primary-foreground); }
 
-table {
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
+table { border-collapse: separate; border-spacing: 0; }
 tr:last-child td { border-bottom: none; }
+
+.tabular-nums, table td, table th {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .print\:hidden { display: none !important; }
+  body { background: white !important; color: black !important; }
+  .bg-muted\/30 { background: white !important; }
+}
+
+/* Thin scrollbar — html/body only, not every widget */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.88 0.005 260) transparent;
+}
+.dark html {
+  scrollbar-color: oklch(0.25 0.01 260) transparent;
+}
+
+/* Sidebar nav gets an even thinner scrollbar */
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: oklch(0.82 0.005 260); border-radius: 2px; }
+.dark .sidebar-scroll::-webkit-scrollbar-thumb { background: oklch(0.35 0.01 260); }

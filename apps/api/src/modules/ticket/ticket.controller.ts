@@ -29,7 +29,7 @@ export class TicketController {
   @RequirePermissions('TICKET_READ')
   @ApiOperation({ summary: 'List tickets' })
   async findAll(@TenantCtx() ctx: TenantContext, @Query() query: QueryTicketDto) {
-    return this.ticketService.findAll(ctx.tenantId, query);
+    return this.ticketService.findAll(ctx.tenantId, query, ctx.branchId);
   }
 
   @Get(':id')
@@ -44,6 +44,13 @@ export class TicketController {
   @ApiOperation({ summary: 'Update ticket' })
   async update(@TenantCtx() ctx: TenantContext, @Param('id') id: string, @Body() dto: UpdateTicketDto) {
     return this.ticketService.update(ctx.tenantId, ctx.userId, id, dto);
+  }
+
+  @Post(':id/approve')
+  @RequirePermissions('TICKET_UPDATE')
+  @ApiOperation({ summary: 'Approve a ticket for issuance' })
+  async approveTicket(@TenantCtx() ctx: TenantContext, @Param('id') id: string) {
+    return this.ticketService.approveTicket(ctx.tenantId, ctx.userId, id);
   }
 
   @Post(':id/issue')

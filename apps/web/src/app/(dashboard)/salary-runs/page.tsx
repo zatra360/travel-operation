@@ -1,60 +1,145 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { toast } from 'sonner';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, Plus } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { TableToolbar } from '@/components/ui/table-toolbar';
+import { Pagination } from '@/components/ui/pagination';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { Money } from '@/components/travel/money';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
-import { formatDateTime, formatDate } from '@/lib/utils';
-import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
+import { formatDate } from '@/lib/utils';
+
+const ALL = '__all__';
+const PAGE_SIZE = 25;
+const STATUSES = ['DRAFT', 'GENERATED', 'APPROVED', 'PAID', 'CANCELLED'];
+
+interface SalaryRunRow {
+  id: string;
+  salaryRunNumber?: string;
+  period?: string;
+  totalGross?: number | string;
+  totalNet?: number | string;
+  currencyCode?: string;
+  status: string;
+  createdAt: string;
+}
 
 export default function SalaryRunsPage() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<SalaryRunRow[]>([]);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
-  const { activeTenant } = useAuthStore();
+  const [page, setPage] = useState(1);
+  const { activeTenant, activeBranch } = useAuthStore();
 
   const load = useCallback(() => {
     if (!activeTenant) return;
-    setLoading(true); setError('');
+    setLoading(true);
+    setError('');
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (status) params.set('status', status);
-    api.get<any>(`/api/v1/tenant/salary-runs?${params.toString()}`, { tenantId: activeTenant.id })
-      .then((res) => setItems(res.data || []))
+    params.set('page', String(page));
+    params.set('limit', String(PAGE_SIZE));
+    api
+      .get<{ data: SalaryRunRow[]; page: number; totalPages: number; total: number }>(
+        `/api/v1/tenant/salary-runs?${params.toString()}`,
+        { tenantId: activeTenant.id, branchId: activeBranch?.id },
+      )
+      .then((res) => {
+        setItems(res.data || []);
+        setMeta({ page: res.page ?? 1, totalPages: res.totalPages ?? 1, total: res.total ?? 0 });
+      })
       .catch((err) => setError(err.message || 'Failed to load'))
       .finally(() => setLoading(false));
-  }, [activeTenant, search, status]);
+  }, [activeTenant, activeBranch, search, status, page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  useEffect(() => {
+    setPage(1);
+  }, [search, status]);
 
-  const statuses = ['DRAFT', 'GENERATED', 'APPROVED', 'PAID', 'CANCELLED'];
-  const variant = (s: string) => s === 'APPROVED' || s === 'PAID' ? 'success' : s === 'CANCELLED' ? 'destructive' : s === 'GENERATED' ? 'warning' : 'secondary';
+  const columns: DataTableColumn<SalaryRunRow>[] = [
+    { key: 'number', header: 'Run #', cell: (s) => <span className="font-medium">{s.salaryRunNumber || s.id}</span> },
+    { key: 'period', header: 'Period', cell: (s) => <span className="text-muted-foreground">{s.period || '—'}</span> },
+    { key: 'gross', header: 'Gross', align: 'right', hideOnMobile: true, cell: (s) => <Money amount={s.totalGross} currency={s.currencyCode || 'USD'} /> },
+    { key: 'net', header: 'Net', align: 'right', cell: (s) => <Money amount={s.totalNet} currency={s.currencyCode || 'USD'} className="font-medium" /> },
+    { key: 'status', header: 'Status', cell: (s) => <StatusBadge status={s.status} /> },
+    { key: 'created', header: 'Created', hideOnMobile: true, cell: (s) => <span className="text-muted-foreground">{formatDate(s.createdAt)}</span> },
+  ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader title="Salary Runs" subtitle="Generate and approve monthly salary runs" />
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" /></div>
-        {statuses.map((s) => (<Button key={s} variant={status === s ? 'default' : 'outline'} size="sm" onClick={() => setStatus(s)}>{s}</Button>))}
-        <Button variant={status === '' ? 'default' : 'outline'} size="sm" onClick={() => setStatus('')}>All</Button>
-      </div>
-      <Card><CardContent className="pt-6">
-        {loading ? <TableSkeleton /> :
-         error ? <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div> :
-         items.length === 0 ? <p className="text-muted-foreground">No salary runs found. Create your first salary run to process employee payroll.</p> : (
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="pb-3">Run #</th><th className="pb-3">Period</th><th className="pb-3">Gross</th><th className="pb-3">Net</th><th className="pb-3">Status</th><th className="pb-3">Created</th></tr></thead><tbody>
-            {items.map((s) => (<tr key={s.id} className="border-b last:border-0"><td className="py-3 font-medium">{s.salaryRunNumber}</td><td className="py-3">{s.period}</td><td className="py-3">${Number(s.totalGross || 0).toFixed(2)}</td><td className="py-3">${Number(s.totalNet || 0).toFixed(2)}</td><td className="py-3"><Badge variant={variant(s.status) as any}>{s.status}</Badge></td><td className="py-3 text-muted-foreground">{formatDateTime(s.createdAt)}</td></tr>))}
-          </tbody></table></div>
-        )}
-      </CardContent></Card>
+
+      <TableToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search run # or period…"
+        hasActiveFilters={search !== '' || status !== ''}
+        onReset={() => {
+          setSearch('');
+          setStatus('');
+        }}
+        filters={
+          <Select value={status || ALL} onValueChange={(v) => setStatus(v === ALL ? '' : v)}>
+            <SelectTrigger className="h-9 w-40" aria-label="Filter by status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All statuses</SelectItem>
+              {STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s.charAt(0) + s.slice(1).toLowerCase()}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+
+      {error ? (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            data={items}
+            rowKey={(s) => s.id}
+            loading={loading}
+            emptyTitle="No salary runs found"
+            emptyDescription="Create a salary run to process employee payroll."
+            mobileCard={(s) => (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">{s.salaryRunNumber || s.id}</span>
+                  <StatusBadge status={s.status} />
+                </div>
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span className="text-muted-foreground">{s.period || '—'}</span>
+                  <Money amount={s.totalNet} currency={s.currencyCode || 'USD'} className="font-semibold" />
+                </div>
+              </div>
+            )}
+          />
+          {!loading && items.length > 0 && (
+            <Pagination page={meta.page} totalPages={meta.totalPages} total={meta.total} limit={PAGE_SIZE} onPageChange={setPage} />
+          )}
+        </>
+      )}
     </div>
   );
 }
